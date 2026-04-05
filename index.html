@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loteca Elite Pro</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;min-height:100vh}
+header{background:#1a1d2e;border-bottom:1px solid #2d3748;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.logo h1{font-size:20px;font-weight:700;color:#22c55e}
+.logo p{font-size:11px;color:#64748b}
+.badge{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600}
+.online{background:#052e16;color:#22c55e;border:1px solid #166534}
+.offline{background:#450a0a;color:#ef4444;border:1px solid #991b1b}
+.container{max-width:1100px;margin:0 auto;padding:24px 16px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.metric{background:#1a1d2e;border:1px solid #2d3748;border-radius:12px;padding:14px 16px}
+.metric-label{font-size:11px;color:#64748b;margin-bottom:4px;text-transform:uppercase}
+.metric-value{font-size:22px;font-weight:700;color:#fff}
+.metric-sub{font-size:11px;color:#64748b;margin-top:2px}
+.card{background:#1a1d2e;border:1px solid #2d3748;border-radius:12px;padding:20px;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:600;color:#fff;margin-bottom:16px}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;color:#64748b;text-align:left;padding:6px 8px;border-bottom:1px solid #2d3748;text-transform:uppercase}
+td{padding:8px;border-bottom:1px solid #1e2333;font-size:12px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#1e2333}
+input.odd{width:64px;padding:4px 6px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;color:#e2e8f0;font-size:12px;text-align:center}
+input.odd:focus{outline:none;border-color:#22c55e}
+input.nome{width:100%;padding:3px;background:transparent;border:none;color:#e2e8f0;font-size:12px}
+input.nome:focus{outline:none;background:#0f1117;border-radius:4px;padding:3px 6px}
+.badge-r{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.b1{background:#052e16;color:#22c55e}
+.bx{background:#1c1400;color:#eab308}
+.b2{background:#0c1a3a;color:#3b82f6}
+.btn-ap{padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #2d3748;background:transparent;color:#64748b}
+.btn-ap.a1{background:#052e16;border-color:#22c55e;color:#22c55e}
+.btn-ap.ax{background:#1c1400;border-color:#eab308;color:#eab308}
+.btn-ap.a2{background:#0c1a3a;border-color:#3b82f6;color:#3b82f6}
+.btn-action{padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;margin-right:8px;margin-bottom:8px}
+.bg{background:#16a34a;color:#fff}
+.bb{background:#1d4ed8;color:#fff}
+.bc{background:#2d3748;color:#e2e8f0}
+.actions{display:flex;flex-wrap:wrap;margin-bottom:16px}
+.prob-bar{height:4px;background:#2d3748;border-radius:2px;margin-top:3px;overflow:hidden;display:flex}
+.p1f{background:#22c55e}
+.pxf{background:#eab308}
+.p2f{background:#3b82f6}
+.cartao-item{background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.cartao-seq{font-family:monospace;font-size:15px;letter-spacing:3px;color:#22c55e;font-weight:700}
+.alert{padding:10px 16px;border-radius:8px;font-size:12px;margin-bottom:12px}
+.ai{background:#0c1a3a;border:1px solid #1d4ed8;color:#93c5fd}
+.as{background:#052e16;border:1px solid #166534;color:#86efac}
+.ae{background:#450a0a;border:1px solid #991b1b;color:#fca5a5}
+@media(max-width:768px){.metrics{grid-template-columns:repeat(2,1fr)}.actions{flex-direction:column}.btn-action{width:100%}}
+</style>
+</head>
+<body>
+<header>
+<div class="logo"><h1>🎯 Loteca Elite Pro</h1><p>Simulador Inteligente — Motor Estatístico com 30 anos de dados</p></div>
+<div id="sb" class="badge offline">⚫ Verificando...</div>
+</header>
+<div class="container">
+<div class="metrics">
+<div class="metric"><div class="metric-label">Concurso</div><div class="metric-value" id="mC">Atual</div><div class="metric-sub" id="mD">Carregando...</div></div>
+<div class="metric"><div class="metric-label">Custo</div><div class="metric-value" id="mCu">R$ —</div><div class="metric-sub" id="mCo">— combinações</div></div>
+<div class="metric"><div class="metric-label">Analisados</div><div class="metric-value" id="mA">0/14</div><div class="metric-sub">jogos com odds</div></div>
+<div class="metric"><div class="metric-label">Base histórica</div><div class="metric-value">1.241</div><div class="metric-sub">concursos calibrados</div></div>
+</div>
+<div id="alertArea"></div>
+<div class="card">
+<div class="card-title">⚽ Jogos do Concurso — preencha os times e odds reais</div>
+<div class="actions">
+<button class="btn-action bg" onclick="analisar()">🔍 Analisar jogos</button>
+<button class="btn-action bb" onclick="sugerirTodos()">⚡ Sugerir automaticamente</button>
+<button class="btn-action bc" onclick="gerarCartoes()">🎴 Gerar top cartões</button>
+<button class="btn-action bc" onclick="limpar()">🗑 Limpar</button>
+</div>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>#</th><th>Mandante</th><th>Visitante</th><th>Odd 1</th><th>Odd X</th><th>Odd 2</th><th>Probabilidades</th><th>Sugestão</th><th>Sua aposta</th></tr></thead>
+<tbody id="tb"></tbody>
+</table>
+</div>
+</div>
+<div class="card" id="cc" style="display:none">
+<div class="card-title">🎴 Top Cartões Gerados</div>
+<div id="cl"></div>
+</div>
+</div>
+<script>
+const API="https://loteca-simulador.onrender.com";
+const TIMES=[["Flamengo","Vasco"],["Palmeiras","Santos"],["Corinthians","São Paulo"],["Grêmio","Inter"],["Atlético-MG","Cruzeiro"],["Fluminense","Botafogo"],["Bahia","Vitória"],["Sport","Náutico"],["Fortaleza","Ceará"],["Athletico-PR","Coritiba"],["Goiás","Atlético-GO"],["Bragantino","Guarani"],["América-MG","Tombense"],["Cuiabá","Operário"]];
+let jogos=Array.from({length:14},(_,i)=>({pos:i+1,mandante:TIMES[i][0],visitante:TIMES[i][1],odd1:2.20,oddx:3.10,odd2:3.50,p1:0,px:0,p2:0,sugestao:"",tipo:"",aposta:""}));
+function alerta(msg,t){document.getElementById("alertArea").innerHTML=`<div class="alert ${t}">${msg}</div>`;setTimeout(()=>document.getElementById("alertArea").innerHTML="",4000)}
+function render(){
+document.getElementById("tb").innerHTML=jogos.map((j,i)=>`<tr>
+<td style="color:#64748b;text-align:center">${j.pos}</td>
+<td><input class="nome" value="${j.mandante}" onchange="jogos[${i}].mandante=this.value"></td>
+<td><input class="nome" value="${j.visitante}" onchange="jogos[${i}].visitante=this.value"></td>
+<td><input class="odd" type="number" step="0.01" value="${j.odd1.toFixed(2)}" onchange="jogos[${i}].odd1=parseFloat(this.value)||2.20"></td>
+<td><input class="odd" type="number" step="0.01" value="${j.oddx.toFixed(2)}" onchange="jogos[${i}].oddx=parseFloat(this.value)||3.10"></td>
+<td><input class="odd" type="number" step="0.01" value="${j.odd2.toFixed(2)}" onchange="jogos[${i}].odd2=parseFloat(this.value)||3.50"></td>
+<td>${j.p1>0?`<div style="font-size:10px;color:#94a3b8;margin-bottom:2px">1:${j.p1}% X:${j.px}% 2:${j.p2}%</div><div class="prob-bar"><div class="p1f" style="width:${j.p1}%"></div><div class="pxf" style="width:${j.px}%"></div><div class="p2f" style="width:${j.p2}%"></div></div>`:'<span style="color:#374151">—</span>'}</td>
+<td>${j.sugestao?`<span class="badge-r b${j.sugestao.toLowerCase()}">${j.sugestao==='1'?'Mandante':j.sugestao==='X'?'Empate':'Visitante'} (${j.sugestao})</span>`:'<span style="color:#374151">—</span>'}</td>
+<td><div style="display:flex;gap:4px">
+<button class="btn-ap ${j.aposta==='1'?'a1':''}" onclick="marcar(${i},'1')">1</button>
+<button class="btn-ap ${j.aposta==='X'?'ax':''}" onclick="marcar(${i},'X')">X</button>
+<button class="btn-ap ${j.aposta==='2'?'a2':''}" onclick="marcar(${i},'2')">2</button>
+</div></td></tr>`).join("");
+const m=jogos.filter(j=>j.aposta).length;
+const an=jogos.filter(j=>j.p1>0).length;
+document.getElementById("mA").textContent=an+"/14";
+document.getElementById("mCu").textContent=m===14?"R$ 4,00":"R$ —";
+document.getElementById("mCo").textContent=m===14?"1 combinação":m+"/14 marcados";
+}
+function marcar(i,v){jogos[i].aposta=jogos[i].aposta===v?"":v;render()}
+async function analisar(){
+alerta("⏳ Analisando no servidor...","ai");
+try{
+const r=await fetch(API+"/analisar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(jogos.map(j=>({pos:j.pos,mandante:j.mandante,visitante:j.visitante,odd1:j.odd1,oddx:j.oddx,odd2:j.odd2}))),signal:AbortSignal.timeout(15000)});
+const d=await r.json();
+d.jogos.forEach((j,i)=>{jogos[i].p1=j.p1;jogos[i].px=j.px;jogos[i].p2=j.p2;jogos[i].sugestao=j.sugestao;jogos[i].tipo=j.tipo});
+render();alerta("✅ Análise concluída com sucesso!","as");
+}catch(e){alerta("❌ Erro ao conectar. Aguarde 1 minuto e tente novamente.","ae")}}
+function sugerirTodos(){let ok=0;jogos.forEach((j,i)=>{if(j.sugestao){jogos[i].aposta=j.sugestao;ok++}});if(!ok){alerta("⚠️ Clique em Analisar jogos primeiro.","ai");return}render();alerta(`✅ ${ok} apostas sugeridas!`,"as")}
+function gerarCartoes(){
+if(!jogos.some(j=>j.aposta||j.sugestao)){alerta("⚠️ Analise os jogos primeiro.","ai");return}
+const ap=jogos.map(j=>j.aposta||j.sugestao||"1");
+document.getElementById("cl").innerHTML=[
+{seq:ap.join(""),desc:"Cartão principal",custo:"R$ 4,00",comb:"1 combinação"},
+{seq:ap.map((a,i)=>i<3?"1X":a).join(""),desc:"Desdobre — duplo nos 3 primeiros",custo:"R$ 32,00",comb:"8 combinações"},
+{seq:ap.map((a,i)=>i%4===0?"12":a).join(""),desc:"Desdobre alternativo — duplo a cada 4",custo:"R$ 16,00",comb:"4 combinações"},
+].map((c,i)=>`<div class="cartao-item"><div><div style="font-size:11px;color:#64748b;margin-bottom:4px">#${i+1} — ${c.desc}</div><div class="cartao-seq">${c.seq}</div></div><div style="text-align:right"><div style="font-size:16px;font-weight:700;color:#fff">${c.custo}</div><div style="font-size:11px;color:#64748b">${c.comb}</div></div></div>`).join("");
+document.getElementById("cc").style.display="block";
+document.getElementById("cc").scrollIntoView({behavior:"smooth"})}
+function limpar(){jogos.forEach(j=>{j.aposta="";j.sugestao="";j.p1=0;j.px=0;j.p2=0;j.tipo=""});document.getElementById("cc").style.display="none";render()}
+async function verificar(){
+try{const r=await fetch(API+"/",{signal:AbortSignal.timeout(10000)});const d=await r.json();
+if(d.status==="online"){document.getElementById("sb").className="badge online";document.getElementById("sb").textContent="🟢 Servidor Online"}}
+catch(e){document.getElementById("sb").className="badge offline";document.getElementById("sb").textContent="🔴 Iniciando...";setTimeout(verificar,30000)}}
+const h=new Date();
+document.getElementById("mD").textContent=h.toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"});
+render();verificar();
+</script>
+</body>
+</html>
