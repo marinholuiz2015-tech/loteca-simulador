@@ -6,7 +6,7 @@ Backend principal com suporte especial aos 4 concursos Copa Loteca 1255–1258.
 import os
 import math
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -136,6 +136,9 @@ def todos_concursos():
         {"concurso": num, "nome": d["nome"], "periodo": d["periodo"]}
         for num, d in COPA_LOTECA.items()]})
 
+    @app.route("/")
+def index():
+    return send_from_directory(".", "index.html")
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "versao": "Copa Loteca 1.0"})
