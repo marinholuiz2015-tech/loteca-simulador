@@ -3,284 +3,346 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Loteca Elite Pro</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<title>Loteca Elite Pro — Copa 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --verde:   #00e676;
-  --verde2:  #00c853;
-  --azul:    #0d1117;
-  --azul2:   #161b27;
-  --azul3:   #1e2535;
-  --borda:   #2d3650;
-  --texto:   #e8ecf5;
-  --muted:   #6b7a99;
-  --laranja: #ff6b35;
-  --amarelo: #ffd54f;
-  --vermelho:#ff4757;
-  --radius:  8px;
+  --bg: #060a0f;
+  --bg2: #0c1219;
+  --bg3: #111a24;
+  --verde: #00ff87;
+  --verde2: #00cc6a;
+  --amarelo: #ffd60a;
+  --vermelho: #ff4757;
+  --azul: #00b4d8;
+  --texto: #e8f4f8;
+  --muted: #4a6278;
+  --borda: rgba(0,255,135,0.12);
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+* { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: 'Syne', sans-serif;
-  background: var(--azul);
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
   color: var(--texto);
   min-height: 100vh;
-  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 40% at 50% -10%, rgba(0,255,135,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 30% at 100% 100%, rgba(0,180,216,0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
 }
 
+/* HEADER */
 header {
-  background: var(--azul2);
-  border-bottom: 1px solid var(--borda);
-  padding: 0 24px;
+  position: relative;
+  z-index: 1;
+  padding: 32px 40px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-.logo { display: flex; align-items: center; gap: 10px; }
-.logo-icon {
-  width: 36px; height: 36px;
-  background: var(--verde);
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-}
-.logo-text { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
-.logo-text span { color: var(--verde); }
-
-#status-dot {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12px; font-family: 'DM Mono', monospace;
-  color: var(--muted);
-}
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); animation: pulse 2s infinite; }
-.dot.online  { background: var(--verde); }
-.dot.offline { background: var(--vermelho); animation: none; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
-
-.top-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
-}
-.concurso-badge {
-  background: var(--azul3); border: 1px solid var(--borda); border-radius: 6px;
-  padding: 6px 14px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--verde);
-}
-.btn {
-  padding: 10px 20px; border-radius: var(--radius); border: none;
-  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
-  cursor: pointer; transition: all .18s; letter-spacing: .3px;
-}
-.btn-primary { background: var(--verde); color: #000; }
-.btn-primary:hover { background: var(--verde2); transform: translateY(-1px); }
-.btn-ghost { background: transparent; color: var(--texto); border: 1px solid var(--borda); }
-.btn-ghost:hover { border-color: var(--verde); color: var(--verde); }
-
-.tabs {
-  display: flex; gap: 4px; margin-bottom: 28px;
-  background: var(--azul2); border: 1px solid var(--borda);
-  border-radius: var(--radius); padding: 4px;
-}
-.tab {
-  flex: 1; padding: 9px 12px; border-radius: 6px; border: none;
-  background: transparent; color: var(--muted);
-  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
-  cursor: pointer; transition: all .18s; text-align: center;
-}
-.tab.active { background: var(--azul3); color: var(--texto); }
-.tab:hover:not(.active) { color: var(--texto); }
-.tab-content { display: none; }
-.tab-content.active { display: block; }
-
-.summary-grid {
-  display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 28px;
-}
-@media(max-width:700px){ .summary-grid{ grid-template-columns: repeat(2,1fr); } }
-.summary-card {
-  background: var(--azul2); border: 1px solid var(--borda);
-  border-radius: var(--radius); padding: 16px; transition: border-color .2s;
-}
-.summary-card:hover { border-color: var(--verde); }
-.summary-label { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-.summary-value { font-size: 28px; font-weight: 800; line-height: 1; }
-.summary-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: 'DM Mono', monospace; }
-.c-verde { color: var(--verde); }
-.c-amarelo { color: var(--amarelo); }
-.c-laranja { color: var(--laranja); }
-
-.table-header {
-  display: grid;
-  grid-template-columns: 32px 1fr 80px 80px 80px 120px 90px;
-  gap: 8px; padding: 8px 16px;
-  font-size: 11px; font-family: 'DM Mono', monospace;
-  color: var(--muted); text-transform: uppercase; letter-spacing: .8px;
-  border-bottom: 1px solid var(--borda); margin-bottom: 2px;
-}
-.jogo-row {
-  display: grid;
-  grid-template-columns: 32px 1fr 80px 80px 80px 120px 90px;
-  gap: 8px; align-items: center;
-  padding: 12px 16px;
-  background: var(--azul2); border: 1px solid var(--borda);
-  border-radius: var(--radius); margin-bottom: 6px;
-  transition: all .18s; position: relative; overflow: hidden;
-}
-.jogo-row::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
-  width: 3px; border-radius: 4px 0 0 4px;
-}
-.jogo-row.tipo-S::before { background: var(--verde); }
-.jogo-row.tipo-D::before { background: var(--amarelo); }
-.jogo-row.tipo-T::before { background: var(--laranja); }
-.jogo-row:hover { background: var(--azul3); transform: translateX(2px); }
-
-.jogo-num { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); text-align: center; }
-.jogo-mandante { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.jogo-visitante { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.jogo-classico { font-size: 9px; color: var(--amarelo); font-family: 'DM Mono', monospace; margin-top: 2px; }
-
-.prob-cell {
-  text-align: center; font-family: 'DM Mono', monospace;
-  font-size: 14px; font-weight: 500; padding: 4px 6px;
-  border-radius: 5px; transition: background .15s;
-}
-.prob-cell.destaque { background: rgba(0,230,118,.13); color: var(--verde); font-weight: 700; }
-
-.badge {
-  font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 500;
-  padding: 4px 10px; border-radius: 4px; text-align: center; white-space: nowrap;
-}
-.badge-S { background: rgba(0,230,118,.15); color: var(--verde); }
-.badge-D { background: rgba(255,213,79,.15); color: var(--amarelo); }
-.badge-T { background: rgba(255,107,53,.15); color: var(--laranja); }
-
-.conf-bar { width: 100%; height: 4px; background: var(--borda); border-radius: 2px; margin-top: 4px; overflow: hidden; }
-.conf-fill { height: 100%; border-radius: 2px; transition: width .5s ease; }
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 28px 1fr 1fr 78px 78px 78px;
-  gap: 8px; align-items: center;
-  padding: 10px 14px; background: var(--azul2);
-  border: 1px solid var(--borda); border-radius: var(--radius);
-  margin-bottom: 6px; transition: border-color .15s;
-}
-.form-grid:focus-within { border-color: var(--verde); }
-.form-num { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); text-align: center; }
-.inp {
-  background: var(--azul3); border: 1px solid var(--borda); border-radius: 5px;
-  padding: 7px 10px; color: var(--texto); font-family: 'Syne', sans-serif;
-  font-size: 12px; width: 100%; transition: border-color .15s;
-}
-.inp:focus { outline: none; border-color: var(--verde); }
-.inp::placeholder { color: var(--muted); }
-.inp-odd { text-align: center; font-family: 'DM Mono', monospace; font-size: 13px; }
-
-.cartao-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap: 16px; margin-top: 8px; }
-.cartao {
-  background: var(--azul2); border: 1px solid var(--borda); border-radius: var(--radius);
-  overflow: hidden; transition: transform .2s, border-color .2s;
-}
-.cartao:hover { transform: translateY(-3px); border-color: var(--verde); }
-.cartao-header {
-  background: var(--azul3); padding: 12px 16px;
-  display: flex; justify-content: space-between; align-items: center;
   border-bottom: 1px solid var(--borda);
 }
-.cartao-rank { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); }
-.cartao-custo-badge { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 700; color: var(--verde); }
-.cartao-body { padding: 14px 16px; }
-.cartao-palpite { font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: .5px; line-height: 2; }
-.cartao-footer {
-  display: flex; gap: 12px; padding: 12px 16px;
-  border-top: 1px solid var(--borda); background: var(--azul3);
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
 }
-.cartao-stat { text-align: center; flex: 1; }
-.cartao-stat-v { font-size: 16px; font-weight: 800; }
-.cartao-stat-l { font-size: 10px; font-family: 'DM Mono', monospace; color: var(--muted); margin-top: 2px; }
+.logo-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.4rem;
+  letter-spacing: 0.04em;
+  color: var(--verde);
+  line-height: 1;
+}
+.logo-sub {
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.header-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,214,10,0.08);
+  border: 1px solid rgba(255,214,10,0.25);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  color: var(--amarelo);
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.05em;
+}
+.dot-live {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--amarelo);
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
 
-.freq-table { width: 100%; border-collapse: collapse; }
-.freq-table th {
-  text-align: left; padding: 10px 14px; font-size: 11px;
-  font-family: 'DM Mono', monospace; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .8px; border-bottom: 1px solid var(--borda);
+/* MAIN */
+main {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
 }
-.freq-table td {
-  padding: 11px 14px; font-size: 13px;
-  border-bottom: 1px solid rgba(45,54,80,.5); font-family: 'DM Mono', monospace;
-}
-.freq-table tr:hover td { background: var(--azul3); }
-.freq-bar-wrap { display: flex; align-items: center; gap: 8px; }
-.freq-bar { height: 6px; border-radius: 3px; min-width: 2px; }
-.bar-1 { background: var(--verde); }
-.bar-x { background: var(--amarelo); }
-.bar-2 { background: var(--laranja); }
 
-.legenda {
-  display: flex; gap: 20px; flex-wrap: wrap; margin-top: 24px;
-  padding: 16px; background: var(--azul2); border: 1px solid var(--borda); border-radius: var(--radius);
-}
-.leg-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
-.leg-dot { width: 10px; height: 10px; border-radius: 2px; }
-
-.orcamento-wrap {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
-  background: var(--azul2); border: 1px solid var(--borda); border-radius: var(--radius); padding: 14px 18px;
+/* CONCURSO HEADER */
+.concurso-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding: 24px 28px;
+  background: var(--bg2);
+  border: 1px solid var(--borda);
+  border-radius: 12px;
 }
-.orcamento-wrap label { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--muted); white-space: nowrap; }
-.orcamento-info { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--verde); margin-left: auto; }
+.concurso-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3.5rem;
+  color: var(--verde);
+  line-height: 1;
+}
+.concurso-info { flex: 1; padding-left: 20px; }
+.concurso-nome {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--texto);
+  margin-bottom: 4px;
+}
+.concurso-periodo {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+.concurso-tabs {
+  display: flex;
+  gap: 6px;
+}
+.tab-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--borda);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.05em;
+}
+.tab-btn:hover, .tab-btn.ativo {
+  border-color: var(--verde);
+  color: var(--verde);
+  background: rgba(0,255,135,0.06);
+}
 
-.empty { text-align: center; padding: 60px 20px; color: var(--muted); }
-.empty-icon { font-size: 48px; margin-bottom: 16px; }
-.empty-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--texto); }
-.empty-sub { font-size: 13px; }
+/* PAINEIS */
+.paineis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+@media(max-width: 700px) { .paineis-grid { grid-template-columns: 1fr; } }
+.painel-card {
+  border-radius: 12px;
+  padding: 22px;
+  border: 1px solid;
+  position: relative;
+  overflow: hidden;
+}
+.painel-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.painel-eco { border-color: rgba(0,255,135,0.2); background: rgba(0,255,135,0.03); }
+.painel-eco::before { background: var(--verde); }
+.painel-rec { border-color: rgba(0,180,216,0.2); background: rgba(0,180,216,0.03); }
+.painel-rec::before { background: var(--azul); }
+.painel-elite { border-color: rgba(255,214,10,0.2); background: rgba(255,214,10,0.03); }
+.painel-elite::before { background: var(--amarelo); }
 
-#toast {
-  position: fixed; bottom: 24px; right: 24px;
-  background: var(--azul3); border: 1px solid var(--borda); border-radius: var(--radius);
-  padding: 12px 18px; font-size: 13px; font-family: 'DM Mono', monospace;
-  transform: translateY(80px); opacity: 0; transition: all .3s; z-index: 999;
+.painel-titulo {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
 }
-#toast.show { transform: translateY(0); opacity: 1; }
-#toast.success { border-color: var(--verde); color: var(--verde); }
-#toast.error   { border-color: var(--vermelho); color: var(--vermelho); }
+.painel-eco .painel-titulo { color: var(--verde); }
+.painel-rec .painel-titulo { color: var(--azul); }
+.painel-elite .painel-titulo { color: var(--amarelo); }
 
-.modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.7);
-  backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
-  z-index: 500; opacity: 0; pointer-events: none; transition: opacity .2s;
+.painel-custo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.2rem;
+  line-height: 1;
+  margin-bottom: 14px;
 }
-.modal-overlay.open { opacity: 1; pointer-events: all; }
-.modal {
-  background: var(--azul2); border: 1px solid var(--borda); border-radius: 12px;
-  padding: 28px; width: 100%; max-width: 440px;
-  transform: translateY(20px); transition: transform .2s;
-}
-.modal-overlay.open .modal { transform: translateY(0); }
-.modal-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; }
-.modal-row { margin-bottom: 14px; }
-.modal-label { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; }
-.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-.modal-actions .btn { flex: 1; }
+.painel-eco .painel-custo { color: var(--verde); }
+.painel-rec .painel-custo { color: var(--azul); }
+.painel-elite .painel-custo { color: var(--amarelo); }
 
-@media(max-width:800px){
-  .table-header, .jogo-row { grid-template-columns: 28px 1fr 64px 64px 64px 90px; }
-  .th-conf, .jogo-conf { display: none; }
+.painel-prob {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-family: 'DM Mono', monospace;
 }
-@media(max-width:600px){
-  .table-header, .jogo-row { grid-template-columns: 28px 1fr 56px 56px 56px; }
-  .th-tipo, .jogo-tipo { display: none; }
-  .form-grid { grid-template-columns: 28px 1fr 68px 68px 68px; }
-  .form-grid .inp-vis { display: none; }
-  .tabs .tab { font-size: 11px; padding: 8px 6px; }
+.painel-prob span:last-child { color: var(--texto); font-weight: 500; }
+.btn-gerar {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px;
+  border-radius: 7px;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: opacity 0.2s;
+}
+.btn-gerar:hover { opacity: 0.85; }
+.painel-eco .btn-gerar { background: var(--verde); color: #000; }
+.painel-rec .btn-gerar { background: var(--azul); color: #000; }
+.painel-elite .btn-gerar { background: var(--amarelo); color: #000; }
+
+/* JOGOS */
+.jogos-titulo {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.jogos-titulo::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--borda);
+}
+.jogos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 10px;
+}
+.jogo-card {
+  background: var(--bg2);
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: border-color 0.2s;
+}
+.jogo-card:hover { border-color: rgba(0,255,135,0.3); }
+.jogo-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  color: var(--muted);
+  min-width: 28px;
+  line-height: 1;
+}
+.jogo-times { flex: 1; }
+.jogo-mandante {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--texto);
+  margin-bottom: 2px;
+}
+.jogo-vs {
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.jogo-visitante {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.jogo-data {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-align: right;
+  min-width: 50px;
+}
+.jogo-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.08em;
+  min-width: 60px;
+  text-align: center;
+}
+.badge-seco { background: rgba(0,255,135,0.12); color: var(--verde); border: 1px solid rgba(0,255,135,0.25); }
+.badge-duplo { background: rgba(0,180,216,0.12); color: var(--azul); border: 1px solid rgba(0,180,216,0.25); }
+.badge-triplo { background: rgba(255,71,87,0.12); color: var(--vermelho); border: 1px solid rgba(255,71,87,0.25); }
+
+/* LOADING */
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85rem;
+}
+.spinner {
+  width: 32px; height: 32px;
+  border: 2px solid var(--borda);
+  border-top-color: var(--verde);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ERRO */
+.erro {
+  text-align: center;
+  padding: 40px;
+  color: var(--vermelho);
+  font-size: 0.85rem;
+  background: rgba(255,71,87,0.05);
+  border: 1px solid rgba(255,71,87,0.15);
+  border-radius: 10px;
+}
+
+footer {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-top: 1px solid var(--borda);
 }
 </style>
 </head>
@@ -288,603 +350,130 @@ main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
 
 <header>
   <div class="logo">
-    <div class="logo-icon">⚽</div>
-    <div class="logo-text">Loteca <span>Elite</span> Pro</div>
+    <div class="logo-title">Loteca Elite Pro</div>
+    <div class="logo-sub">Copa do Mundo 2026</div>
   </div>
-  <div id="status-dot">
-    <div class="dot" id="dot"></div>
-    <span id="status-txt">verificando...</span>
+  <div class="header-badge">
+    <div class="dot-live"></div>
+    <span id="header-status">Carregando...</span>
   </div>
 </header>
 
-<div id="toast"></div>
-
-<div class="modal-overlay" id="modal-srv">
-  <div class="modal">
-    <div class="modal-title">⚙ Configurar Servidor</div>
-    <div class="modal-row">
-      <div class="modal-label">URL do servidor (Render)</div>
-      <input class="inp" id="srv-url" type="text" placeholder="https://loteca-simulador.onrender.com">
-    </div>
-    <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:4px;">
-      Deixe em branco para usar o motor local (sem servidor).
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarServidor()">Salvar & Conectar</button>
-    </div>
-  </div>
-</div>
-
 <main>
-
-  <div class="top-bar">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <div class="concurso-badge" id="badge-concurso">Concurso #—</div>
-      <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px;" onclick="abrirModal()">⚙ Servidor</button>
+  <div class="concurso-header">
+    <div class="concurso-num" id="num-concurso">—</div>
+    <div class="concurso-info">
+      <div class="concurso-nome" id="nome-concurso">Carregando concurso...</div>
+      <div class="concurso-periodo" id="periodo-concurso">—</div>
     </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button class="btn btn-ghost" onclick="carregarDemo()">Demo #1241</button>
-      <button class="btn btn-primary" onclick="analisarJogos()" id="btn-analisar">Analisar Jogos ↗</button>
-    </div>
-  </div>
-
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('analise',this)">📊 Análise</button>
-    <button class="tab" onclick="switchTab('entrada',this)">✏️ Entrada</button>
-    <button class="tab" onclick="switchTab('cartoes',this)">🎯 Cartões</button>
-    <button class="tab" onclick="switchTab('frequencias',this)">📈 Histórico</button>
-  </div>
-
-  <!-- TAB ANÁLISE -->
-  <div class="tab-content active" id="tab-analise">
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="summary-label">Simples</div>
-        <div class="summary-value c-verde" id="res-S">—</div>
-        <div class="summary-sub">1 resultado</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-label">Duplos</div>
-        <div class="summary-value c-amarelo" id="res-D">—</div>
-        <div class="summary-sub">2 resultados</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-label">Triplos</div>
-        <div class="summary-value c-laranja" id="res-T">—</div>
-        <div class="summary-sub">3 resultados</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-label">Custo mínimo</div>
-        <div class="summary-value c-verde" id="res-custo">R$—</div>
-        <div class="summary-sub" id="res-comb">— combinações</div>
-      </div>
-    </div>
-
-    <div class="table-header">
-      <span>#</span>
-      <span>Confronto</span>
-      <span style="text-align:center">1</span>
-      <span style="text-align:center">X</span>
-      <span style="text-align:center">2</span>
-      <span class="th-tipo" style="text-align:center">Decisão</span>
-      <span class="th-conf" style="text-align:center">Confiança</span>
-    </div>
-
-    <div id="jogos-lista">
-      <div class="empty">
-        <div class="empty-icon">⚽</div>
-        <div class="empty-title">Nenhuma análise ainda</div>
-        <div class="empty-sub">Clique em "Demo #1241" para ver um exemplo ou preencha a aba Entrada</div>
-      </div>
-    </div>
-
-    <div class="legenda" id="legenda" style="display:none;">
-      <div class="leg-item"><div class="leg-dot" style="background:var(--verde)"></div>Simples — favorito claro (&ge;50%)</div>
-      <div class="leg-item"><div class="leg-dot" style="background:var(--amarelo)"></div>Duplo — dois resultados prováveis</div>
-      <div class="leg-item"><div class="leg-dot" style="background:var(--laranja)"></div>Triplo — jogo muito equilibrado</div>
-      <div class="leg-item"><div class="leg-dot" style="background:var(--muted)"></div>Clássico — cautela extra aplicada</div>
+    <div class="concurso-tabs">
+      <button class="tab-btn ativo" onclick="carregarConcurso(1255)">1255</button>
+      <button class="tab-btn" onclick="carregarConcurso(1256)">1256</button>
+      <button class="tab-btn" onclick="carregarConcurso(1257)">1257</button>
+      <button class="tab-btn" onclick="carregarConcurso(1258)">1258</button>
     </div>
   </div>
 
-  <!-- TAB ENTRADA -->
-  <div class="tab-content" id="tab-entrada">
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;font-family:'DM Mono',monospace;">
-      Preencha os times e as odds (Betano, Bet365…). Odds em branco → usa só o histórico de 1.241 concursos.
-    </p>
-    <div style="display:grid;grid-template-columns:28px 1fr 1fr 78px 78px 78px;gap:8px;padding:8px 14px;font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--borda);margin-bottom:8px;">
-      <span>#</span><span>Mandante</span><span>Visitante</span>
-      <span style="text-align:center">Odd 1</span><span style="text-align:center">Odd X</span><span style="text-align:center">Odd 2</span>
+  <div class="paineis-grid">
+    <div class="painel-card painel-eco">
+      <div class="painel-titulo">Econômica</div>
+      <div class="painel-custo" id="custo-eco">R$ —</div>
+      <div class="painel-prob"><span>13 pontos</span><span id="p13-eco">—</span></div>
+      <div class="painel-prob"><span>14 pontos</span><span id="p14-eco">—</span></div>
+      <button class="btn-gerar">Gerar Grade</button>
     </div>
-    <div id="form-jogos"></div>
-    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
-      <button class="btn btn-ghost" onclick="limparEntrada()">Limpar tudo</button>
-      <button class="btn btn-ghost" onclick="carregarDemo()">Carregar demo #1241</button>
-      <button class="btn btn-primary" onclick="analisarJogos()">Analisar → Ver resultados</button>
+    <div class="painel-card painel-rec">
+      <div class="painel-titulo">Recomendada</div>
+      <div class="painel-custo" id="custo-rec">R$ —</div>
+      <div class="painel-prob"><span>13 pontos</span><span id="p13-rec">—</span></div>
+      <div class="painel-prob"><span>14 pontos</span><span id="p14-rec">—</span></div>
+      <button class="btn-gerar">Gerar Grade</button>
     </div>
-  </div>
-
-  <!-- TAB CARTÕES -->
-  <div class="tab-content" id="tab-cartoes">
-    <div class="orcamento-wrap">
-      <label>Orçamento máximo:</label>
-      <input class="inp inp-odd" id="orcamento" type="number" value="50" min="1" step="1"
-             style="max-width:90px;" oninput="gerarCartoes()">
-      <span style="font-size:13px;color:var(--muted);font-family:'DM Mono',monospace;">R$</span>
-      <div class="orcamento-info" id="cartoes-info">—</div>
-    </div>
-    <div id="cartoes-lista">
-      <div class="empty">
-        <div class="empty-icon">🎯</div>
-        <div class="empty-title">Faça a análise primeiro</div>
-        <div class="empty-sub">Os cartões otimizados aparecem aqui após analisar os jogos</div>
-      </div>
+    <div class="painel-card painel-elite">
+      <div class="painel-titulo">Elite Pro</div>
+      <div class="painel-custo" id="custo-elite">R$ —</div>
+      <div class="painel-prob"><span>13 pontos</span><span id="p13-elite">—</span></div>
+      <div class="painel-prob"><span>14 pontos</span><span id="p14-elite">—</span></div>
+      <button class="btn-gerar">Gerar Grade</button>
     </div>
   </div>
 
-  <!-- TAB FREQUÊNCIAS -->
-  <div class="tab-content" id="tab-frequencias">
-    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;font-family:'DM Mono',monospace;">
-      Frequências históricas reais de 1.241 concursos (1994–2026) — 17.374 jogos da CEF.
-    </p>
-    <table class="freq-table">
-      <thead>
-        <tr>
-          <th>Pos.</th>
-          <th>Mandante (1)</th>
-          <th>Empate (X)</th>
-          <th>Visitante (2)</th>
-          <th>Insight</th>
-        </tr>
-      </thead>
-      <tbody id="freq-tbody"></tbody>
-    </table>
+  <div class="jogos-titulo">14 Jogos do Concurso</div>
+  <div id="jogos-container">
+    <div class="loading">
+      <div class="spinner"></div>
+      Conectando ao sistema...
+    </div>
   </div>
-
 </main>
 
+<footer>Loteca Elite Pro &nbsp;·&nbsp; Sistema privado &nbsp;·&nbsp; Copa do Mundo 2026</footer>
+
 <script>
-// ── CONFIG ────────────────────────────────────────────────────────────────────
-let SERVIDOR = localStorage.getItem('loteca_srv') || 'https://loteca-simulador.onrender.com';
-let dadosAtuais = null;
-
-const FREQ = {
-  1:  {p1:43.5,px:28.6,p2:27.9,nota:"Empate frequente"},
-  2:  {p1:48.5,px:26.2,p2:25.3,nota:"Forte tendência ao mandante"},
-  3:  {p1:44.6,px:26.6,p2:28.8,nota:"Equilibrado"},
-  4:  {p1:46.4,px:28.0,p2:25.5,nota:"Forte tendência ao mandante"},
-  5:  {p1:42.9,px:27.6,p2:29.6,nota:"Equilibrado"},
-  6:  {p1:44.1,px:25.0,p2:30.9,nota:"Visitante frequente"},
-  7:  {p1:45.7,px:29.1,p2:25.2,nota:"Empate frequente"},
-  8:  {p1:46.9,px:23.9,p2:29.2,nota:"Forte tendência ao mandante"},
-  9:  {p1:43.8,px:26.1,p2:30.1,nota:"Visitante frequente"},
-  10: {p1:42.1,px:28.8,p2:29.0,nota:"Empate frequente"},
-  11: {p1:44.6,px:28.4,p2:27.0,nota:"Empate frequente"},
-  12: {p1:42.8,px:26.8,p2:30.5,nota:"Visitante frequente"},
-  13: {p1:45.0,px:22.6,p2:32.3,nota:"⚡ Maior zebra histórica"},
-  14: {p1:46.3,px:26.4,p2:27.3,nota:"Forte tendência ao mandante"},
-};
-
-const DEMO = [
-  {mandante:"Flamengo",     visitante:"Palmeiras",    odd1:2.34,oddx:4.40,odd2:3.45},
-  {mandante:"São Paulo",    visitante:"Internacional", odd1:2.47,oddx:4.44,odd2:3.19},
-  {mandante:"Corinthians",  visitante:"Grêmio",       odd1:2.39,oddx:4.31,odd2:3.42},
-  {mandante:"Cruzeiro",     visitante:"Fortaleza",    odd1:3.44,oddx:4.22,odd2:2.41},
-  {mandante:"Fluminense",   visitante:"Santos",       odd1:2.52,oddx:4.16,odd2:3.27},
-  {mandante:"Athletico-PR", visitante:"Botafogo",     odd1:2.36,oddx:4.10,odd2:3.63},
-  {mandante:"Bahia",        visitante:"Bragantino",   odd1:2.51,oddx:4.02,odd2:3.37},
-  {mandante:"Vasco",        visitante:"Ceará",        odd1:2.45,oddx:4.27,odd2:3.31},
-  {mandante:"Sport Recife", visitante:"Náutico",      odd1:2.31,oddx:4.20,odd2:3.67},
-  {mandante:"Coritiba",     visitante:"Chapecoense",  odd1:2.50,oddx:4.11,odd2:3.33},
-  {mandante:"Paysandu",     visitante:"Remo",         odd1:3.01,oddx:4.15,odd2:2.70},
-  {mandante:"Internacional",visitante:"Bahia",        odd1:2.29,oddx:4.31,odd2:3.63},
-  {mandante:"Palmeiras",    visitante:"Mirassol",     odd1:2.44,oddx:4.18,odd2:3.40},
-  {mandante:"Flamengo",     visitante:"Fluminense",   odd1:2.31,oddx:4.39,odd2:3.54},
-];
-
-const CLASSICOS_LIST = [
-  ["Flamengo","Fluminense"],["Flamengo","Vasco"],["Flamengo","Botafogo"],
-  ["Fluminense","Vasco"],["Fluminense","Botafogo"],["Vasco","Botafogo"],
-  ["São Paulo","Corinthians"],["São Paulo","Palmeiras"],["Corinthians","Palmeiras"],
-  ["Internacional","Grêmio"],["Cruzeiro","Atlético-MG"],["Bahia","Vitória"],
-  ["Ceará","Fortaleza"],["Sport Recife","Náutico"],["Athletico-PR","Coritiba"],
-  ["Paysandu","Remo"],["Santos","São Paulo"],["Cruzeiro","América-MG"],
-];
-
-function ehClassico(m, v) {
-  const norm = s => s.toLowerCase().replace(/[^a-z]/g,'');
-  return CLASSICOS_LIST.some(([a,b]) => {
-    const na=norm(a), nb=norm(b), nm=norm(m), nv=norm(v);
-    return (nm.includes(na)&&nv.includes(nb))||(nm.includes(nb)&&nv.includes(na));
+async function carregarConcurso(num) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('ativo'));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if(b.textContent.trim() === String(num)) b.classList.add('ativo');
   });
-}
 
-// ── STATUS SERVIDOR ──────────────────────────────────────────────────────────
-async function verificarServidor() {
-  const dot = document.getElementById('dot');
-  const txt = document.getElementById('status-txt');
-  try {
-    const r = await fetch(SERVIDOR+'/', {signal:AbortSignal.timeout(6000)});
-    if(r.ok) {
-      dot.className='dot online'; txt.textContent='servidor online'; return true;
-    }
-  } catch(e) {}
-  dot.className='dot offline'; txt.textContent='offline — motor local';
-  return false;
-}
-
-// ── MOTOR LOCAL ──────────────────────────────────────────────────────────────
-function poisson(lam, k) {
-  let r=Math.exp(-lam);
-  for(let i=1;i<=k;i++) r*=lam/i;
-  return r;
-}
-
-function analisarJogoLocal(jogo, pos) {
-  const h = FREQ[pos]||FREQ[7];
-  const o1=parseFloat(jogo.odd1)||0, ox=parseFloat(jogo.oddx)||0, o2=parseFloat(jogo.odd2)||0;
-  const temOdds = o1>1.05 && ox>1.05 && o2>1.05;
-
-  let p1, px, p2;
-  if(temOdds) {
-    const tot=(1/o1)+(1/ox)+(1/o2);
-    p1=(1/o1)/tot*.60 + h.p1/100*.40;
-    px=(1/ox)/tot*.60 + h.px/100*.40;
-    p2=(1/o2)/tot*.60 + h.p2/100*.40;
-  } else {
-    p1=h.p1/100; px=h.px/100; p2=h.p2/100;
-  }
-  const t=p1+px+p2; p1/=t; px/=t; p2/=t;
-
-  const mand=jogo.mandante||`Time ${pos*2-1}`;
-  const vis=jogo.visitante||`Time ${pos*2}`;
-  const classico=ehClassico(mand,vis);
-  const pmax=Math.max(p1,px,p2);
-  const sug=p1===pmax?'1':px===pmax?'X':'2';
-
-  let decisao, tipo, cobertura;
-  if(pmax>=0.50 && !classico) {
-    tipo='S';
-    decisao=p1===pmax?'SIMPLES 1':p2===pmax?'SIMPLES 2':'SIMPLES X';
-    cobertura=p1===pmax?['1']:p2===pmax?['2']:['X'];
-  } else if(p1+px>=0.72)      { tipo='D'; decisao='DUPLO 1/X';   cobertura=['1','X']; }
-  else if(p2+px>=0.72)        { tipo='D'; decisao='DUPLO X/2';   cobertura=['X','2']; }
-  else if(p1+p2>=0.75&&px<.20){ tipo='D'; decisao='DUPLO 1/2';   cobertura=['1','2']; }
-  else                         { tipo='T'; decisao='TRIPLO 1/X/2';cobertura=['1','X','2']; }
-
-  const ent = -[p1,px,p2].reduce((s,p)=>s+(p*Math.log(p+1e-9)),0);
-  const conf = Math.round((1-ent/Math.log(3))*100);
-
-  return {
-    pos, mandante:mand, visitante:vis,
-    p1:+(p1*100).toFixed(1), px:+(px*100).toFixed(1), p2:+(p2*100).toFixed(1),
-    sugestao:sug, decisao, tipo, cobertura, confianca:conf, classico,
-    fonte_odds: temOdds?'mercado':'histórico'
-  };
-}
-
-// ── ANALISAR ─────────────────────────────────────────────────────────────────
-async function analisarJogos() {
-  const jogos = coletarEntrada();
-  if(!jogos.length) { toast('Preencha pelo menos um jogo','error'); return; }
-
-  const btn=document.getElementById('btn-analisar');
-  btn.textContent='Analisando…'; btn.disabled=true;
+  document.getElementById('jogos-container').innerHTML = '<div class="loading"><div class="spinner"></div>Carregando jogos...</div>';
 
   try {
-    let resultado=null;
-    const online=document.getElementById('dot').classList.contains('online');
+    const url = num === 1255
+      ? '/api/grade-automatica'
+      : `/api/concurso/${num}`;
+    const res = await fetch(url);
+    const d = await res.json();
 
-    if(online) {
-      try {
-        const r=await fetch(SERVIDOR+'/analisar',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({jogos, concurso:0}),
-          signal:AbortSignal.timeout(10000)
-        });
-        if(r.ok) resultado=await r.json();
-      } catch(e) {}
-    }
+    if(d.status !== 'sucesso') throw new Error('API retornou erro');
 
-    if(!resultado) {
-      const anal=jogos.map((j,i)=>analisarJogoLocal(j,i+1));
-      const cnt={S:0,D:0,T:0};
-      anal.forEach(j=>cnt[j.tipo]++);
-      const comb=Math.pow(2,cnt.D)*Math.pow(3,cnt.T);
-      resultado={
-        status:'ok', concurso:0, fonte:'motor_local',
-        resumo:{simples:cnt.S, duplos:cnt.D, triplos:cnt.T, combinacoes:comb, 'custo_r$':comb},
-        jogos:anal
-      };
-    }
+    document.getElementById('num-concurso').textContent = d.concurso;
+    document.getElementById('nome-concurso').textContent = d.nome;
+    document.getElementById('periodo-concurso').textContent = d.periodo;
+    document.getElementById('header-status').textContent = `Concurso ${d.concurso} · ${d.total_jogos} jogos`;
 
-    dadosAtuais=resultado;
-    renderizarAnalise(resultado);
-    gerarCartoes();
-    // Ir para aba de análise
-    document.querySelectorAll('.tab')[0].click();
-    toast('Análise concluída ✓','success');
+    const p = d.paineis_decisao;
+    const eco = p.opcao_economica_ate_100;
+    const rec = p.opcao_recomendada;
+    const eli = p.opcao_elite_pro_alta_assertividade;
 
-  } finally {
-    btn.textContent='Analisar Jogos ↗'; btn.disabled=false;
+    document.getElementById('custo-eco').textContent = `R$ ${eco.custo_real_estimado.toFixed(2)}`;
+    document.getElementById('p13-eco').textContent = eco.probabilidade_13_pontos;
+    document.getElementById('p14-eco').textContent = eco.probabilidade_14_pontos;
+
+    document.getElementById('custo-rec').textContent = `R$ ${rec.custo_real_estimado.toFixed(2)}`;
+    document.getElementById('p13-rec').textContent = rec.probabilidade_13_pontos;
+    document.getElementById('p14-rec').textContent = rec.probabilidade_14_pontos;
+
+    document.getElementById('custo-elite').textContent = `R$ ${eli.custo_real_estimado.toFixed(2)}`;
+    document.getElementById('p13-elite').textContent = eli.probabilidade_13_pontos;
+    document.getElementById('p14-elite').textContent = eli.probabilidade_14_pontos;
+
+    const html = d.jogos.map(j => {
+      const tipo = j.classificacao.tipo;
+      const badgeClass = tipo === 'SECO' ? 'badge-seco' : tipo === 'DUPLO' ? 'badge-duplo' : 'badge-triplo';
+      return `
+        <div class="jogo-card">
+          <div class="jogo-num">${j.id}</div>
+          <div class="jogo-times">
+            <div class="jogo-mandante">${j.mandante}</div>
+            <div class="jogo-vs">vs</div>
+            <div class="jogo-visitante">${j.visitante}</div>
+          </div>
+          <div class="jogo-data">${j.data}<br>${j.hora}</div>
+          <div class="jogo-badge ${badgeClass}">${tipo}<br>${j.classificacao.coluna_recomendada}</div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('jogos-container').innerHTML = `<div class="jogos-grid">${html}</div>`;
+
+  } catch(e) {
+    document.getElementById('header-status').textContent = 'Erro ao carregar';
+    document.getElementById('jogos-container').innerHTML = `<div class="erro">Erro ao conectar com a API.<br>Tente recarregar a página.</div>`;
   }
 }
 
-// ── RENDER ANÁLISE ───────────────────────────────────────────────────────────
-function renderizarAnalise(data) {
-  const res=data.resumo;
-  document.getElementById('res-S').textContent=res.simples;
-  document.getElementById('res-D').textContent=res.duplos;
-  document.getElementById('res-T').textContent=res.triplos;
-  document.getElementById('res-custo').textContent=`R$${res['custo_r$']||res.combinacoes}`;
-  document.getElementById('res-comb').textContent=`${res.combinacoes} combinações`;
-  if(data.concurso) document.getElementById('badge-concurso').textContent=`Concurso #${data.concurso}`;
-
-  const lista=document.getElementById('jogos-lista');
-  lista.innerHTML='';
-
-  data.jogos.forEach(j=>{
-    const p1m=j.p1===Math.max(j.p1,j.px,j.p2);
-    const pxm=j.px===Math.max(j.p1,j.px,j.p2);
-    const p2m=j.p2===Math.max(j.p1,j.px,j.p2);
-    const corConf=j.confianca>70?'var(--verde)':j.confianca>50?'var(--amarelo)':'var(--laranja)';
-
-    const row=document.createElement('div');
-    row.className=`jogo-row tipo-${j.tipo}`;
-    row.innerHTML=`
-      <div class="jogo-num">${j.pos}</div>
-      <div>
-        <div class="jogo-mandante">${j.mandante}</div>
-        <div class="jogo-visitante">${j.visitante}</div>
-        ${j.classico?'<div class="jogo-classico">★ CLÁSSICO</div>':''}
-      </div>
-      <div class="prob-cell ${p1m?'destaque':''}">${j.p1}%</div>
-      <div class="prob-cell ${pxm?'destaque':''}">${j.px}%</div>
-      <div class="prob-cell ${p2m?'destaque':''}">${j.p2}%</div>
-      <div class="jogo-tipo badge badge-${j.tipo}">${j.decisao}</div>
-      <div class="jogo-conf">
-        <div style="font-size:11px;font-family:'DM Mono',monospace;text-align:center;color:${corConf}">${j.confianca}%</div>
-        <div class="conf-bar"><div class="conf-fill" style="width:${j.confianca}%;background:${corConf}"></div></div>
-      </div>
-    `;
-    lista.appendChild(row);
-  });
-
-  document.getElementById('legenda').style.display='flex';
-}
-
-// ── CARTÕES ──────────────────────────────────────────────────────────────────
-function gerarCartoes() {
-  if(!dadosAtuais) return;
-  const orcamento=parseInt(document.getElementById('orcamento').value)||50;
-  const jogos=dadosAtuais.jogos;
-  const lista=document.getElementById('cartoes-lista');
-  lista.innerHTML='';
-
-  const candidatos=[];
-
-  // 1. Cartão conservador: só sugestão principal
-  candidatos.push({
-    label:'Conservador', descricao:'Favorito em cada jogo',
-    palpite:jogos.map(j=>j.sugestao), custo:1
-  });
-
-  // 2. Cartões com duplos nos menos confiantes
-  const sorted=[...jogos].sort((a,b)=>a.confianca-b.confianca);
-  for(let n=1;n<=6;n++) {
-    const p=[...jogos.map(j=>j.sugestao)];
-    for(let k=0;k<n&&k<sorted.length;k++) {
-      const idx=sorted[k].pos-1;
-      const jj=jogos[idx];
-      const sug=jj.sugestao;
-      const alt=sug==='1'?['1','X']:sug==='2'?['X','2']:['1','X'];
-      p[idx]=alt.join('/');
-    }
-    const custo=p.reduce((c,v)=>c*(v.includes('/')?v.split('/').length:1),1);
-    if(custo<=orcamento) {
-      candidatos.push({
-        label:`Duplos nos ${n} menos confiantes`,
-        descricao:`${n} duplo${n>1?'s':''} nos jogos mais incertos`,
-        palpite:p, custo
-      });
-    }
-  }
-
-  // 3. Cartão com triplos→duplos (pega os 2 do triplo mais prováveis)
-  const comTriplos=jogos.filter(j=>j.tipo==='T');
-  if(comTriplos.length>0) {
-    const p=jogos.map(j=>{
-      if(j.tipo==='T') {
-        const probs=[{v:'1',p:j.p1},{v:'X',p:j.px},{v:'2',p:j.p2}].sort((a,b)=>b.p-a.p);
-        return probs[0].v+'/'+probs[1].v;
-      }
-      return j.sugestao;
-    });
-    const custo=p.reduce((c,v)=>c*(v.includes('/')?v.split('/').length:1),1);
-    if(custo<=orcamento) {
-      candidatos.push({label:'Triplos → Duplos (2 mais prováveis)',descricao:'Triplos viram duplos com os 2 melhores resultados',palpite:p,custo});
-    }
-  }
-
-  // Filtrar e ordenar
-  const filtrados=candidatos.filter(c=>c.custo<=orcamento).sort((a,b)=>a.custo-b.custo);
-  document.getElementById('cartoes-info').textContent=`${filtrados.length} cartões dentro de R$${orcamento}`;
-
-  if(!filtrados.length) {
-    lista.innerHTML='<div class="empty"><div class="empty-icon">💰</div><div class="empty-title">Nenhum cartão no orçamento</div><div class="empty-sub">Aumente o orçamento ou analise primeiro</div></div>';
-    return;
-  }
-
-  const grid=document.createElement('div');
-  grid.className='cartao-grid';
-
-  filtrados.forEach((c,i)=>{
-    const el=document.createElement('div');
-    el.className='cartao';
-
-    const simples=c.palpite.filter(p=>!p.includes('/')).length;
-    const duplos=c.palpite.filter(p=>p.includes('/')&&p.split('/').length===2).length;
-    const triplos=c.palpite.filter(p=>p.includes('/')&&p.split('/').length===3).length;
-
-    const linhas=c.palpite.map((p,idx)=>{
-      const cor=p==='1'?'var(--verde)':p==='2'?'var(--laranja)':p==='X'?'var(--muted)':
-               p.includes('/')?'var(--amarelo)':'var(--texto)';
-      return `<span style="color:${cor};font-size:12px">J${idx+1}:<b>${p}</b></span>`;
-    });
-
-    el.innerHTML=`
-      <div class="cartao-header">
-        <div class="cartao-rank">#${i+1} — ${c.label}</div>
-        <div class="cartao-custo-badge">R$${c.custo}</div>
-      </div>
-      <div class="cartao-body">
-        <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:10px;">${c.descricao}</div>
-        <div class="cartao-palpite" style="display:flex;flex-wrap:wrap;gap:8px 14px;">${linhas.join('')}</div>
-      </div>
-      <div class="cartao-footer">
-        <div class="cartao-stat"><div class="cartao-stat-v c-verde">${simples}</div><div class="cartao-stat-l">Simples</div></div>
-        <div class="cartao-stat"><div class="cartao-stat-v c-amarelo">${duplos}</div><div class="cartao-stat-l">Duplos</div></div>
-        <div class="cartao-stat"><div class="cartao-stat-v c-laranja">${triplos}</div><div class="cartao-stat-l">Triplos</div></div>
-        <div class="cartao-stat"><div class="cartao-stat-v c-verde" style="font-size:14px">R$${c.custo}</div><div class="cartao-stat-l">Custo</div></div>
-      </div>
-    `;
-    grid.appendChild(el);
-  });
-
-  lista.appendChild(grid);
-}
-
-// ── FORMULÁRIO ────────────────────────────────────────────────────────────────
-function construirFormulario() {
-  const cont=document.getElementById('form-jogos');
-  cont.innerHTML='';
-  for(let i=1;i<=14;i++) {
-    const row=document.createElement('div');
-    row.className='form-grid';
-    row.innerHTML=`
-      <div class="form-num">${i}</div>
-      <input class="inp" id="m${i}" placeholder="Mandante" autocomplete="off" spellcheck="false">
-      <input class="inp inp-vis" id="v${i}" placeholder="Visitante" autocomplete="off" spellcheck="false">
-      <input class="inp inp-odd" id="o1_${i}" placeholder="Odd 1" type="number" step="0.01" min="1">
-      <input class="inp inp-odd" id="ox_${i}" placeholder="Odd X" type="number" step="0.01" min="1">
-      <input class="inp inp-odd" id="o2_${i}" placeholder="Odd 2" type="number" step="0.01" min="1">
-    `;
-    cont.appendChild(row);
-  }
-}
-
-function coletarEntrada() {
-  const jogos=[];
-  for(let i=1;i<=14;i++) {
-    const m=document.getElementById(`m${i}`)?.value?.trim();
-    const v=document.getElementById(`v${i}`)?.value?.trim();
-    if(m||v) {
-      jogos.push({
-        pos:i,
-        mandante:m||`Time ${i*2-1}`,
-        visitante:v||`Time ${i*2}`,
-        odd1:parseFloat(document.getElementById(`o1_${i}`)?.value)||0,
-        oddx:parseFloat(document.getElementById(`ox_${i}`)?.value)||0,
-        odd2:parseFloat(document.getElementById(`o2_${i}`)?.value)||0,
-      });
-    }
-  }
-  if(!jogos.length) {
-    for(let i=1;i<=14;i++) jogos.push({pos:i,mandante:`Time ${i*2-1}`,visitante:`Time ${i*2}`});
-  }
-  return jogos;
-}
-
-function carregarDemo() {
-  DEMO.forEach((j,i)=>{
-    const n=i+1;
-    const m=document.getElementById(`m${n}`);  if(m) m.value=j.mandante;
-    const v=document.getElementById(`v${n}`);  if(v) v.value=j.visitante;
-    const o1=document.getElementById(`o1_${n}`); if(o1) o1.value=j.odd1;
-    const ox=document.getElementById(`ox_${n}`); if(ox) ox.value=j.oddx;
-    const o2=document.getElementById(`o2_${n}`); if(o2) o2.value=j.odd2;
-  });
-  analisarJogos();
-}
-
-function limparEntrada() {
-  for(let i=1;i<=14;i++) {
-    ['m','v'].forEach(p=>{ const el=document.getElementById(`${p}${i}`); if(el) el.value=''; });
-    ['o1_','ox_','o2_'].forEach(p=>{ const el=document.getElementById(`${p}${i}`); if(el) el.value=''; });
-  }
-  dadosAtuais=null;
-  document.getElementById('jogos-lista').innerHTML='<div class="empty"><div class="empty-icon">⚽</div><div class="empty-title">Nenhuma análise ainda</div><div class="empty-sub">Preencha os jogos e clique em Analisar</div></div>';
-  document.getElementById('legenda').style.display='none';
-  ['res-S','res-D','res-T'].forEach(id=>document.getElementById(id).textContent='—');
-  document.getElementById('res-custo').textContent='R$—';
-  document.getElementById('res-comb').textContent='— combinações';
-  document.getElementById('cartoes-lista').innerHTML='<div class="empty"><div class="empty-icon">🎯</div><div class="empty-title">Faça a análise primeiro</div><div class="empty-sub">Os cartões aparecem após analisar</div></div>';
-}
-
-// ── FREQUÊNCIAS ───────────────────────────────────────────────────────────────
-function renderFrequencias(freq) {
-  const tbody=document.getElementById('freq-tbody');
-  tbody.innerHTML='';
-  for(let pos=1;pos<=14;pos++) {
-    const f=freq[pos]||FREQ[pos];
-    if(!f) continue;
-    const p1=+(f.p1||0), px=+(f.px||0), p2=+(f.p2||0);
-    const nota=f.nota||FREQ[pos]?.nota||'';
-    const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td style="font-weight:800;color:var(--verde)">J${pos}</td>
-      <td><div class="freq-bar-wrap"><div class="freq-bar bar-1" style="width:${p1*1.6}px"></div>${p1.toFixed(1)}%</div></td>
-      <td><div class="freq-bar-wrap"><div class="freq-bar bar-x" style="width:${px*1.6}px"></div>${px.toFixed(1)}%</div></td>
-      <td><div class="freq-bar-wrap"><div class="freq-bar bar-2" style="width:${p2*1.6}px"></div>${p2.toFixed(1)}%</div></td>
-      <td style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace">${nota}</td>
-    `;
-    tbody.appendChild(tr);
-  }
-}
-
-async function carregarFrequencias() {
-  renderFrequencias(FREQ);
-  try {
-    const r=await fetch(SERVIDOR+'/historico',{signal:AbortSignal.timeout(5000)});
-    if(r.ok){ const d=await r.json(); if(d.frequencias) renderFrequencias(d.frequencias); }
-  } catch(e) {}
-}
-
-// ── UI ────────────────────────────────────────────────────────────────────────
-function switchTab(id, btn) {
-  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tab-'+id).classList.add('active');
-  if(btn) btn.classList.add('active');
-}
-
-function toast(msg, tipo='') {
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.className='show '+tipo;
-  setTimeout(()=>el.className='',3000);
-}
-
-function abrirModal() {
-  document.getElementById('srv-url').value=SERVIDOR;
-  document.getElementById('modal-srv').classList.add('open');
-}
-function fecharModal() { document.getElementById('modal-srv').classList.remove('open'); }
-function salvarServidor() {
-  const url=document.getElementById('srv-url').value.trim().replace(/\/$/,'');
-  SERVIDOR=url||'https://loteca-simulador.onrender.com';
-  localStorage.setItem('loteca_srv',SERVIDOR);
-  fecharModal(); verificarServidor(); toast('Servidor atualizado','success');
-}
-document.getElementById('modal-srv').addEventListener('click',e=>{
-  if(e.target===e.currentTarget) fecharModal();
-});
-
-// ── INIT ──────────────────────────────────────────────────────────────────────
-construirFormulario();
-carregarFrequencias();
-verificarServidor();
-setInterval(verificarServidor,60000);
+window.onload = () => carregarConcurso(1255);
 </script>
 </body>
 </html>
