@@ -1,190 +1,226 @@
 """
-Loteca Elite Pro — app.py
-Backend com integração real da The Odds API.
-Suporta qualquer concurso, não só Copa do Mundo.
+LOTECA ELITE PRO — app.py
+Camada 1: Motor de busca dinâmica de jogos
 """
 
 import os
 import math
+import logging
+from datetime import datetime, timedelta, timezone
+
 import requests
-from flask import Flask, jsonify, request, Response
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
 
-ODDS_API_KEY = os.environ.get("ODDS_API_KEY", "")
-ODDS_API_BASE = "https://api.the-odds-api.com/v4"
+FDATA_KEY = os.getenv("FOOTBALL_DATA_KEY", "")
+ODDS_KEY  = os.getenv("ODDS_API_KEY", "")
 
-CONCURSOS = {
-    1255: {
-        "nome": "Copa Loteca — 1ª Rodada",
-        "periodo": "11–15 jun 2026",
-        "ligas": ["soccer_fifa_world_cup"],
-        "jogos_fixos": [
-            {"id": 1,  "mandante": "México",          "visitante": "África do Sul",  "data": "11/06", "hora": "16h"},
-            {"id": 2,  "mandante": "Coreia do Sul",    "visitante": "Rep. Tcheca",    "data": "11/06", "hora": "23h"},
-            {"id": 3,  "mandante": "Canadá",           "visitante": "Itália",         "data": "12/06", "hora": "16h"},
-            {"id": 4,  "mandante": "Estados Unidos",   "visitante": "Paraguai",       "data": "12/06", "hora": "22h"},
-            {"id": 5,  "mandante": "Austrália",        "visitante": "Turquia",        "data": "13/06", "hora": "01h"},
-            {"id": 6,  "mandante": "Catar",            "visitante": "Suíça",          "data": "13/06", "hora": "16h"},
-            {"id": 7,  "mandante": "Brasil",           "visitante": "Marrocos",       "data": "13/06", "hora": "19h"},
-            {"id": 8,  "mandante": "Haiti",            "visitante": "Escócia",        "data": "13/06", "hora": "22h"},
-            {"id": 9,  "mandante": "Alemanha",         "visitante": "Curaçao",        "data": "14/06", "hora": "14h"},
-            {"id": 10, "mandante": "Holanda",          "visitante": "Japão",          "data": "14/06", "hora": "17h"},
-            {"id": 11, "mandante": "Costa do Marfim", "visitante": "Equador",        "data": "14/06", "hora": "20h"},
-            {"id": 12, "mandante": "Espanha",          "visitante": "Cabo Verde",     "data": "15/06", "hora": "13h"},
-            {"id": 13, "mandante": "Bélgica",          "visitante": "Egito",          "data": "15/06", "hora": "16h"},
-            {"id": 14, "mandante": "Arábia Saudita",  "visitante": "Uruguai",        "data": "15/06", "hora": "19h"},
-        ],
-    },
-    1256: {"nome": "Copa Loteca — 2ª Rodada", "periodo": "16–20 jun 2026", "ligas": ["soccer_fifa_world_cup"], "jogos_fixos": []},
-    1257: {"nome": "Copa Loteca — 3ª Rodada", "periodo": "21–25 jun 2026", "ligas": ["soccer_fifa_world_cup"], "jogos_fixos": []},
-    1258: {"nome": "Copa Loteca — Oitavas",   "periodo": "28 jun–2 jul 2026", "ligas": ["soccer_fifa_world_cup"], "jogos_fixos": []},
+LIGAS = {
+    "brasileirao":   {"codigo": "BSA",  "nome": "Brasileirão Série A",  "pais": "Brasil"},
+    "copa_brasil":   {"codigo": "CB",   "nome": "Copa do Brasil",        "pais": "Brasil"},
+    "libertadores":  {"codigo": "CLI",  "nome": "Copa Libertadores",     "pais": "Sul-América"},
+    "serie_b":       {"codigo": "BSB",  "nome": "Brasileirão Série B",   "pais": "Brasil"},
+    "premier":       {"codigo": "PL",   "nome": "Premier League",        "pais": "Inglaterra"},
+    "la_liga":       {"codigo": "PD",   "nome": "La Liga",               "pais": "Espanha"},
+    "serie_a_it":    {"codigo": "SA",   "nome": "Serie A (Itália)",      "pais": "Itália"},
+    "bundesliga":    {"codigo": "BL1",  "nome": "Bundesliga",            "pais": "Alemanha"},
+    "champions":     {"codigo": "CL",   "nome": "Champions League",      "pais": "Europa"},
+    "copa_do_mundo": {"codigo": "WC",   "nome": "Copa do Mundo",         "pais": "Mundial"},
 }
 
-FORCA = {
-    "Brasil": 8.5, "Argentina": 9.2, "França": 9.0, "Inglaterra": 8.8,
-    "Espanha": 8.7, "Alemanha": 8.5, "Portugal": 8.4, "Holanda": 8.3,
-    "Bélgica": 8.0, "Uruguai": 7.8, "Estados Unidos": 7.5, "México": 7.3,
-    "Marrocos": 7.5, "Japão": 7.2, "Coreia do Sul": 7.0, "Equador": 6.8,
-    "Suíça": 7.0, "Canadá": 6.8, "Austrália": 6.5, "Turquia": 6.8,
-    "Escócia": 6.5, "Arábia Saudita": 6.2, "Paraguai": 6.2,
-    "Catar": 5.0, "Curaçao": 4.0, "Cabo Verde": 5.0, "África do Sul": 5.5,
-    "Rep. Tcheca": 6.5, "Haiti": 3.5, "Itália": 8.2, "Egito": 6.0,
-    "Costa do Marfim": 6.5,
-}
+def _poisson_prob(lam, k):
+    if lam <= 0:
+        return 1.0 if k == 0 else 0.0
+    return (lam ** k) * math.exp(-lam) / math.factorial(k)
 
-def _normalizar(nome):
-    return nome.lower().strip()
+def calcular_probabilidades_poisson(media_gols_casa, media_gols_fora,
+                                     media_sofridos_casa=None, media_sofridos_fora=None,
+                                     max_gols=7):
+    ataque_casa = media_gols_casa
+    ataque_fora = media_gols_fora
+    defesa_casa = media_sofridos_casa if media_sofridos_casa else media_gols_fora * 0.9
+    defesa_fora = media_sofridos_fora if media_sofridos_fora else media_gols_casa * 0.9
+    lambda_casa = ataque_casa * (defesa_fora / max(0.5, (ataque_fora + defesa_casa) / 2)) * 1.15
+    lambda_fora = ataque_fora * (defesa_casa / max(0.5, (ataque_casa + defesa_fora) / 2)) * 0.90
+    lambda_casa = max(0.3, min(lambda_casa, 5.0))
+    lambda_fora = max(0.3, min(lambda_fora, 5.0))
+    p1 = p_x = p2 = 0.0
+    for i in range(max_gols + 1):
+        for j in range(max_gols + 1):
+            p = _poisson_prob(lambda_casa, i) * _poisson_prob(lambda_fora, j)
+            if i > j: p1 += p
+            elif i == j: p_x += p
+            else: p2 += p
+    total = p1 + p_x + p2
+    if total == 0:
+        p1, p_x, p2 = 0.45, 0.25, 0.30
+    return {"p1": round(p1/total,4), "px": round(p_x/total,4), "p2": round(p2/total,4)}
 
-def _odds_para_prob(o1, ox, o2):
-    p1, px, p2 = 1/o1, 1/ox, 1/o2
-    t = p1 + px + p2
-    return round(p1/t, 4), round(px/t, 4), round(p2/t, 4)
+def classificar_jogo(probs, limiar_seco=0.60):
+    p1, px, p2 = probs["p1"], probs["px"], probs["p2"]
+    top1 = max(p1, px, p2)
+    vals = sorted([p1, px, p2], reverse=True)
+    if top1 >= limiar_seco: return "SECO"
+    elif vals[0] + vals[1] >= 0.75: return "DUPLO"
+    else: return "TRIPLO"
 
-def buscar_odds_liga(liga_id):
-    if not ODDS_API_KEY:
-        return []
+def resultado_mais_provavel(probs):
+    p1, px, p2 = probs["p1"], probs["px"], probs["p2"]
+    if p1 >= px and p1 >= p2: return "1"
+    elif px >= p1 and px >= p2: return "X"
+    else: return "2"
+
+def _headers_fdata():
+    return {"X-Auth-Token": FDATA_KEY} if FDATA_KEY else {}
+
+def buscar_jogos_liga(liga_key, dias_frente=14):
+    liga = LIGAS.get(liga_key)
+    if not liga:
+        raise ValueError(f"Liga '{liga_key}' não encontrada.")
+    codigo = liga["codigo"]
+    hoje = datetime.now(timezone.utc)
+    ate  = hoje + timedelta(days=dias_frente)
+    url = (f"https://api.football-data.org/v4/competitions/{codigo}/matches"
+           f"?status=SCHEDULED&dateFrom={hoje.strftime('%Y-%m-%d')}&dateTo={ate.strftime('%Y-%m-%d')}")
+    logger.info(f"Buscando jogos: {url}")
     try:
-        r = requests.get(f"{ODDS_API_BASE}/sports/{liga_id}/odds",
-            params={"apiKey": ODDS_API_KEY, "regions": "eu", "markets": "h2h", "oddsFormat": "decimal"},
-            timeout=10)
-        return r.json() if r.status_code == 200 else []
-    except:
-        return []
+        resp = requests.get(url, headers=_headers_fdata(), timeout=10)
+        if resp.status_code in (401, 403):
+            logger.warning("FOOTBALL_DATA_KEY ausente/inválida — usando simulado")
+            return _jogos_simulados(liga_key)
+        if resp.status_code == 429:
+            return []
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        logger.error(f"Erro: {e}")
+        return _jogos_simulados(liga_key)
+    jogos = []
+    for m in data.get("matches", []):
+        home = m.get("homeTeam",{}).get("shortName") or m.get("homeTeam",{}).get("name","?")
+        away = m.get("awayTeam",{}).get("shortName") or m.get("awayTeam",{}).get("name","?")
+        jogos.append({"id": str(m.get("id","")), "mandante": home, "visitante": away,
+                      "data_utc": m.get("utcDate",""), "liga": liga["nome"], "liga_key": liga_key})
+    return jogos
 
-def encontrar_odds_jogo(eventos, mandante, visitante):
-    m, v = _normalizar(mandante), _normalizar(visitante)
-    for ev in eventos:
-        hm = _normalizar(ev.get("home_team", ""))
-        aw = _normalizar(ev.get("away_team", ""))
-        if (m in hm or hm in m) and (v in aw or aw in v):
-            for bm in ev.get("bookmakers", []):
-                for mkt in bm.get("markets", []):
-                    if mkt["key"] == "h2h":
-                        outs = {o["name"]: o["price"] for o in mkt["outcomes"]}
-                        o1 = outs.get(ev["home_team"], 0)
-                        o2 = outs.get(ev["away_team"], 0)
-                        ox = next((outs[k] for k in outs if k not in [ev["home_team"], ev["away_team"]]), 0)
-                        if o1 and ox and o2:
-                            return _odds_para_prob(o1, ox, o2), True
-    return None, False
+def _jogos_simulados(liga_key):
+    base = {
+        "brasileirao": [("Flamengo","Palmeiras"),("São Paulo","Corinthians"),
+                        ("Botafogo","Fluminense"),("Cruzeiro","Atlético MG"),
+                        ("Grêmio","Internacional"),("Santos","Vasco"),
+                        ("Fortaleza","Ceará"),("Bahia","Vitória"),
+                        ("Bragantino","Mirassol"),("Cuiabá","Goiás")],
+        "libertadores": [("Flamengo","River Plate"),("Palmeiras","Boca Juniors"),
+                         ("Botafogo","Peñarol"),("Atlético MG","Nacional UY")],
+        "champions":    [("Real Madrid","Manchester City"),("Bayern","PSG"),
+                         ("Arsenal","Barcelona"),("Liverpool","Inter Milão")],
+    }
+    pares = base.get(liga_key, base["brasileirao"])
+    hoje = datetime.now(timezone.utc)
+    return [{"id": f"sim_{i}", "mandante": h, "visitante": a,
+             "data_utc": (hoje + timedelta(days=i%7)).isoformat(),
+             "liga": LIGAS.get(liga_key,{}).get("nome", liga_key),
+             "liga_key": liga_key, "_simulado": True}
+            for i, (h,a) in enumerate(pares)]
 
-def calcular_probs_fallback(mandante, visitante):
-    f1 = FORCA.get(mandante, 6.0)
-    f2 = FORCA.get(visitante, 6.0)
-    diff = f1 - f2
-    p1 = max(0.05, min(0.85, 0.33 + diff * 0.07))
-    p2 = max(0.05, min(0.85, 0.33 - diff * 0.07))
-    px = max(0.05, 1.0 - p1 - p2)
-    s = p1 + px + p2
-    return round(p1/s, 4), round(px/s, 4), round(p2/s, 4)
+def _medias_padrao_liga(liga_key):
+    defaults = {
+        "brasileirao":  {"media_gols_casa":1.55,"media_gols_fora":1.10,"media_sofridos_casa":1.10,"media_sofridos_fora":1.55},
+        "libertadores": {"media_gols_casa":1.45,"media_gols_fora":0.95,"media_sofridos_casa":0.95,"media_sofridos_fora":1.45},
+        "champions":    {"media_gols_casa":1.80,"media_gols_fora":1.20,"media_sofridos_casa":1.20,"media_sofridos_fora":1.80},
+        "premier":      {"media_gols_casa":1.75,"media_gols_fora":1.30,"media_sofridos_casa":1.30,"media_sofridos_fora":1.75},
+        "la_liga":      {"media_gols_casa":1.65,"media_gols_fora":1.10,"media_sofridos_casa":1.10,"media_sofridos_fora":1.65},
+        "serie_a_it":   {"media_gols_casa":1.50,"media_gols_fora":1.00,"media_sofridos_casa":1.00,"media_sofridos_fora":1.50},
+        "bundesliga":   {"media_gols_casa":1.90,"media_gols_fora":1.35,"media_sofridos_casa":1.35,"media_sofridos_fora":1.90},
+    }
+    return defaults.get(liga_key, defaults["brasileirao"])
 
-def classificar(p1, px, p2):
-    maior = max(p1, px, p2)
-    pares = sorted([("1",p1),("X",px),("2",p2)], key=lambda x: x[1], reverse=True)
-    if maior >= 0.55:
-        return {"tipo": "SECO",   "coluna": pares[0][0], "confianca": round(maior*100,1)}
-    elif maior >= 0.42:
-        return {"tipo": "DUPLO",  "coluna": f"{pares[0][0]}/{pares[1][0]}", "confianca": round(maior*100,1)}
-    else:
-        return {"tipo": "TRIPLO", "coluna": "1/X/2", "confianca": round(maior*100,1)}
-
-def gerar_paineis(jogos):
-    def painel(nd, nt):
-        return {
-            "custo": round((2**nd) * (3**nt) * 3.0, 2),
-            "prob_13": f"{round(max((0.80 - nd*0.025 - nt*0.04)*100, 0.5), 2)}%",
-            "prob_14": f"{round(max((0.40 - nd*0.025 - nt*0.04)*100, 0.01), 2)}%",
-            "duplos": nd, "triplos": nt
-        }
-    return {"economica": painel(5,0), "recomendada": painel(7,1), "elite_pro": painel(9,2)}
-
-def montar_concurso(num):
-    dados = CONCURSOS.get(num)
-    if not dados:
-        return None
-    todos_eventos = []
-    for liga in dados.get("ligas", []):
-        todos_eventos.extend(buscar_odds_liga(liga))
-    jogos_out = []
-    for j in dados["jogos_fixos"]:
-        probs_tuple, usou_api = encontrar_odds_jogo(todos_eventos, j["mandante"], j["visitante"])
-        if probs_tuple:
-            p1, px, p2 = probs_tuple
-            fonte = "odds_api"
-        else:
-            p1, px, p2 = calcular_probs_fallback(j["mandante"], j["visitante"])
-            fonte = "modelo_forca"
-        jogos_out.append({**j, "probs": {"1": p1, "X": px, "2": p2},
-            "classificacao": classificar(p1, px, p2), "fonte_odds": fonte})
-    return {"status": "sucesso", "concurso": num, "nome": dados["nome"],
-        "periodo": dados["periodo"], "total_jogos": len(jogos_out),
-        "jogos": jogos_out, "paineis": gerar_paineis(jogos_out),
-        "odds_api_ativa": bool(ODDS_API_KEY)}
+def analisar_jogo(jogo, media_gols_casa=1.5, media_gols_fora=1.1,
+                  media_sofridos_casa=1.2, media_sofridos_fora=1.4):
+    probs = calcular_probabilidades_poisson(media_gols_casa, media_gols_fora,
+                                             media_sofridos_casa, media_sofridos_fora)
+    classificacao = classificar_jogo(probs)
+    resultado = resultado_mais_provavel(probs)
+    vals = sorted([probs["p1"], probs["px"], probs["p2"]], reverse=True)
+    confianca = round((vals[0] - vals[1]) * 100, 1)
+    return {**jogo, "probabilidades": probs, "classificacao": classificacao,
+            "resultado": resultado, "confianca": confianca, "odds": None, "metodo": "poisson_v1"}
 
 @app.route("/")
 def index():
-    html = open("index.html", encoding="utf-8").read()
-    return Response(html, mimetype="text/html",
-        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    return app.send_static_file("index.html")
 
-@app.route("/api/concursos")
-def listar_concursos():
-    return jsonify({"concursos": [
-        {"num": k, "nome": v["nome"], "periodo": v["periodo"], "jogos": len(v["jogos_fixos"])}
-        for k, v in sorted(CONCURSOS.items())
-    ]})
+@app.route("/api/ligas", methods=["GET"])
+def listar_ligas():
+    return jsonify({"ligas": [{"key":k,"nome":v["nome"],"pais":v["pais"]} for k,v in LIGAS.items()]})
 
-@app.route("/api/concurso/<int:num>")
-def concurso(num):
-    dados = montar_concurso(num)
-    if not dados:
-        return jsonify({"status": "erro", "mensagem": f"Concurso {num} não cadastrado"}), 404
-    return jsonify(dados)
+@app.route("/api/jogos", methods=["GET"])
+def listar_jogos():
+    liga_key = request.args.get("liga", "brasileirao")
+    dias = int(request.args.get("dias", 14))
+    try:
+        jogos = buscar_jogos_liga(liga_key, dias_frente=dias)
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    return jsonify({"liga": LIGAS.get(liga_key,{}).get("nome",liga_key),
+                    "total": len(jogos), "jogos": jogos,
+                    "simulado": any(j.get("_simulado") for j in jogos)})
 
-@app.route("/api/grade-automatica")
+@app.route("/api/analisar", methods=["POST"])
+def analisar_grade():
+    body = request.get_json(silent=True) or {}
+    jogos_input = body.get("jogos", [])
+    if not jogos_input:
+        return jsonify({"erro": "Envie ao menos 1 jogo"}), 400
+    resultados = []
+    for j in jogos_input:
+        analise = analisar_jogo(j,
+            float(j.get("media_gols_casa",1.50)), float(j.get("media_gols_fora",1.10)),
+            float(j.get("media_sofridos_casa",1.20)), float(j.get("media_sofridos_fora",1.40)))
+        resultados.append(analise)
+    secos   = sum(1 for r in resultados if r["classificacao"]=="SECO")
+    duplos  = sum(1 for r in resultados if r["classificacao"]=="DUPLO")
+    triplos = sum(1 for r in resultados if r["classificacao"]=="TRIPLO")
+    return jsonify({"total":len(resultados),"secos":secos,"duplos":duplos,"triplos":triplos,
+                    "custo_estimado_reais": round(3.0*(2**duplos)*(3**triplos)/100,2),
+                    "jogos":resultados})
+
+@app.route("/api/grade-automatica", methods=["GET"])
 def grade_automatica():
-    num = int(request.args.get("concurso", 1255))
-    dados = montar_concurso(num)
-    if not dados:
-        return jsonify({"status": "erro", "mensagem": f"Concurso {num} não encontrado"}), 404
-    return jsonify(dados)
+    liga_key  = request.args.get("liga", "brasileirao")
+    dias      = int(request.args.get("dias", 14))
+    max_jogos = int(request.args.get("max", 14))
+    try:
+        jogos_raw = buscar_jogos_liga(liga_key, dias_frente=dias)
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+    jogos_para_analisar = jogos_raw[:max_jogos]
+    resultados = []
+    for j in jogos_para_analisar:
+        medias = _medias_padrao_liga(liga_key)
+        resultados.append(analisar_jogo(j, **medias))
+    secos   = sum(1 for r in resultados if r["classificacao"]=="SECO")
+    duplos  = sum(1 for r in resultados if r["classificacao"]=="DUPLO")
+    triplos = sum(1 for r in resultados if r["classificacao"]=="TRIPLO")
+    return jsonify({"liga": LIGAS.get(liga_key,{}).get("nome",liga_key),
+                    "total":len(resultados),"secos":secos,"duplos":duplos,"triplos":triplos,
+                    "custo_estimado_reais": round(3.0*(2**duplos)*(3**triplos)/100,2),
+                    "jogos":resultados,
+                    "simulado": any(j.get("_simulado") for j in jogos_para_analisar)})
 
-@app.route("/api/sports")
-def listar_sports():
-    if not ODDS_API_KEY:
-        return jsonify({"erro": "ODDS_API_KEY não configurada"}), 500
-    r = requests.get(f"{ODDS_API_BASE}/sports", params={"apiKey": ODDS_API_KEY}, timeout=10)
-    return jsonify(r.json())
-
-@app.route("/health")
-def health():
-    return jsonify({"status": "ok", "versao": "3.0",
-        "odds_api_configurada": bool(ODDS_API_KEY),
-        "concursos_cadastrados": list(CONCURSOS.keys())})
+@app.route("/api/status", methods=["GET"])
+def status():
+    return jsonify({"status":"online","versao":"2.0-camada1","ligas_suportadas":len(LIGAS),
+                    "integracoes":{"football_data_org":"configurada" if FDATA_KEY else "ausente (simulado)",
+                                   "the_odds_api":"configurada" if ODDS_KEY else "ausente"},
+                    "proximas_camadas":["Camada 2: Poisson com histórico real","Camada 3: xG, Cartola, Smart Money"]})
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_ENV")=="development")
