@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-FDATA_KEY = os.getenv("FOOTBALL_DATA_KEY", "")
-ODDS_KEY  = os.getenv("ODDS_API_KEY", "")
+FDATA_KEY  = os.getenv("FOOTBALL_DATA_KEY", "")
+ODDS_KEY   = os.getenv("ODDS_API_KEY", "")
 
 LIGAS = {
     "brasileirao":   {"codigo": "BSA",  "nome": "Brasileirão Série A",  "pais": "Brasil"},
@@ -158,8 +158,14 @@ def analisar_jogo(jogo, media_gols_casa=1.5, media_gols_fora=1.1,
 
 @app.route("/")
 def index():
-    base = os.path.dirname(os.path.abspath(__file__))
-    return send_from_directory(base, "index.html")
+    for pasta in [
+        os.path.dirname(os.path.abspath(__file__)),
+        os.getcwd(),
+        "/opt/render/project/src",
+    ]:
+        if os.path.exists(os.path.join(pasta, "index.html")):
+            return send_from_directory(pasta, "index.html")
+    return "index.html nao encontrado", 404
 
 @app.route("/api/ligas", methods=["GET"])
 def listar_ligas():
