@@ -9,6 +9,7 @@
     --verde:#1a7a3c;--verde2:#22a04e;--ouro:#f0c040;--escuro:#0f1c14;
     --card:#162b1e;--borda:#2a4a34;--texto:#e8f5ec;--cinza:#8aaa94;
     --seco:#22c55e;--duplo:#f0c040;--triplo:#ef4444;
+    --hist:#60a5fa;--misto:#a78bfa;--liga:#94a3b8;--sim:#fb923c;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--escuro);color:var(--texto);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
@@ -16,55 +17,84 @@
   .logo-icon{width:44px;height:44px;background:var(--ouro);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#0f1c14}
   .logo-text h1{font-size:20px;font-weight:800;letter-spacing:1px}
   .logo-text p{font-size:11px;color:var(--ouro);letter-spacing:2px;text-transform:uppercase}
-  .status-badge{margin-left:auto;background:rgba(34,160,78,.2);border:1px solid var(--verde2);border-radius:20px;padding:4px 14px;font-size:12px;color:var(--verde2)}
-  main{max-width:1200px;margin:0 auto;padding:32px 24px}
-  .controles{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:24px;margin-bottom:28px;display:grid;grid-template-columns:1fr 1fr auto auto;gap:16px;align-items:end}
+  .header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+  .status-badge{background:rgba(34,160,78,.2);border:1px solid var(--verde2);border-radius:20px;padding:4px 14px;font-size:12px;color:var(--verde2)}
+  .db-badge{border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700}
+  .db-on{background:rgba(96,165,250,.15);border:1px solid rgba(96,165,250,.5);color:var(--hist)}
+  .db-off{background:rgba(148,163,184,.1);border:1px solid rgba(148,163,184,.3);color:var(--liga)}
+  main{max-width:1300px;margin:0 auto;padding:28px 24px}
+  .controles{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:22px;margin-bottom:24px;display:grid;grid-template-columns:1.5fr 1fr 1fr auto auto;gap:14px;align-items:end}
   .campo label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--cinza);margin-bottom:6px}
-  select,input[type=number]{width:100%;background:#0f1c14;border:1px solid var(--borda);border-radius:8px;color:var(--texto);padding:10px 14px;font-size:14px;outline:none;cursor:pointer}
+  select,input[type=number]{width:100%;background:#0f1c14;border:1px solid var(--borda);border-radius:8px;color:var(--texto);padding:10px 14px;font-size:14px;outline:none}
   select:focus,input:focus{border-color:var(--verde2)}
-  .btn{padding:11px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s;white-space:nowrap}
+  .btn{padding:11px 22px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s;white-space:nowrap}
   .btn-primary{background:var(--verde2);color:#fff}
   .btn-primary:hover{background:#28c060;transform:translateY(-1px)}
   .btn-primary:disabled{background:var(--borda);cursor:not-allowed;transform:none}
   .btn-secondary{background:transparent;border:1px solid var(--borda);color:var(--cinza)}
   .btn-secondary:hover{border-color:var(--verde2);color:var(--verde2)}
-  .sumario{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px}
+  .aviso{border-radius:10px;padding:11px 18px;font-size:13px;margin-bottom:18px;display:none}
+  .aviso.visivel{display:block}
+  .aviso-sim{background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.4);color:var(--ouro)}
+  .aviso-err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);color:#fca5a5}
+  .cobertura-bar{background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:none}
+  .cobertura-bar.visivel{display:block}
+  .cob-titulo{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--cinza);margin-bottom:10px}
+  .cob-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .cob-item{display:flex;align-items:center;gap:6px;font-size:12px}
+  .cob-dot{width:10px;height:10px;border-radius:50%}
+  .cob-hist{background:var(--hist)}.cob-liga{background:var(--liga)}.cob-sim{background:var(--sim)}
+  .sumario{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
   .card-stat{background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:18px;text-align:center}
-  .card-stat .valor{font-size:32px;font-weight:800;line-height:1;margin-bottom:4px}
+  .card-stat .valor{font-size:30px;font-weight:800;line-height:1;margin-bottom:4px}
   .card-stat .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--cinza)}
-  .card-stat.seco .valor{color:var(--seco)}
-  .card-stat.duplo .valor{color:var(--duplo)}
-  .card-stat.triplo .valor{color:var(--triplo)}
-  .card-stat.total .valor{color:var(--ouro)}
-  .card-stat.custo .valor{font-size:22px;color:#60a5fa}
-  .aviso-simulado{background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.4);border-radius:10px;padding:12px 18px;font-size:13px;color:var(--ouro);margin-bottom:20px;display:none}
-  .aviso-simulado.visivel{display:block}
-  .grade-header{display:grid;grid-template-columns:32px 1fr 80px 80px 80px 90px 80px;gap:8px;padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--cinza);border-bottom:1px solid var(--borda);margin-bottom:8px}
-  .jogo-card{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:14px 16px;margin-bottom:8px;display:grid;grid-template-columns:32px 1fr 80px 80px 80px 90px 80px;gap:8px;align-items:center;transition:border-color .2s}
+  .card-stat.seco .valor{color:var(--seco)}.card-stat.duplo .valor{color:var(--duplo)}
+  .card-stat.triplo .valor{color:var(--triplo)}.card-stat.total .valor{color:var(--ouro)}
+  .card-stat.custo .valor{font-size:20px;color:var(--hist)}
+  .grade-header{display:grid;grid-template-columns:32px 1.8fr 70px 70px 70px 80px 100px 90px;gap:8px;padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--cinza);border-bottom:1px solid var(--borda);margin-bottom:6px}
+  .jogo-card{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:12px 14px;margin-bottom:7px;display:grid;grid-template-columns:32px 1.8fr 70px 70px 70px 80px 100px 90px;gap:8px;align-items:center;transition:border-color .15s}
   .jogo-card:hover{border-color:var(--verde2)}
-  .jogo-num{font-size:13px;font-weight:700;color:var(--cinza);text-align:center}
+  .jogo-num{font-size:12px;font-weight:700;color:var(--cinza);text-align:center}
   .jogo-times .mandante{font-weight:700;font-size:14px}
   .jogo-times .vs{font-size:11px;color:var(--cinza);margin:2px 0}
   .jogo-times .visitante{font-size:13px;color:#b0c8ba}
-  .prob{text-align:center;font-size:13px;font-weight:700;padding:5px 8px;border-radius:6px;background:rgba(255,255,255,.04)}
+  .prob{text-align:center;font-size:13px;font-weight:700;padding:4px 6px;border-radius:6px;background:rgba(255,255,255,.04)}
   .prob.maior{background:rgba(34,160,78,.25);color:#6ee7a0}
-  .classificacao{text-align:center;font-size:12px;font-weight:800;letter-spacing:1px;padding:5px 10px;border-radius:20px}
+  .classificacao{text-align:center;font-size:11px;font-weight:800;letter-spacing:.5px;padding:4px 8px;border-radius:20px}
   .class-SECO{background:rgba(34,197,94,.2);color:var(--seco);border:1px solid rgba(34,197,94,.4)}
   .class-DUPLO{background:rgba(240,192,64,.2);color:var(--duplo);border:1px solid rgba(240,192,64,.4)}
   .class-TRIPLO{background:rgba(239,68,68,.2);color:var(--triplo);border:1px solid rgba(239,68,68,.4)}
-  .conf-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--cinza)}
+  .fonte-badge{font-size:10px;font-weight:700;letter-spacing:.5px;padding:3px 8px;border-radius:12px;text-align:center}
+  .fonte-HISTORICO{background:rgba(96,165,250,.15);color:var(--hist);border:1px solid rgba(96,165,250,.4)}
+  .fonte-MISTO{background:rgba(167,139,250,.15);color:var(--misto);border:1px solid rgba(167,139,250,.4)}
+  .fonte-LIGA{background:rgba(148,163,184,.1);color:var(--liga);border:1px solid rgba(148,163,184,.3)}
+  .fonte-SIMULADO{background:rgba(251,146,60,.1);color:var(--sim);border:1px solid rgba(251,146,60,.4)}
+  .conf-bar{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--cinza)}
   .conf-bar .barra{flex:1;height:5px;background:var(--borda);border-radius:3px;overflow:hidden}
   .conf-bar .fill{height:100%;background:var(--verde2);border-radius:3px;transition:width .5s}
   .loading{text-align:center;padding:60px;color:var(--cinza);display:none}
   .loading.visivel{display:block}
   .spinner{width:40px;height:40px;border:3px solid var(--borda);border-top-color:var(--verde2);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .erro{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:16px 20px;color:#fca5a5;display:none;margin-bottom:20px}
-  .erro.visivel{display:block}
   .vazio{text-align:center;padding:60px;color:var(--cinza)}
   .vazio .icon{font-size:48px;margin-bottom:16px}
   .vazio h3{font-size:18px;margin-bottom:8px;color:var(--texto)}
-  @media(max-width:900px){.controles{grid-template-columns:1fr 1fr}.sumario{grid-template-columns:repeat(3,1fr)}.grade-header{display:none}.jogo-card{grid-template-columns:24px 1fr}.jogo-card>*:not(.jogo-num):not(.jogo-times):not(.classificacao){display:none}}
+  .legenda{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:14px 18px;margin-top:20px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+  .legenda-titulo{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--cinza)}
+  .leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--cinza)}
+  @media(max-width:1000px){
+    .controles{grid-template-columns:1fr 1fr}
+    .sumario{grid-template-columns:repeat(3,1fr)}
+    .grade-header{display:none}
+    .jogo-card{grid-template-columns:24px 1fr auto auto}
+    .jogo-card>*:not(.jogo-num):not(.jogo-times):not(.classificacao):not(.fonte-badge){display:none}
+  }
+  @media(max-width:600px){
+    .controles{grid-template-columns:1fr}
+    .sumario{grid-template-columns:1fr 1fr}
+    header{padding:14px 16px}
+    main{padding:16px}
+  }
 </style>
 </head>
 <body>
@@ -72,9 +102,12 @@
   <div class="logo-icon">L</div>
   <div class="logo-text">
     <h1>LOTECA ELITE PRO</h1>
-    <p>Motor Preditivo · Camada 1</p>
+    <p>Motor Preditivo · Camada 2</p>
   </div>
-  <span class="status-badge" id="badgeStatus">● Carregando…</span>
+  <div class="header-right">
+    <span class="db-badge db-off" id="badgeDB">⏳ DB</span>
+    <span class="status-badge" id="badgeStatus">● Carregando…</span>
+  </div>
 </header>
 <main>
   <div class="controles">
@@ -83,16 +116,24 @@
       <select id="selLiga"><option value="">Carregando…</option></select>
     </div>
     <div class="campo">
-      <label>Janela de dias</label>
+      <label>Janela (dias)</label>
       <input type="number" id="inputDias" value="14" min="1" max="60">
+    </div>
+    <div class="campo">
+      <label>Últimos jogos (histórico)</label>
+      <input type="number" id="inputNHist" value="10" min="3" max="30">
     </div>
     <button class="btn btn-primary" id="btnBuscar" onclick="buscarGrade()">⚡ Analisar Grade</button>
     <button class="btn btn-secondary" onclick="limparGrade()">✕ Limpar</button>
   </div>
-  <div class="aviso-simulado" id="avisoSimulado">
+  <div class="aviso aviso-sim" id="avisoSimulado">
     ⚠️ <strong>Dados simulados</strong> — Configure <code>FOOTBALL_DATA_KEY</code> no Render para jogos reais.
   </div>
-  <div class="erro" id="painelErro"></div>
+  <div class="aviso aviso-err" id="painelErro"></div>
+  <div class="cobertura-bar" id="coberturaBar">
+    <div class="cob-titulo">Cobertura do histórico nesta análise</div>
+    <div class="cob-row" id="coberturaRow"></div>
+  </div>
   <div class="sumario" id="sumario" style="display:none">
     <div class="card-stat total"><div class="valor" id="statTotal">0</div><div class="label">Jogos</div></div>
     <div class="card-stat seco"><div class="valor" id="statSecos">0</div><div class="label">Secos</div></div>
@@ -100,13 +141,23 @@
     <div class="card-stat triplo"><div class="valor" id="statTriplos">0</div><div class="label">Triplos</div></div>
     <div class="card-stat custo"><div class="valor" id="statCusto">R$0</div><div class="label">Custo estimado</div></div>
   </div>
-  <div class="loading" id="loading"><div class="spinner"></div><p>Buscando jogos e calculando probabilidades…</p></div>
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Buscando jogos e calculando probabilidades…</p>
+  </div>
   <div id="gradeContainer">
     <div class="vazio">
       <div class="icon">⚽</div>
       <h3>Selecione uma liga e clique em Analisar</h3>
-      <p>O sistema buscará os próximos jogos automaticamente.</p>
+      <p>Camada 2 ativa — Poisson com médias reais do histórico por time.</p>
     </div>
+  </div>
+  <div class="legenda" id="legenda" style="display:none">
+    <span class="legenda-titulo">Fonte:</span>
+    <div class="leg-item"><span class="fonte-badge fonte-HISTORICO">HIST</span> médias reais do time</div>
+    <div class="leg-item"><span class="fonte-badge fonte-MISTO">MISTO</span> um time com histórico</div>
+    <div class="leg-item"><span class="fonte-badge fonte-LIGA">LIGA</span> média global da liga</div>
+    <div class="leg-item"><span class="fonte-badge fonte-SIMULADO">SIM</span> dados de teste</div>
   </div>
 </main>
 <script>
@@ -114,14 +165,18 @@ const API='';
 async function init(){await Promise.all([carregarStatus(),carregarLigas()])}
 async function carregarStatus(){
   try{
-    const r=await fetch(`${API}/api/status`);const d=await r.json();
+    const d=await fetch(`${API}/api/status`).then(r=>r.json());
     const b=document.getElementById('badgeStatus');
-    b.textContent='● Online · v'+(d.versao||'2.0');b.style.color='#22c55e';b.style.borderColor='#22c55e';
+    b.textContent='● Online · v'+(d.versao||'3.0');b.style.color='#22c55e';b.style.borderColor='#22c55e';
+    const db=document.getElementById('badgeDB');
+    const dbOn=d.integracoes?.loteca_historico_db==='conectado';
+    db.textContent=dbOn?'🗄️ DB Conectado':'⚠️ DB Ausente';
+    db.className='db-badge '+(dbOn?'db-on':'db-off');
   }catch{document.getElementById('badgeStatus').textContent='● Offline'}
 }
 async function carregarLigas(){
   try{
-    const r=await fetch(`${API}/api/ligas`);const d=await r.json();
+    const d=await fetch(`${API}/api/ligas`).then(r=>r.json());
     const sel=document.getElementById('selLiga');sel.innerHTML='';
     d.ligas.forEach(l=>{const o=document.createElement('option');o.value=l.key;o.textContent=`${l.nome} (${l.pais})`;if(l.key==='brasileirao')o.selected=true;sel.appendChild(o)});
   }catch(e){console.error(e)}
@@ -129,14 +184,15 @@ async function carregarLigas(){
 async function buscarGrade(){
   const liga=document.getElementById('selLiga').value;
   const dias=document.getElementById('inputDias').value||14;
+  const nHist=document.getElementById('inputNHist').value||10;
   if(!liga){mostrarErro('Selecione uma liga.');return}
   setLoading(true);limparResultados();
   try{
-    const r=await fetch(`${API}/api/grade-automatica?liga=${liga}&dias=${dias}&max=14`);
-    const d=await r.json();
+    const d=await fetch(`${API}/api/grade-automatica?liga=${liga}&dias=${dias}&max=14&n_historico=${nHist}`).then(r=>r.json());
     if(d.erro){mostrarErro(d.erro);return}
     if(d.simulado)document.getElementById('avisoSimulado').classList.add('visivel');
-    renderSumario(d);renderGrade(d.jogos);
+    renderSumario(d);renderCobertura(d.cobertura_historico||{},d.total);renderGrade(d.jogos);
+    document.getElementById('legenda').style.display='flex';
   }catch(e){mostrarErro('Erro ao conectar com o servidor.')}
   finally{setLoading(false)}
 }
@@ -148,24 +204,43 @@ function renderSumario(d){
   document.getElementById('statTriplos').textContent=d.triplos;
   document.getElementById('statCusto').textContent='R$ '+(d.custo_estimado_reais||0).toFixed(2);
 }
+function renderCobertura(cob,total){
+  const bar=document.getElementById('coberturaBar');
+  const row=document.getElementById('coberturaRow');
+  if(!total){bar.classList.remove('visivel');return}
+  const hist=cob.com_historico||0,liga=cob.apenas_liga||0,sim=cob.simulado||0;
+  const pct=v=>total?Math.round(v/total*100):0;
+  row.innerHTML=`
+    <div class="cob-item"><div class="cob-dot cob-hist"></div><strong>${hist}</strong> com histórico (${pct(hist)}%)</div>
+    <div class="cob-item"><div class="cob-dot cob-liga"></div><strong>${liga}</strong> só via liga (${pct(liga)}%)</div>
+    ${sim?`<div class="cob-item"><div class="cob-dot cob-sim"></div><strong>${sim}</strong> simulados</div>`:''}`;
+  bar.classList.add('visivel');
+}
 function renderGrade(jogos){
   const c=document.getElementById('gradeContainer');
   if(!jogos||jogos.length===0){c.innerHTML='<div class="vazio"><div class="icon">📭</div><h3>Nenhum jogo encontrado</h3><p>Tente aumentar a janela de dias.</p></div>';return}
-  const header='<div class="grade-header"><div>#</div><div>Confronto</div><div style="text-align:center">P1</div><div style="text-align:center">PX</div><div style="text-align:center">P2</div><div style="text-align:center">Tipo</div><div style="text-align:center">Confiança</div></div>';
+  const header=`<div class="grade-header"><div>#</div><div>Confronto</div><div style="text-align:center">P1</div><div style="text-align:center">PX</div><div style="text-align:center">P2</div><div style="text-align:center">Tipo</div><div style="text-align:center">Fonte</div><div style="text-align:center">Confiança</div></div>`;
   const cards=jogos.map((j,i)=>{
-    const p=j.probabilidades||{p1:.33,px:.33,p2:.33};
+    const p=j.probabilidades||{p1:.33,px:.33,p2:.34};
     const max=Math.max(p.p1,p.px,p.p2);
-    const conf=j.confianca||0;
-    const pc=v=>v===max?'prob maior':'prob';
     const cl=j.classificacao||'TRIPLO';
+    const fd=j.fonte_dados||'LIGA';
+    const conf=j.confianca||0;
     const dt=j.data_utc?new Date(j.data_utc).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'';
-    return`<div class="jogo-card">
+    const pc=v=>v===max?'prob maior':'prob';
+    const det=j.detalhe_fontes||{};
+    const pm=det.mandante?`${det.mandante.time}: ${det.mandante.fonte} (${det.mandante.n_jogos}j)`:'';
+    const pv=det.visitante?`${det.visitante.time}: ${det.visitante.fonte} (${det.visitante.n_jogos}j)`:'';
+    const lam=j.lambda_casa!=null?`λ=${j.lambda_casa}/${j.lambda_fora}`:'';
+    const tip=[pm,pv,lam].filter(Boolean).join(' · ');
+    return`<div class="jogo-card" title="${tip}">
       <div class="jogo-num">${i+1}</div>
       <div class="jogo-times"><div class="mandante">${j.mandante||'Time 1'}</div><div class="vs">× ${dt}</div><div class="visitante">${j.visitante||'Time 2'}</div></div>
       <div class="${pc(p.p1)}">${pct(p.p1)}</div>
       <div class="${pc(p.px)}">${pct(p.px)}</div>
       <div class="${pc(p.p2)}">${pct(p.p2)}</div>
       <div><span class="classificacao class-${cl}">${cl}</span></div>
+      <div><span class="fonte-badge fonte-${fd}">${fd==='HISTORICO'?'HIST':fd}</span></div>
       <div class="conf-bar"><div class="barra"><div class="fill" style="width:${conf}%"></div></div><span>${conf.toFixed(0)}%</span></div>
     </div>`;
   }).join('');
@@ -175,16 +250,18 @@ function pct(v){return Math.round((v||0)*100)+'%'}
 function setLoading(on){document.getElementById('loading').classList.toggle('visivel',on);document.getElementById('btnBuscar').disabled=on}
 function mostrarErro(msg){const el=document.getElementById('painelErro');el.textContent='⚠️ '+msg;el.classList.add('visivel')}
 function limparResultados(){
-  document.getElementById('painelErro').classList.remove('visivel');
-  document.getElementById('avisoSimulado').classList.remove('visivel');
+  ['painelErro','avisoSimulado'].forEach(id=>document.getElementById(id).classList.remove('visivel'));
+  document.getElementById('coberturaBar').classList.remove('visivel');
   document.getElementById('sumario').style.display='none';
+  document.getElementById('legenda').style.display='none';
   document.getElementById('gradeContainer').innerHTML='<div class="vazio"><div class="icon">⚽</div><h3>Carregando…</h3></div>';
 }
 function limparGrade(){
-  document.getElementById('painelErro').classList.remove('visivel');
-  document.getElementById('avisoSimulado').classList.remove('visivel');
+  ['painelErro','avisoSimulado'].forEach(id=>document.getElementById(id).classList.remove('visivel'));
+  document.getElementById('coberturaBar').classList.remove('visivel');
   document.getElementById('sumario').style.display='none';
-  document.getElementById('gradeContainer').innerHTML='<div class="vazio"><div class="icon">⚽</div><h3>Selecione uma liga e clique em Analisar</h3><p>O sistema buscará os próximos jogos automaticamente.</p></div>';
+  document.getElementById('legenda').style.display='none';
+  document.getElementById('gradeContainer').innerHTML='<div class="vazio"><div class="icon">⚽</div><h3>Selecione uma liga e clique em Analisar</h3><p>Camada 2 ativa — Poisson com médias reais do histórico por time.</p></div>';
 }
 init();
 </script>
