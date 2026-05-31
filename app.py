@@ -113,6 +113,10 @@ def concurso(num):
                     "periodo": dados["periodo"], "total_jogos": len(jogos),
                     "jogos": jogos, "paineis_decisao": gerar_painel(jogos)})
 
+
+@app.route("/")
+def index():
+    return app.send_static_file("index.html")
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "versao": "Copa Loteca 2.0"})
