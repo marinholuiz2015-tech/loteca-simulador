@@ -3,477 +3,364 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Loteca Elite Pro — Copa 2026</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>Loteca Elite Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #060a0f;
-  --bg2: #0c1219;
-  --bg3: #111a24;
-  --verde: #00ff87;
-  --verde2: #00cc6a;
-  --amarelo: #ffd60a;
-  --vermelho: #ff4757;
-  --azul: #00b4d8;
-  --texto: #e8f4f8;
-  --muted: #4a6278;
-  --borda: rgba(0,255,135,0.12);
+  --bg:       #f5f7fa;
+  --bg2:      #ffffff;
+  --bg3:      #f0f2f5;
+  --borda:    #e2e8f0;
+  --texto:    #1a202c;
+  --muted:    #718096;
+  --muted2:   #a0aec0;
+  --verde:    #16a34a;
+  --verde-bg: #f0fdf4;
+  --verde-bd: #bbf7d0;
+  --amarelo:  #d97706;
+  --amar-bg:  #fffbeb;
+  --amar-bd:  #fde68a;
+  --azul:     #2563eb;
+  --azul-bg:  #eff6ff;
+  --azul-bd:  #bfdbfe;
+  --vermelho: #dc2626;
+  --verm-bg:  #fef2f2;
+  --verm-bd:  #fecaca;
+  --shadow:   0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--bg);
-  color: var(--texto);
-  min-height: 100vh;
-}
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 80% 40% at 50% -10%, rgba(0,255,135,0.07) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 30% at 100% 100%, rgba(0,180,216,0.05) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* HEADER */
-header {
-  position: relative;
-  z-index: 1;
-  padding: 32px 40px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--borda);
-}
-.logo {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-.logo-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 2.4rem;
-  letter-spacing: 0.04em;
-  color: var(--verde);
-  line-height: 1;
-}
-.logo-sub {
-  font-size: 0.7rem;
-  color: var(--muted);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-}
-.header-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255,214,10,0.08);
-  border: 1px solid rgba(255,214,10,0.25);
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 0.75rem;
-  color: var(--amarelo);
-  font-family: 'DM Mono', monospace;
-  letter-spacing: 0.05em;
-}
-.dot-live {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--amarelo);
-  animation: pulse 1.5s infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.8); }
-}
-
-/* MAIN */
-main {
-  position: relative;
-  z-index: 1;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px 24px;
-}
-
-/* CONCURSO HEADER */
-.concurso-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 32px;
-  padding: 24px 28px;
-  background: var(--bg2);
-  border: 1px solid var(--borda);
-  border-radius: 12px;
-}
-.concurso-num {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 3.5rem;
-  color: var(--verde);
-  line-height: 1;
-}
-.concurso-info { flex: 1; padding-left: 20px; }
-.concurso-nome {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--texto);
-  margin-bottom: 4px;
-}
-.concurso-periodo {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-family: 'DM Mono', monospace;
-}
-.concurso-tabs {
-  display: flex;
-  gap: 6px;
-}
-.tab-btn {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.72rem;
-  padding: 7px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--borda);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.2s;
-  letter-spacing: 0.05em;
-}
-.tab-btn:hover, .tab-btn.ativo {
-  border-color: var(--verde);
-  color: var(--verde);
-  background: rgba(0,255,135,0.06);
-}
-
-/* PAINEIS */
-.paineis-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 32px;
-}
-@media(max-width: 700px) { .paineis-grid { grid-template-columns: 1fr; } }
-.painel-card {
-  border-radius: 12px;
-  padding: 22px;
-  border: 1px solid;
-  position: relative;
-  overflow: hidden;
-}
-.painel-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-}
-.painel-eco { border-color: rgba(0,255,135,0.2); background: rgba(0,255,135,0.03); }
-.painel-eco::before { background: var(--verde); }
-.painel-rec { border-color: rgba(0,180,216,0.2); background: rgba(0,180,216,0.03); }
-.painel-rec::before { background: var(--azul); }
-.painel-elite { border-color: rgba(255,214,10,0.2); background: rgba(255,214,10,0.03); }
-.painel-elite::before { background: var(--amarelo); }
-
-.painel-titulo {
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
-.painel-eco .painel-titulo { color: var(--verde); }
-.painel-rec .painel-titulo { color: var(--azul); }
-.painel-elite .painel-titulo { color: var(--amarelo); }
-
-.painel-custo {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 2.2rem;
-  line-height: 1;
-  margin-bottom: 14px;
-}
-.painel-eco .painel-custo { color: var(--verde); }
-.painel-rec .painel-custo { color: var(--azul); }
-.painel-elite .painel-custo { color: var(--amarelo); }
-
-.painel-prob {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.72rem;
-  color: var(--muted);
-  margin-bottom: 6px;
-  font-family: 'DM Mono', monospace;
-}
-.painel-prob span:last-child { color: var(--texto); font-weight: 500; }
-.btn-gerar {
-  width: 100%;
-  margin-top: 16px;
-  padding: 10px;
-  border-radius: 7px;
-  border: none;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  letter-spacing: 0.03em;
-  transition: opacity 0.2s;
-}
-.btn-gerar:hover { opacity: 0.85; }
-.painel-eco .btn-gerar { background: var(--verde); color: #000; }
-.painel-rec .btn-gerar { background: var(--azul); color: #000; }
-.painel-elite .btn-gerar { background: var(--amarelo); color: #000; }
-
-/* JOGOS */
-.jogos-titulo {
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.jogos-titulo::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--borda);
-}
-.jogos-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 10px;
-}
-.jogo-card {
-  background: var(--bg2);
-  border: 1px solid var(--borda);
-  border-radius: 10px;
-  padding: 16px 18px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  transition: border-color 0.2s;
-}
-.jogo-card:hover { border-color: rgba(0,255,135,0.3); }
-.jogo-num {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.6rem;
-  color: var(--muted);
-  min-width: 28px;
-  line-height: 1;
-}
-.jogo-times { flex: 1; }
-.jogo-mandante {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--texto);
-  margin-bottom: 2px;
-}
-.jogo-vs {
-  font-size: 0.65rem;
-  color: var(--muted);
-  margin-bottom: 2px;
-}
-.jogo-visitante {
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-.jogo-data {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.65rem;
-  color: var(--muted);
-  text-align: right;
-  min-width: 50px;
-}
-.jogo-badge {
-  font-size: 0.62rem;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 4px;
-  letter-spacing: 0.08em;
-  min-width: 60px;
-  text-align: center;
-}
-.badge-seco { background: rgba(0,255,135,0.12); color: var(--verde); border: 1px solid rgba(0,255,135,0.25); }
-.badge-duplo { background: rgba(0,180,216,0.12); color: var(--azul); border: 1px solid rgba(0,180,216,0.25); }
-.badge-triplo { background: rgba(255,71,87,0.12); color: var(--vermelho); border: 1px solid rgba(255,71,87,0.25); }
-
-/* LOADING */
-.loading {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--muted);
-  font-family: 'DM Mono', monospace;
-  font-size: 0.85rem;
-}
-.spinner {
-  width: 32px; height: 32px;
-  border: 2px solid var(--borda);
-  border-top-color: var(--verde);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto 16px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ERRO */
-.erro {
-  text-align: center;
-  padding: 40px;
-  color: var(--vermelho);
-  font-size: 0.85rem;
-  background: rgba(255,71,87,0.05);
-  border: 1px solid rgba(255,71,87,0.15);
-  border-radius: 10px;
-}
-
-footer {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  padding: 24px;
-  color: var(--muted);
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  border-top: 1px solid var(--borda);
-}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--texto);min-height:100vh}
+header{background:var(--bg2);border-bottom:1px solid var(--borda);padding:0 40px;
+  display:flex;align-items:center;justify-content:space-between;height:64px;
+  box-shadow:var(--shadow);position:sticky;top:0;z-index:50}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:32px;height:32px;background:var(--verde);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.9rem}
+.logo-title{font-size:1rem;font-weight:700;color:var(--texto);letter-spacing:-.01em}
+.logo-sub{font-size:.7rem;color:var(--muted);font-weight:400}
+.header-right{display:flex;align-items:center;gap:10px}
+.badge-api{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;
+  font-size:.7rem;font-weight:500;letter-spacing:.02em}
+.badge-api.live{background:var(--verde-bg);border:1px solid var(--verde-bd);color:var(--verde)}
+.badge-api.fallback{background:var(--amar-bg);border:1px solid var(--amar-bd);color:var(--amarelo)}
+.dot{width:6px;height:6px;border-radius:50%;animation:pulse 2s infinite}
+.dot-g{background:var(--verde)} .dot-y{background:var(--amarelo)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+main{max-width:1200px;margin:0 auto;padding:28px 24px}
+.concurso-card{background:var(--bg2);border:1px solid var(--borda);border-radius:12px;
+  padding:20px 24px;margin-bottom:20px;box-shadow:var(--shadow);
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.concurso-left{display:flex;align-items:center;gap:16px}
+.concurso-num{font-size:2.4rem;font-weight:700;color:var(--verde);line-height:1;letter-spacing:-.02em}
+.concurso-nome{font-size:.95rem;font-weight:600;color:var(--texto);margin-bottom:3px}
+.concurso-periodo{font-size:.75rem;color:var(--muted);font-family:'DM Mono',monospace}
+.concurso-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab-btn{font-size:.75rem;font-weight:500;padding:6px 14px;border-radius:8px;
+  border:1px solid var(--borda);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+.tab-btn:hover{border-color:var(--verde);color:var(--verde);background:var(--verde-bg)}
+.tab-btn.ativo{border-color:var(--verde);color:var(--verde);background:var(--verde-bg);font-weight:600}
+.paineis-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+@media(max-width:700px){.paineis-grid{grid-template-columns:1fr}}
+.painel-card{background:var(--bg2);border:1px solid var(--borda);border-radius:12px;
+  padding:20px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:box-shadow .2s}
+.painel-card:hover{box-shadow:var(--shadow-md)}
+.painel-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0}
+.p-eco::before{background:var(--verde)}
+.p-rec::before{background:var(--azul)}
+.p-eli::before{background:var(--amarelo)}
+.p-titulo{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.p-eco .p-titulo{color:var(--verde)} .p-rec .p-titulo{color:var(--azul)} .p-eli .p-titulo{color:var(--amarelo)}
+.p-custo{font-size:1.8rem;font-weight:700;line-height:1;margin-bottom:14px;letter-spacing:-.02em}
+.p-eco .p-custo{color:var(--verde)} .p-rec .p-custo{color:var(--azul)} .p-eli .p-custo{color:var(--amarelo)}
+.p-linha{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);
+  margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--bg3)}
+.p-linha:last-of-type{border-bottom:none}
+.p-linha span:last-child{font-weight:600;color:var(--texto)}
+.btn-gerar{width:100%;margin-top:14px;padding:10px;border-radius:8px;border:none;
+  font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .15s}
+.p-eco .btn-gerar{background:var(--verde);color:#fff}
+.p-eco .btn-gerar:hover{background:#15803d}
+.p-rec .btn-gerar{background:var(--azul);color:#fff}
+.p-rec .btn-gerar:hover{background:#1d4ed8}
+.p-eli .btn-gerar{background:var(--amarelo);color:#fff}
+.p-eli .btn-gerar:hover{background:#b45309}
+.section-title{font-size:.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--borda)}
+.jogos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+.jogo-card{background:var(--bg2);border:1px solid var(--borda);border-radius:10px;
+  padding:14px 16px;display:flex;align-items:center;gap:12px;
+  box-shadow:var(--shadow);transition:all .15s;cursor:default}
+.jogo-card:hover{border-color:#a7f3d0;box-shadow:var(--shadow-md)}
+.jogo-num{font-size:1.1rem;font-weight:700;color:var(--muted2);min-width:24px;line-height:1}
+.jogo-times{flex:1}
+.jogo-mandante{font-size:.88rem;font-weight:600;color:var(--texto);margin-bottom:1px}
+.jogo-vs{font-size:.6rem;color:var(--muted2);margin-bottom:1px;text-transform:uppercase;letter-spacing:.05em}
+.jogo-visitante{font-size:.8rem;color:var(--muted)}
+.probs-bar{display:flex;gap:2px;margin-top:7px;border-radius:4px;overflow:hidden;height:5px;background:var(--bg3)}
+.prob-seg{height:100%;transition:width .4s}
+.prob-1{background:var(--verde)} .prob-x{background:var(--muted2)} .prob-2{background:var(--vermelho)}
+.jogo-meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.jogo-data{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted2)}
+.jogo-badge{font-size:.62rem;font-weight:600;padding:4px 10px;border-radius:6px;letter-spacing:.04em;text-align:center;min-width:64px}
+.b-seco{background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde-bd)}
+.b-duplo{background:var(--azul-bg);color:var(--azul);border:1px solid var(--azul-bd)}
+.b-triplo{background:var(--verm-bg);color:var(--vermelho);border:1px solid var(--verm-bd)}
+.fonte-badge{font-size:.58rem;padding:2px 7px;border-radius:4px;font-weight:500}
+.fonte-api{background:var(--verde-bg);color:var(--verde)}
+.fonte-modelo{background:var(--amar-bg);color:var(--amarelo)}
+.grade-modal{position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:100;
+  display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+.grade-box{background:var(--bg2);border:1px solid var(--borda);border-radius:16px;
+  max-width:600px;width:100%;max-height:85vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,0.15);padding:28px}
+.grade-box h2{font-size:1.2rem;font-weight:700;color:var(--texto);margin-bottom:4px}
+.grade-sub{font-size:.78rem;color:var(--muted);margin-bottom:20px}
+.grade-linha{display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid var(--borda);font-size:.82rem}
+.grade-linha:last-of-type{border-bottom:none}
+.grade-jogo{color:var(--muted);font-size:.76rem}
+.grade-col{font-family:'DM Mono',monospace;font-weight:600;color:var(--verde);
+  background:var(--verde-bg);padding:3px 10px;border-radius:5px;font-size:.78rem}
+.grade-actions{display:flex;gap:10px;margin-top:20px}
+.btn-fechar{padding:9px 20px;border-radius:8px;border:1px solid var(--borda);
+  background:transparent;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;
+  font-size:.8rem;font-weight:500;transition:all .15s}
+.btn-fechar:hover{border-color:var(--verde);color:var(--verde)}
+.estado{text-align:center;padding:48px 20px;color:var(--muted);font-size:.82rem}
+.spinner{width:28px;height:28px;border:2px solid var(--borda);border-top-color:var(--verde);
+  border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.erro-txt{color:var(--vermelho)}
+.empty-state{background:var(--bg3);border:1px dashed var(--borda);border-radius:10px;
+  padding:32px;text-align:center;color:var(--muted);font-size:.82rem;grid-column:1/-1}
 </style>
 </head>
 <body>
 
 <header>
   <div class="logo">
-    <div class="logo-title">Loteca Elite Pro</div>
-    <div class="logo-sub">Copa do Mundo 2026</div>
+    <div class="logo-icon">LP</div>
+    <div>
+      <div class="logo-title">Loteca Elite Pro</div>
+      <div class="logo-sub">Sistema Probabilístico</div>
+    </div>
   </div>
-  <div class="header-badge">
-    <div class="dot-live"></div>
-    <span id="header-status">Carregando...</span>
+  <div class="header-right">
+    <div id="badge-api" class="badge-api fallback">
+      <span class="dot dot-y"></span>
+      <span id="badge-txt">Carregando...</span>
+    </div>
   </div>
 </header>
 
 <main>
-  <div class="concurso-header">
-    <div class="concurso-num" id="num-concurso">—</div>
-    <div class="concurso-info">
-      <div class="concurso-nome" id="nome-concurso">Carregando concurso...</div>
-      <div class="concurso-periodo" id="periodo-concurso">—</div>
+  <div class="concurso-card">
+    <div class="concurso-left">
+      <div class="concurso-num" id="num-display">—</div>
+      <div>
+        <div class="concurso-nome" id="nome-display">Carregando concurso...</div>
+        <div class="concurso-periodo" id="periodo-display">—</div>
+      </div>
     </div>
-    <div class="concurso-tabs">
-      <button class="tab-btn ativo" onclick="carregarConcurso(1255)">1255</button>
-      <button class="tab-btn" onclick="carregarConcurso(1256)">1256</button>
-      <button class="tab-btn" onclick="carregarConcurso(1257)">1257</button>
-      <button class="tab-btn" onclick="carregarConcurso(1258)">1258</button>
-    </div>
+    <div class="concurso-tabs" id="tabs-container"></div>
   </div>
 
-  <div class="paineis-grid">
-    <div class="painel-card painel-eco">
-      <div class="painel-titulo">Econômica</div>
-      <div class="painel-custo" id="custo-eco">R$ —</div>
-      <div class="painel-prob"><span>13 pontos</span><span id="p13-eco">—</span></div>
-      <div class="painel-prob"><span>14 pontos</span><span id="p14-eco">—</span></div>
-      <button class="btn-gerar">Gerar Grade</button>
-    </div>
-    <div class="painel-card painel-rec">
-      <div class="painel-titulo">Recomendada</div>
-      <div class="painel-custo" id="custo-rec">R$ —</div>
-      <div class="painel-prob"><span>13 pontos</span><span id="p13-rec">—</span></div>
-      <div class="painel-prob"><span>14 pontos</span><span id="p14-rec">—</span></div>
-      <button class="btn-gerar">Gerar Grade</button>
-    </div>
-    <div class="painel-card painel-elite">
-      <div class="painel-titulo">Elite Pro</div>
-      <div class="painel-custo" id="custo-elite">R$ —</div>
-      <div class="painel-prob"><span>13 pontos</span><span id="p13-elite">—</span></div>
-      <div class="painel-prob"><span>14 pontos</span><span id="p14-elite">—</span></div>
-      <button class="btn-gerar">Gerar Grade</button>
-    </div>
+  <div class="paineis-grid" id="paineis-grid">
+    <div class="estado" style="grid-column:1/-1"><div class="spinner"></div>Buscando odds...</div>
   </div>
 
-  <div class="jogos-titulo">14 Jogos do Concurso</div>
-  <div id="jogos-container">
-    <div class="loading">
-      <div class="spinner"></div>
-      Conectando ao sistema...
-    </div>
+  <div class="section-title">14 JOGOS DO CONCURSO</div>
+  <div class="jogos-grid" id="jogos-grid">
+    <div class="estado" style="grid-column:1/-1"><div class="spinner"></div></div>
   </div>
 </main>
 
-<footer>Loteca Elite Pro &nbsp;·&nbsp; Sistema privado &nbsp;·&nbsp; Copa do Mundo 2026</footer>
+<div class="grade-modal" id="grade-modal" style="display:none">
+  <div class="grade-box">
+    <h2 id="grade-titulo">Grade</h2>
+    <div class="grade-sub" id="grade-sub"></div>
+    <div id="grade-linhas"></div>
+    <div class="grade-actions">
+      <button class="btn-fechar" onclick="fecharGrade()">Fechar</button>
+    </div>
+  </div>
+</div>
 
 <script>
+const API = '';
+let dadosAtual = null;
+let concursoAtual = 1255;
+
+async function init() {
+  try {
+    const r = await fetch(`${API}/api/concursos`);
+    const d = await r.json();
+    montarTabs(d.concursos);
+  } catch(e) {
+    montarTabs([
+      {num:1255,nome:'Copa Loteca 1ª Rodada'},
+      {num:1256,nome:'2ª Rodada'},
+      {num:1257,nome:'3ª Rodada'},
+      {num:1258,nome:'Oitavas'}
+    ]);
+  }
+  carregarConcurso(concursoAtual);
+}
+
+function montarTabs(concursos) {
+  const ct = document.getElementById('tabs-container');
+  ct.innerHTML = '';
+  concursos.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'tab-btn' + (c.num === concursoAtual ? ' ativo' : '');
+    b.textContent = c.num;
+    b.title = c.nome;
+    b.onclick = () => { concursoAtual = c.num; carregarConcurso(c.num); };
+    b.id = `tab-${c.num}`;
+    ct.appendChild(b);
+  });
+}
+
 async function carregarConcurso(num) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('ativo'));
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    if(b.textContent.trim() === String(num)) b.classList.add('ativo');
-  });
+  const tabEl = document.getElementById(`tab-${num}`);
+  if (tabEl) tabEl.classList.add('ativo');
 
-  document.getElementById('jogos-container').innerHTML = '<div class="loading"><div class="spinner"></div>Carregando jogos...</div>';
+  document.getElementById('paineis-grid').innerHTML = '<div class="estado" style="grid-column:1/-1"><div class="spinner"></div>Buscando odds reais...</div>';
+  document.getElementById('jogos-grid').innerHTML = '<div class="estado" style="grid-column:1/-1"><div class="spinner"></div></div>';
 
   try {
-    const url = num === 1255
-      ? '/api/grade-automatica'
-      : `/api/concurso/${num}`;
-    const res = await fetch(url);
-    const d = await res.json();
-
-    if(d.status !== 'sucesso') throw new Error('API retornou erro');
-
-    document.getElementById('num-concurso').textContent = d.concurso;
-    document.getElementById('nome-concurso').textContent = d.nome;
-    document.getElementById('periodo-concurso').textContent = d.periodo;
-    document.getElementById('header-status').textContent = `Concurso ${d.concurso} · ${d.total_jogos} jogos`;
-
-    const p = d.paineis_decisao;
-    const eco = p.opcao_economica_ate_100;
-    const rec = p.opcao_recomendada;
-    const eli = p.opcao_elite_pro_alta_assertividade;
-
-    document.getElementById('custo-eco').textContent = `R$ ${eco.custo_real_estimado.toFixed(2)}`;
-    document.getElementById('p13-eco').textContent = eco.probabilidade_13_pontos;
-    document.getElementById('p14-eco').textContent = eco.probabilidade_14_pontos;
-
-    document.getElementById('custo-rec').textContent = `R$ ${rec.custo_real_estimado.toFixed(2)}`;
-    document.getElementById('p13-rec').textContent = rec.probabilidade_13_pontos;
-    document.getElementById('p14-rec').textContent = rec.probabilidade_14_pontos;
-
-    document.getElementById('custo-elite').textContent = `R$ ${eli.custo_real_estimado.toFixed(2)}`;
-    document.getElementById('p13-elite').textContent = eli.probabilidade_13_pontos;
-    document.getElementById('p14-elite').textContent = eli.probabilidade_14_pontos;
-
-    const html = d.jogos.map(j => {
-      const tipo = j.classificacao.tipo;
-      const badgeClass = tipo === 'SECO' ? 'badge-seco' : tipo === 'DUPLO' ? 'badge-duplo' : 'badge-triplo';
-      return `
-        <div class="jogo-card">
-          <div class="jogo-num">${j.id}</div>
-          <div class="jogo-times">
-            <div class="jogo-mandante">${j.mandante}</div>
-            <div class="jogo-vs">vs</div>
-            <div class="jogo-visitante">${j.visitante}</div>
-          </div>
-          <div class="jogo-data">${j.data}<br>${j.hora}</div>
-          <div class="jogo-badge ${badgeClass}">${tipo}<br>${j.classificacao.coluna_recomendada}</div>
-        </div>`;
-    }).join('');
-
-    document.getElementById('jogos-container').innerHTML = `<div class="jogos-grid">${html}</div>`;
-
+    const r = await fetch(`${API}/api/concurso/${num}`);
+    if (!r.ok) { const e = await r.json(); throw new Error(e.mensagem || `HTTP ${r.status}`); }
+    const d = await r.json();
+    dadosAtual = d;
+    renderizar(d);
   } catch(e) {
-    document.getElementById('header-status').textContent = 'Erro ao carregar';
-    document.getElementById('jogos-container').innerHTML = `<div class="erro">Erro ao conectar com a API.<br>Tente recarregar a página.</div>`;
+    document.getElementById('num-display').textContent = num;
+    document.getElementById('nome-display').textContent = 'Erro ao carregar';
+    document.getElementById('periodo-display').textContent = '';
+    document.getElementById('paineis-grid').innerHTML = `<div class="estado erro-txt" style="grid-column:1/-1">⚠ ${e.message}</div>`;
+    document.getElementById('jogos-grid').innerHTML = '';
   }
 }
 
-window.onload = () => carregarConcurso(1255);
+function renderizar(d) {
+  document.getElementById('num-display').textContent = d.concurso;
+  document.getElementById('nome-display').textContent = d.nome;
+  document.getElementById('periodo-display').textContent = d.periodo;
+
+  const badge = document.getElementById('badge-api');
+  const btxt  = document.getElementById('badge-txt');
+  const usouApi = d.jogos && d.jogos.some(j => j.fonte_odds === 'odds_api');
+  if (usouApi) {
+    badge.className = 'badge-api live';
+    badge.querySelector('.dot').className = 'dot dot-g';
+    btxt.textContent = 'Odds Reais · Live';
+  } else {
+    badge.className = 'badge-api fallback';
+    badge.querySelector('.dot').className = 'dot dot-y';
+    btxt.textContent = d.odds_api_ativa ? 'API Ativa · Sem Match' : 'Modelo Interno';
+  }
+
+  renderPaineis(d.paineis);
+  renderJogos(d.jogos);
+}
+
+function renderPaineis(p) {
+  if (!p) { document.getElementById('paineis-grid').innerHTML = ''; return; }
+  const items = [
+    {cls:'p-eco', key:'economica',   label:'ECONÔMICA'},
+    {cls:'p-rec', key:'recomendada', label:'RECOMENDADA'},
+    {cls:'p-eli', key:'elite_pro',   label:'ELITE PRO'},
+  ];
+  document.getElementById('paineis-grid').innerHTML = items.map(({cls,key,label}) => {
+    const v = p[key];
+    return `<div class="painel-card ${cls}">
+      <div class="p-titulo">${label}</div>
+      <div class="p-custo">R$ ${v.custo.toFixed(2)}</div>
+      <div class="p-linha"><span>13 pontos</span><span>${v.prob_13}</span></div>
+      <div class="p-linha"><span>14 pontos</span><span>${v.prob_14}</span></div>
+      <div class="p-linha"><span>Duplos</span><span>${v.duplos}</span></div>
+      <div class="p-linha"><span>Triplos</span><span>${v.triplos}</span></div>
+      <button class="btn-gerar" onclick="gerarGrade('${key}','${label}')">Gerar Grade</button>
+    </div>`;
+  }).join('');
+}
+
+function renderJogos(jogos) {
+  const g = document.getElementById('jogos-grid');
+  if (!jogos || jogos.length === 0) {
+    g.innerHTML = '<div class="empty-state">Nenhum jogo cadastrado para este concurso ainda.</div>';
+    return;
+  }
+  g.innerHTML = jogos.map(j => {
+    const {tipo, coluna, confianca} = j.classificacao;
+    const bclass = tipo==='SECO' ? 'b-seco' : tipo==='DUPLO' ? 'b-duplo' : 'b-triplo';
+    const fclass = j.fonte_odds === 'odds_api' ? 'fonte-api' : 'fonte-modelo';
+    const ftxt   = j.fonte_odds === 'odds_api' ? 'Odds API' : 'Modelo';
+    const p1 = Math.round(j.probs['1'] * 100);
+    const px = Math.round(j.probs['X'] * 100);
+    const p2 = Math.round(j.probs['2'] * 100);
+    return `<div class="jogo-card">
+      <div class="jogo-num">${j.id}</div>
+      <div class="jogo-times">
+        <div class="jogo-mandante">${j.mandante}</div>
+        <div class="jogo-vs">vs</div>
+        <div class="jogo-visitante">${j.visitante}</div>
+        <div class="probs-bar" title="1: ${p1}%  X: ${px}%  2: ${p2}%">
+          <div class="prob-seg prob-1" style="width:${p1}%"></div>
+          <div class="prob-seg prob-x" style="width:${px}%"></div>
+          <div class="prob-seg prob-2" style="width:${p2}%"></div>
+        </div>
+      </div>
+      <div class="jogo-meta">
+        <div class="jogo-data">${j.data} ${j.hora}</div>
+        <div class="jogo-badge ${bclass}">${coluna} · ${confianca}%</div>
+        <div class="fonte-badge ${fclass}">${ftxt}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function gerarGrade(tipo, label) {
+  if (!dadosAtual) return;
+  const jogos = dadosAtual.jogos;
+  const painel = dadosAtual.paineis[tipo];
+  const ordenados = [...jogos].sort((a,b) => b.classificacao.confianca - a.classificacao.confianca);
+  const nd = painel.duplos, nt = painel.triplos;
+
+  const grade = jogos.map(j => {
+    const idx = ordenados.indexOf(j);
+    let col;
+    if (idx < nt) {
+      col = '1/X/2';
+    } else if (idx < nt + nd) {
+      const pares = [['1',j.probs['1']],['X',j.probs['X']],['2',j.probs['2']]].sort((a,b)=>b[1]-a[1]);
+      col = `${pares[0][0]}/${pares[1][0]}`;
+    } else {
+      const c = j.classificacao.coluna;
+      col = c.includes('/') ? c.split('/')[0] : c;
+    }
+    return {jogo:`${j.mandante} x ${j.visitante}`, coluna: col};
+  });
+
+  document.getElementById('grade-titulo').textContent = `Grade ${label}`;
+  document.getElementById('grade-sub').textContent = `Concurso ${dadosAtual.concurso} · Custo estimado R$ ${painel.custo.toFixed(2)}`;
+  document.getElementById('grade-linhas').innerHTML = grade.map((g,i) =>
+    `<div class="grade-linha">
+      <span class="grade-jogo">${i+1}. ${g.jogo}</span>
+      <span class="grade-col">${g.coluna}</span>
+    </div>`
+  ).join('');
+  document.getElementById('grade-modal').style.display = 'flex';
+}
+
+function fecharGrade() { document.getElementById('grade-modal').style.display = 'none'; }
+document.getElementById('grade-modal').addEventListener('click', e => { if(e.target===e.currentTarget) fecharGrade(); });
+
+init();
 </script>
 </body>
 </html>
