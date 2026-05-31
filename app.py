@@ -1,6 +1,10 @@
 """
 LOTECA ELITE PRO — app.py
 Camada 1: Motor de busca dinâmica de jogos
+- Busca jogos reais via football-data.org (gratuito, sem cartão)
+- Calcula probabilidades Poisson básico com médias de gols
+- Classifica cada jogo como SECO / DUPLO / TRIPLO
+- Pronto para receber Camadas 2+ (xG, Cartola, Smart Money...)
 """
 
 import os
@@ -9,7 +13,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 import requests
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 logging.basicConfig(level=logging.INFO)
@@ -154,7 +158,8 @@ def analisar_jogo(jogo, media_gols_casa=1.5, media_gols_fora=1.1,
 
 @app.route("/")
 def index():
-    return app.send_static_file("index.html")
+    base = os.path.dirname(os.path.abspath(__file__))
+    return send_from_directory(base, "index.html")
 
 @app.route("/api/ligas", methods=["GET"])
 def listar_ligas():
