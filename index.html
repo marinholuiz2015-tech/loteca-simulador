@@ -4,362 +4,188 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loteca Elite Pro</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg:       #f5f7fa;
-  --bg2:      #ffffff;
-  --bg3:      #f0f2f5;
-  --borda:    #e2e8f0;
-  --texto:    #1a202c;
-  --muted:    #718096;
-  --muted2:   #a0aec0;
-  --verde:    #16a34a;
-  --verde-bg: #f0fdf4;
-  --verde-bd: #bbf7d0;
-  --amarelo:  #d97706;
-  --amar-bg:  #fffbeb;
-  --amar-bd:  #fde68a;
-  --azul:     #2563eb;
-  --azul-bg:  #eff6ff;
-  --azul-bd:  #bfdbfe;
-  --vermelho: #dc2626;
-  --verm-bg:  #fef2f2;
-  --verm-bd:  #fecaca;
-  --shadow:   0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--texto);min-height:100vh}
-header{background:var(--bg2);border-bottom:1px solid var(--borda);padding:0 40px;
-  display:flex;align-items:center;justify-content:space-between;height:64px;
-  box-shadow:var(--shadow);position:sticky;top:0;z-index:50}
-.logo{display:flex;align-items:center;gap:10px}
-.logo-icon{width:32px;height:32px;background:var(--verde);border-radius:8px;
-  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.9rem}
-.logo-title{font-size:1rem;font-weight:700;color:var(--texto);letter-spacing:-.01em}
-.logo-sub{font-size:.7rem;color:var(--muted);font-weight:400}
-.header-right{display:flex;align-items:center;gap:10px}
-.badge-api{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;
-  font-size:.7rem;font-weight:500;letter-spacing:.02em}
-.badge-api.live{background:var(--verde-bg);border:1px solid var(--verde-bd);color:var(--verde)}
-.badge-api.fallback{background:var(--amar-bg);border:1px solid var(--amar-bd);color:var(--amarelo)}
-.dot{width:6px;height:6px;border-radius:50%;animation:pulse 2s infinite}
-.dot-g{background:var(--verde)} .dot-y{background:var(--amarelo)}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-main{max-width:1200px;margin:0 auto;padding:28px 24px}
-.concurso-card{background:var(--bg2);border:1px solid var(--borda);border-radius:12px;
-  padding:20px 24px;margin-bottom:20px;box-shadow:var(--shadow);
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
-.concurso-left{display:flex;align-items:center;gap:16px}
-.concurso-num{font-size:2.4rem;font-weight:700;color:var(--verde);line-height:1;letter-spacing:-.02em}
-.concurso-nome{font-size:.95rem;font-weight:600;color:var(--texto);margin-bottom:3px}
-.concurso-periodo{font-size:.75rem;color:var(--muted);font-family:'DM Mono',monospace}
-.concurso-tabs{display:flex;gap:6px;flex-wrap:wrap}
-.tab-btn{font-size:.75rem;font-weight:500;padding:6px 14px;border-radius:8px;
-  border:1px solid var(--borda);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
-.tab-btn:hover{border-color:var(--verde);color:var(--verde);background:var(--verde-bg)}
-.tab-btn.ativo{border-color:var(--verde);color:var(--verde);background:var(--verde-bg);font-weight:600}
-.paineis-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
-@media(max-width:700px){.paineis-grid{grid-template-columns:1fr}}
-.painel-card{background:var(--bg2);border:1px solid var(--borda);border-radius:12px;
-  padding:20px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:box-shadow .2s}
-.painel-card:hover{box-shadow:var(--shadow-md)}
-.painel-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0}
-.p-eco::before{background:var(--verde)}
-.p-rec::before{background:var(--azul)}
-.p-eli::before{background:var(--amarelo)}
-.p-titulo{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
-.p-eco .p-titulo{color:var(--verde)} .p-rec .p-titulo{color:var(--azul)} .p-eli .p-titulo{color:var(--amarelo)}
-.p-custo{font-size:1.8rem;font-weight:700;line-height:1;margin-bottom:14px;letter-spacing:-.02em}
-.p-eco .p-custo{color:var(--verde)} .p-rec .p-custo{color:var(--azul)} .p-eli .p-custo{color:var(--amarelo)}
-.p-linha{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);
-  margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--bg3)}
-.p-linha:last-of-type{border-bottom:none}
-.p-linha span:last-child{font-weight:600;color:var(--texto)}
-.btn-gerar{width:100%;margin-top:14px;padding:10px;border-radius:8px;border:none;
-  font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .15s}
-.p-eco .btn-gerar{background:var(--verde);color:#fff}
-.p-eco .btn-gerar:hover{background:#15803d}
-.p-rec .btn-gerar{background:var(--azul);color:#fff}
-.p-rec .btn-gerar:hover{background:#1d4ed8}
-.p-eli .btn-gerar{background:var(--amarelo);color:#fff}
-.p-eli .btn-gerar:hover{background:#b45309}
-.section-title{font-size:.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:10px}
-.section-title::after{content:'';flex:1;height:1px;background:var(--borda)}
-.jogos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
-.jogo-card{background:var(--bg2);border:1px solid var(--borda);border-radius:10px;
-  padding:14px 16px;display:flex;align-items:center;gap:12px;
-  box-shadow:var(--shadow);transition:all .15s;cursor:default}
-.jogo-card:hover{border-color:#a7f3d0;box-shadow:var(--shadow-md)}
-.jogo-num{font-size:1.1rem;font-weight:700;color:var(--muted2);min-width:24px;line-height:1}
-.jogo-times{flex:1}
-.jogo-mandante{font-size:.88rem;font-weight:600;color:var(--texto);margin-bottom:1px}
-.jogo-vs{font-size:.6rem;color:var(--muted2);margin-bottom:1px;text-transform:uppercase;letter-spacing:.05em}
-.jogo-visitante{font-size:.8rem;color:var(--muted)}
-.probs-bar{display:flex;gap:2px;margin-top:7px;border-radius:4px;overflow:hidden;height:5px;background:var(--bg3)}
-.prob-seg{height:100%;transition:width .4s}
-.prob-1{background:var(--verde)} .prob-x{background:var(--muted2)} .prob-2{background:var(--vermelho)}
-.jogo-meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
-.jogo-data{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted2)}
-.jogo-badge{font-size:.62rem;font-weight:600;padding:4px 10px;border-radius:6px;letter-spacing:.04em;text-align:center;min-width:64px}
-.b-seco{background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde-bd)}
-.b-duplo{background:var(--azul-bg);color:var(--azul);border:1px solid var(--azul-bd)}
-.b-triplo{background:var(--verm-bg);color:var(--vermelho);border:1px solid var(--verm-bd)}
-.fonte-badge{font-size:.58rem;padding:2px 7px;border-radius:4px;font-weight:500}
-.fonte-api{background:var(--verde-bg);color:var(--verde)}
-.fonte-modelo{background:var(--amar-bg);color:var(--amarelo)}
-.grade-modal{position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:100;
-  display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
-.grade-box{background:var(--bg2);border:1px solid var(--borda);border-radius:16px;
-  max-width:600px;width:100%;max-height:85vh;overflow-y:auto;
-  box-shadow:0 20px 60px rgba(0,0,0,0.15);padding:28px}
-.grade-box h2{font-size:1.2rem;font-weight:700;color:var(--texto);margin-bottom:4px}
-.grade-sub{font-size:.78rem;color:var(--muted);margin-bottom:20px}
-.grade-linha{display:flex;justify-content:space-between;align-items:center;
-  padding:10px 0;border-bottom:1px solid var(--borda);font-size:.82rem}
-.grade-linha:last-of-type{border-bottom:none}
-.grade-jogo{color:var(--muted);font-size:.76rem}
-.grade-col{font-family:'DM Mono',monospace;font-weight:600;color:var(--verde);
-  background:var(--verde-bg);padding:3px 10px;border-radius:5px;font-size:.78rem}
-.grade-actions{display:flex;gap:10px;margin-top:20px}
-.btn-fechar{padding:9px 20px;border-radius:8px;border:1px solid var(--borda);
-  background:transparent;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;
-  font-size:.8rem;font-weight:500;transition:all .15s}
-.btn-fechar:hover{border-color:var(--verde);color:var(--verde)}
-.estado{text-align:center;padding:48px 20px;color:var(--muted);font-size:.82rem}
-.spinner{width:28px;height:28px;border:2px solid var(--borda);border-top-color:var(--verde);
-  border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 14px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.erro-txt{color:var(--vermelho)}
-.empty-state{background:var(--bg3);border:1px dashed var(--borda);border-radius:10px;
-  padding:32px;text-align:center;color:var(--muted);font-size:.82rem;grid-column:1/-1}
+  :root {
+    --verde:#1a7a3c;--verde2:#22a04e;--ouro:#f0c040;--escuro:#0f1c14;
+    --card:#162b1e;--borda:#2a4a34;--texto:#e8f5ec;--cinza:#8aaa94;
+    --seco:#22c55e;--duplo:#f0c040;--triplo:#ef4444;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--escuro);color:var(--texto);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+  header{background:linear-gradient(135deg,#0b1a0f,#1a3a24);border-bottom:2px solid var(--ouro);padding:18px 32px;display:flex;align-items:center;gap:16px}
+  .logo-icon{width:44px;height:44px;background:var(--ouro);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#0f1c14}
+  .logo-text h1{font-size:20px;font-weight:800;letter-spacing:1px}
+  .logo-text p{font-size:11px;color:var(--ouro);letter-spacing:2px;text-transform:uppercase}
+  .status-badge{margin-left:auto;background:rgba(34,160,78,.2);border:1px solid var(--verde2);border-radius:20px;padding:4px 14px;font-size:12px;color:var(--verde2)}
+  main{max-width:1200px;margin:0 auto;padding:32px 24px}
+  .controles{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:24px;margin-bottom:28px;display:grid;grid-template-columns:1fr 1fr auto auto;gap:16px;align-items:end}
+  .campo label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--cinza);margin-bottom:6px}
+  select,input[type=number]{width:100%;background:#0f1c14;border:1px solid var(--borda);border-radius:8px;color:var(--texto);padding:10px 14px;font-size:14px;outline:none;cursor:pointer}
+  select:focus,input:focus{border-color:var(--verde2)}
+  .btn{padding:11px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s;white-space:nowrap}
+  .btn-primary{background:var(--verde2);color:#fff}
+  .btn-primary:hover{background:#28c060;transform:translateY(-1px)}
+  .btn-primary:disabled{background:var(--borda);cursor:not-allowed;transform:none}
+  .btn-secondary{background:transparent;border:1px solid var(--borda);color:var(--cinza)}
+  .btn-secondary:hover{border-color:var(--verde2);color:var(--verde2)}
+  .sumario{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px}
+  .card-stat{background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:18px;text-align:center}
+  .card-stat .valor{font-size:32px;font-weight:800;line-height:1;margin-bottom:4px}
+  .card-stat .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--cinza)}
+  .card-stat.seco .valor{color:var(--seco)}
+  .card-stat.duplo .valor{color:var(--duplo)}
+  .card-stat.triplo .valor{color:var(--triplo)}
+  .card-stat.total .valor{color:var(--ouro)}
+  .card-stat.custo .valor{font-size:22px;color:#60a5fa}
+  .aviso-simulado{background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.4);border-radius:10px;padding:12px 18px;font-size:13px;color:var(--ouro);margin-bottom:20px;display:none}
+  .aviso-simulado.visivel{display:block}
+  .grade-header{display:grid;grid-template-columns:32px 1fr 80px 80px 80px 90px 80px;gap:8px;padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--cinza);border-bottom:1px solid var(--borda);margin-bottom:8px}
+  .jogo-card{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:14px 16px;margin-bottom:8px;display:grid;grid-template-columns:32px 1fr 80px 80px 80px 90px 80px;gap:8px;align-items:center;transition:border-color .2s}
+  .jogo-card:hover{border-color:var(--verde2)}
+  .jogo-num{font-size:13px;font-weight:700;color:var(--cinza);text-align:center}
+  .jogo-times .mandante{font-weight:700;font-size:14px}
+  .jogo-times .vs{font-size:11px;color:var(--cinza);margin:2px 0}
+  .jogo-times .visitante{font-size:13px;color:#b0c8ba}
+  .prob{text-align:center;font-size:13px;font-weight:700;padding:5px 8px;border-radius:6px;background:rgba(255,255,255,.04)}
+  .prob.maior{background:rgba(34,160,78,.25);color:#6ee7a0}
+  .classificacao{text-align:center;font-size:12px;font-weight:800;letter-spacing:1px;padding:5px 10px;border-radius:20px}
+  .class-SECO{background:rgba(34,197,94,.2);color:var(--seco);border:1px solid rgba(34,197,94,.4)}
+  .class-DUPLO{background:rgba(240,192,64,.2);color:var(--duplo);border:1px solid rgba(240,192,64,.4)}
+  .class-TRIPLO{background:rgba(239,68,68,.2);color:var(--triplo);border:1px solid rgba(239,68,68,.4)}
+  .conf-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--cinza)}
+  .conf-bar .barra{flex:1;height:5px;background:var(--borda);border-radius:3px;overflow:hidden}
+  .conf-bar .fill{height:100%;background:var(--verde2);border-radius:3px;transition:width .5s}
+  .loading{text-align:center;padding:60px;color:var(--cinza);display:none}
+  .loading.visivel{display:block}
+  .spinner{width:40px;height:40px;border:3px solid var(--borda);border-top-color:var(--verde2);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .erro{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:16px 20px;color:#fca5a5;display:none;margin-bottom:20px}
+  .erro.visivel{display:block}
+  .vazio{text-align:center;padding:60px;color:var(--cinza)}
+  .vazio .icon{font-size:48px;margin-bottom:16px}
+  .vazio h3{font-size:18px;margin-bottom:8px;color:var(--texto)}
+  @media(max-width:900px){.controles{grid-template-columns:1fr 1fr}.sumario{grid-template-columns:repeat(3,1fr)}.grade-header{display:none}.jogo-card{grid-template-columns:24px 1fr}.jogo-card>*:not(.jogo-num):not(.jogo-times):not(.classificacao){display:none}}
 </style>
 </head>
 <body>
-
 <header>
-  <div class="logo">
-    <div class="logo-icon">LP</div>
-    <div>
-      <div class="logo-title">Loteca Elite Pro</div>
-      <div class="logo-sub">Sistema Probabilístico</div>
-    </div>
+  <div class="logo-icon">L</div>
+  <div class="logo-text">
+    <h1>LOTECA ELITE PRO</h1>
+    <p>Motor Preditivo · Camada 1</p>
   </div>
-  <div class="header-right">
-    <div id="badge-api" class="badge-api fallback">
-      <span class="dot dot-y"></span>
-      <span id="badge-txt">Carregando...</span>
-    </div>
-  </div>
+  <span class="status-badge" id="badgeStatus">● Carregando…</span>
 </header>
-
 <main>
-  <div class="concurso-card">
-    <div class="concurso-left">
-      <div class="concurso-num" id="num-display">—</div>
-      <div>
-        <div class="concurso-nome" id="nome-display">Carregando concurso...</div>
-        <div class="concurso-periodo" id="periodo-display">—</div>
-      </div>
+  <div class="controles">
+    <div class="campo">
+      <label>Liga</label>
+      <select id="selLiga"><option value="">Carregando…</option></select>
     </div>
-    <div class="concurso-tabs" id="tabs-container"></div>
+    <div class="campo">
+      <label>Janela de dias</label>
+      <input type="number" id="inputDias" value="14" min="1" max="60">
+    </div>
+    <button class="btn btn-primary" id="btnBuscar" onclick="buscarGrade()">⚡ Analisar Grade</button>
+    <button class="btn btn-secondary" onclick="limparGrade()">✕ Limpar</button>
   </div>
-
-  <div class="paineis-grid" id="paineis-grid">
-    <div class="estado" style="grid-column:1/-1"><div class="spinner"></div>Buscando odds...</div>
+  <div class="aviso-simulado" id="avisoSimulado">
+    ⚠️ <strong>Dados simulados</strong> — Configure <code>FOOTBALL_DATA_KEY</code> no Render para jogos reais.
   </div>
-
-  <div class="section-title">14 JOGOS DO CONCURSO</div>
-  <div class="jogos-grid" id="jogos-grid">
-    <div class="estado" style="grid-column:1/-1"><div class="spinner"></div></div>
+  <div class="erro" id="painelErro"></div>
+  <div class="sumario" id="sumario" style="display:none">
+    <div class="card-stat total"><div class="valor" id="statTotal">0</div><div class="label">Jogos</div></div>
+    <div class="card-stat seco"><div class="valor" id="statSecos">0</div><div class="label">Secos</div></div>
+    <div class="card-stat duplo"><div class="valor" id="statDuplos">0</div><div class="label">Duplos</div></div>
+    <div class="card-stat triplo"><div class="valor" id="statTriplos">0</div><div class="label">Triplos</div></div>
+    <div class="card-stat custo"><div class="valor" id="statCusto">R$0</div><div class="label">Custo estimado</div></div>
+  </div>
+  <div class="loading" id="loading"><div class="spinner"></div><p>Buscando jogos e calculando probabilidades…</p></div>
+  <div id="gradeContainer">
+    <div class="vazio">
+      <div class="icon">⚽</div>
+      <h3>Selecione uma liga e clique em Analisar</h3>
+      <p>O sistema buscará os próximos jogos automaticamente.</p>
+    </div>
   </div>
 </main>
-
-<div class="grade-modal" id="grade-modal" style="display:none">
-  <div class="grade-box">
-    <h2 id="grade-titulo">Grade</h2>
-    <div class="grade-sub" id="grade-sub"></div>
-    <div id="grade-linhas"></div>
-    <div class="grade-actions">
-      <button class="btn-fechar" onclick="fecharGrade()">Fechar</button>
-    </div>
-  </div>
-</div>
-
 <script>
-const API = '';
-let dadosAtual = null;
-let concursoAtual = 1255;
-
-async function init() {
-  try {
-    const r = await fetch(`${API}/api/concursos`);
-    const d = await r.json();
-    montarTabs(d.concursos);
-  } catch(e) {
-    montarTabs([
-      {num:1255,nome:'Copa Loteca 1ª Rodada'},
-      {num:1256,nome:'2ª Rodada'},
-      {num:1257,nome:'3ª Rodada'},
-      {num:1258,nome:'Oitavas'}
-    ]);
-  }
-  carregarConcurso(concursoAtual);
+const API='';
+async function init(){await Promise.all([carregarStatus(),carregarLigas()])}
+async function carregarStatus(){
+  try{
+    const r=await fetch(`${API}/api/status`);const d=await r.json();
+    const b=document.getElementById('badgeStatus');
+    b.textContent='● Online · v'+(d.versao||'2.0');b.style.color='#22c55e';b.style.borderColor='#22c55e';
+  }catch{document.getElementById('badgeStatus').textContent='● Offline'}
 }
-
-function montarTabs(concursos) {
-  const ct = document.getElementById('tabs-container');
-  ct.innerHTML = '';
-  concursos.forEach(c => {
-    const b = document.createElement('button');
-    b.className = 'tab-btn' + (c.num === concursoAtual ? ' ativo' : '');
-    b.textContent = c.num;
-    b.title = c.nome;
-    b.onclick = () => { concursoAtual = c.num; carregarConcurso(c.num); };
-    b.id = `tab-${c.num}`;
-    ct.appendChild(b);
-  });
+async function carregarLigas(){
+  try{
+    const r=await fetch(`${API}/api/ligas`);const d=await r.json();
+    const sel=document.getElementById('selLiga');sel.innerHTML='';
+    d.ligas.forEach(l=>{const o=document.createElement('option');o.value=l.key;o.textContent=`${l.nome} (${l.pais})`;if(l.key==='brasileirao')o.selected=true;sel.appendChild(o)});
+  }catch(e){console.error(e)}
 }
-
-async function carregarConcurso(num) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('ativo'));
-  const tabEl = document.getElementById(`tab-${num}`);
-  if (tabEl) tabEl.classList.add('ativo');
-
-  document.getElementById('paineis-grid').innerHTML = '<div class="estado" style="grid-column:1/-1"><div class="spinner"></div>Buscando odds reais...</div>';
-  document.getElementById('jogos-grid').innerHTML = '<div class="estado" style="grid-column:1/-1"><div class="spinner"></div></div>';
-
-  try {
-    const r = await fetch(`${API}/api/concurso/${num}`);
-    if (!r.ok) { const e = await r.json(); throw new Error(e.mensagem || `HTTP ${r.status}`); }
-    const d = await r.json();
-    dadosAtual = d;
-    renderizar(d);
-  } catch(e) {
-    document.getElementById('num-display').textContent = num;
-    document.getElementById('nome-display').textContent = 'Erro ao carregar';
-    document.getElementById('periodo-display').textContent = '';
-    document.getElementById('paineis-grid').innerHTML = `<div class="estado erro-txt" style="grid-column:1/-1">⚠ ${e.message}</div>`;
-    document.getElementById('jogos-grid').innerHTML = '';
-  }
+async function buscarGrade(){
+  const liga=document.getElementById('selLiga').value;
+  const dias=document.getElementById('inputDias').value||14;
+  if(!liga){mostrarErro('Selecione uma liga.');return}
+  setLoading(true);limparResultados();
+  try{
+    const r=await fetch(`${API}/api/grade-automatica?liga=${liga}&dias=${dias}&max=14`);
+    const d=await r.json();
+    if(d.erro){mostrarErro(d.erro);return}
+    if(d.simulado)document.getElementById('avisoSimulado').classList.add('visivel');
+    renderSumario(d);renderGrade(d.jogos);
+  }catch(e){mostrarErro('Erro ao conectar com o servidor.')}
+  finally{setLoading(false)}
 }
-
-function renderizar(d) {
-  document.getElementById('num-display').textContent = d.concurso;
-  document.getElementById('nome-display').textContent = d.nome;
-  document.getElementById('periodo-display').textContent = d.periodo;
-
-  const badge = document.getElementById('badge-api');
-  const btxt  = document.getElementById('badge-txt');
-  const usouApi = d.jogos && d.jogos.some(j => j.fonte_odds === 'odds_api');
-  if (usouApi) {
-    badge.className = 'badge-api live';
-    badge.querySelector('.dot').className = 'dot dot-g';
-    btxt.textContent = 'Odds Reais · Live';
-  } else {
-    badge.className = 'badge-api fallback';
-    badge.querySelector('.dot').className = 'dot dot-y';
-    btxt.textContent = d.odds_api_ativa ? 'API Ativa · Sem Match' : 'Modelo Interno';
-  }
-
-  renderPaineis(d.paineis);
-  renderJogos(d.jogos);
+function renderSumario(d){
+  document.getElementById('sumario').style.display='grid';
+  document.getElementById('statTotal').textContent=d.total;
+  document.getElementById('statSecos').textContent=d.secos;
+  document.getElementById('statDuplos').textContent=d.duplos;
+  document.getElementById('statTriplos').textContent=d.triplos;
+  document.getElementById('statCusto').textContent='R$ '+(d.custo_estimado_reais||0).toFixed(2);
 }
-
-function renderPaineis(p) {
-  if (!p) { document.getElementById('paineis-grid').innerHTML = ''; return; }
-  const items = [
-    {cls:'p-eco', key:'economica',   label:'ECONÔMICA'},
-    {cls:'p-rec', key:'recomendada', label:'RECOMENDADA'},
-    {cls:'p-eli', key:'elite_pro',   label:'ELITE PRO'},
-  ];
-  document.getElementById('paineis-grid').innerHTML = items.map(({cls,key,label}) => {
-    const v = p[key];
-    return `<div class="painel-card ${cls}">
-      <div class="p-titulo">${label}</div>
-      <div class="p-custo">R$ ${v.custo.toFixed(2)}</div>
-      <div class="p-linha"><span>13 pontos</span><span>${v.prob_13}</span></div>
-      <div class="p-linha"><span>14 pontos</span><span>${v.prob_14}</span></div>
-      <div class="p-linha"><span>Duplos</span><span>${v.duplos}</span></div>
-      <div class="p-linha"><span>Triplos</span><span>${v.triplos}</span></div>
-      <button class="btn-gerar" onclick="gerarGrade('${key}','${label}')">Gerar Grade</button>
+function renderGrade(jogos){
+  const c=document.getElementById('gradeContainer');
+  if(!jogos||jogos.length===0){c.innerHTML='<div class="vazio"><div class="icon">📭</div><h3>Nenhum jogo encontrado</h3><p>Tente aumentar a janela de dias.</p></div>';return}
+  const header='<div class="grade-header"><div>#</div><div>Confronto</div><div style="text-align:center">P1</div><div style="text-align:center">PX</div><div style="text-align:center">P2</div><div style="text-align:center">Tipo</div><div style="text-align:center">Confiança</div></div>';
+  const cards=jogos.map((j,i)=>{
+    const p=j.probabilidades||{p1:.33,px:.33,p2:.33};
+    const max=Math.max(p.p1,p.px,p.p2);
+    const conf=j.confianca||0;
+    const pc=v=>v===max?'prob maior':'prob';
+    const cl=j.classificacao||'TRIPLO';
+    const dt=j.data_utc?new Date(j.data_utc).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'';
+    return`<div class="jogo-card">
+      <div class="jogo-num">${i+1}</div>
+      <div class="jogo-times"><div class="mandante">${j.mandante||'Time 1'}</div><div class="vs">× ${dt}</div><div class="visitante">${j.visitante||'Time 2'}</div></div>
+      <div class="${pc(p.p1)}">${pct(p.p1)}</div>
+      <div class="${pc(p.px)}">${pct(p.px)}</div>
+      <div class="${pc(p.p2)}">${pct(p.p2)}</div>
+      <div><span class="classificacao class-${cl}">${cl}</span></div>
+      <div class="conf-bar"><div class="barra"><div class="fill" style="width:${conf}%"></div></div><span>${conf.toFixed(0)}%</span></div>
     </div>`;
   }).join('');
+  c.innerHTML=header+cards;
 }
-
-function renderJogos(jogos) {
-  const g = document.getElementById('jogos-grid');
-  if (!jogos || jogos.length === 0) {
-    g.innerHTML = '<div class="empty-state">Nenhum jogo cadastrado para este concurso ainda.</div>';
-    return;
-  }
-  g.innerHTML = jogos.map(j => {
-    const {tipo, coluna, confianca} = j.classificacao;
-    const bclass = tipo==='SECO' ? 'b-seco' : tipo==='DUPLO' ? 'b-duplo' : 'b-triplo';
-    const fclass = j.fonte_odds === 'odds_api' ? 'fonte-api' : 'fonte-modelo';
-    const ftxt   = j.fonte_odds === 'odds_api' ? 'Odds API' : 'Modelo';
-    const p1 = Math.round(j.probs['1'] * 100);
-    const px = Math.round(j.probs['X'] * 100);
-    const p2 = Math.round(j.probs['2'] * 100);
-    return `<div class="jogo-card">
-      <div class="jogo-num">${j.id}</div>
-      <div class="jogo-times">
-        <div class="jogo-mandante">${j.mandante}</div>
-        <div class="jogo-vs">vs</div>
-        <div class="jogo-visitante">${j.visitante}</div>
-        <div class="probs-bar" title="1: ${p1}%  X: ${px}%  2: ${p2}%">
-          <div class="prob-seg prob-1" style="width:${p1}%"></div>
-          <div class="prob-seg prob-x" style="width:${px}%"></div>
-          <div class="prob-seg prob-2" style="width:${p2}%"></div>
-        </div>
-      </div>
-      <div class="jogo-meta">
-        <div class="jogo-data">${j.data} ${j.hora}</div>
-        <div class="jogo-badge ${bclass}">${coluna} · ${confianca}%</div>
-        <div class="fonte-badge ${fclass}">${ftxt}</div>
-      </div>
-    </div>`;
-  }).join('');
+function pct(v){return Math.round((v||0)*100)+'%'}
+function setLoading(on){document.getElementById('loading').classList.toggle('visivel',on);document.getElementById('btnBuscar').disabled=on}
+function mostrarErro(msg){const el=document.getElementById('painelErro');el.textContent='⚠️ '+msg;el.classList.add('visivel')}
+function limparResultados(){
+  document.getElementById('painelErro').classList.remove('visivel');
+  document.getElementById('avisoSimulado').classList.remove('visivel');
+  document.getElementById('sumario').style.display='none';
+  document.getElementById('gradeContainer').innerHTML='<div class="vazio"><div class="icon">⚽</div><h3>Carregando…</h3></div>';
 }
-
-function gerarGrade(tipo, label) {
-  if (!dadosAtual) return;
-  const jogos = dadosAtual.jogos;
-  const painel = dadosAtual.paineis[tipo];
-  const ordenados = [...jogos].sort((a,b) => b.classificacao.confianca - a.classificacao.confianca);
-  const nd = painel.duplos, nt = painel.triplos;
-
-  const grade = jogos.map(j => {
-    const idx = ordenados.indexOf(j);
-    let col;
-    if (idx < nt) {
-      col = '1/X/2';
-    } else if (idx < nt + nd) {
-      const pares = [['1',j.probs['1']],['X',j.probs['X']],['2',j.probs['2']]].sort((a,b)=>b[1]-a[1]);
-      col = `${pares[0][0]}/${pares[1][0]}`;
-    } else {
-      const c = j.classificacao.coluna;
-      col = c.includes('/') ? c.split('/')[0] : c;
-    }
-    return {jogo:`${j.mandante} x ${j.visitante}`, coluna: col};
-  });
-
-  document.getElementById('grade-titulo').textContent = `Grade ${label}`;
-  document.getElementById('grade-sub').textContent = `Concurso ${dadosAtual.concurso} · Custo estimado R$ ${painel.custo.toFixed(2)}`;
-  document.getElementById('grade-linhas').innerHTML = grade.map((g,i) =>
-    `<div class="grade-linha">
-      <span class="grade-jogo">${i+1}. ${g.jogo}</span>
-      <span class="grade-col">${g.coluna}</span>
-    </div>`
-  ).join('');
-  document.getElementById('grade-modal').style.display = 'flex';
+function limparGrade(){
+  document.getElementById('painelErro').classList.remove('visivel');
+  document.getElementById('avisoSimulado').classList.remove('visivel');
+  document.getElementById('sumario').style.display='none';
+  document.getElementById('gradeContainer').innerHTML='<div class="vazio"><div class="icon">⚽</div><h3>Selecione uma liga e clique em Analisar</h3><p>O sistema buscará os próximos jogos automaticamente.</p></div>';
 }
-
-function fecharGrade() { document.getElementById('grade-modal').style.display = 'none'; }
-document.getElementById('grade-modal').addEventListener('click', e => { if(e.target===e.currentTarget) fecharGrade(); });
-
 init();
 </script>
 </body>
