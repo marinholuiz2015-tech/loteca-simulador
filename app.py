@@ -257,10 +257,44 @@ _coleta = {"rodando":False,"relatorio":None,"erro":None}
 # ═══════════════════════════════════════════════════════════
 @app.route("/")
 def index():
-    for pasta in [os.path.dirname(os.path.abspath(__file__)),os.getcwd(),"/opt/render/project/src"]:
-        if os.path.exists(os.path.join(pasta,"index.html")):
-            return send_from_directory(pasta,"index.html")
-    return "index.html não encontrado",404
+
+
+
+    
+    from flask import Response
+
+
+
+    
+    for pasta in [os.path.dirname(os.path.abspath(__file__)), os.getcwd(), "/opt/render/project/src"]:
+
+
+
+        
+        caminho = os.path.join(pasta, "index.html")
+
+
+
+        
+        if os.path.exists(caminho):
+
+
+
+            
+            with open(caminho, "r", encoding="utf-8") as f:
+
+
+
+                
+                return Response(f.read(), mimetype="text/html")
+
+
+
+    
+    return f"nao encontrado. CWD:{os.getcwd()}", 404
+
+
+
 
 @app.route("/api/ligas")
 def listar_ligas():
