@@ -1,13 +1,13 @@
 """
-LOTECA ELITE PRO — app.py v3.0
+LOTECA ELITE PRO — app.py v3.1
 Camada 1 + Coletor Histórico CEF integrado
 """
 
-import os, math, logging, sqlite3, threading
+import os, math, logging, sqlite3, threading, glob
 from datetime import datetime, timedelta, timezone
 
 import requests
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, Response
 from flask_cors import CORS
 
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +22,6 @@ DB_PATH   = os.getenv("DB_PATH", "loteca_historico.db")
 URL_CEF   = "https://servicebus2.caixa.gov.br/portaldeloterias/api/loteca"
 
 LIGAS = {
-    # Brasil — todas as divisões presentes na Loteca
     "brasileirao":   {"codigo":"BSA", "nome":"Brasileirão Série A",  "pais":"Brasil"},
     "serie_b":       {"codigo":"BSB", "nome":"Brasileirão Série B",  "pais":"Brasil"},
     "serie_c":       {"codigo":"BSC", "nome":"Brasileirão Série C",  "pais":"Brasil"},
@@ -33,10 +32,8 @@ LIGAS = {
     "carioca":       {"codigo":"CRJ", "nome":"Carioca",              "pais":"Brasil"},
     "gaucho":        {"codigo":"CGS", "nome":"Gaúcho",               "pais":"Brasil"},
     "mineiro":       {"codigo":"CMG", "nome":"Mineiro",              "pais":"Brasil"},
-    # Sul-América
     "libertadores":  {"codigo":"CLI", "nome":"Copa Libertadores",    "pais":"Sul-América"},
     "sul_americana": {"codigo":"CSA", "nome":"Copa Sul-Americana",   "pais":"Sul-América"},
-    # Europa
     "champions":     {"codigo":"CL",  "nome":"Champions League",     "pais":"Europa"},
     "premier":       {"codigo":"PL",  "nome":"Premier League",       "pais":"Inglaterra"},
     "la_liga":       {"codigo":"PD",  "nome":"La Liga",              "pais":"Espanha"},
@@ -44,15 +41,28 @@ LIGAS = {
     "bundesliga":    {"codigo":"BL1", "nome":"Bundesliga",           "pais":"Alemanha"},
     "ligue1":        {"codigo":"FL1", "nome":"Ligue 1",              "pais":"França"},
     "primeira_liga": {"codigo":"PPL", "nome":"Primeira Liga",        "pais":"Portugal"},
-    # Mundial
     "copa_do_mundo": {"codigo":"WC",  "nome":"Copa do Mundo",        "pais":"Mundial"},
 }
 
 # ═══════════════════════════════════════════════════════════
 # BANCO HISTÓRICO
 # ═══════════════════════════════════════════════════════════
+def _db_path_real():
+    """Encontra o caminho real do banco — testa múltiplos locais."""
+    candidatos = [
+        DB_PATH,
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "loteca_historico.db"),
+        os.path.join(os.getcwd(), "loteca_historico.db"),
+        "/opt/render/project/src/loteca_historico.db",
+        "/opt/render/project/loteca_historico.db",
+    ]
+    for p in candidatos:
+        if os.path.exists(p):
+            return p
+    return DB_PATH  # fallback
+
 def criar_banco():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(_db_path_real())
     c = conn.cursor()
     c.execute("""CREATE TABLE IF NOT EXISTS concursos (
         id INTEGER PRIMARY KEY, numero INTEGER UNIQUE,
@@ -118,7 +128,8 @@ def salvar(conn, concurso, jogos):
 
 def coletar(inicio=1, fim=None):
     criar_banco()
-    conn = sqlite3.connect(DB_PATH)
+    db = _db_path_real()
+    conn = sqlite3.connect(db)
     c = conn.cursor()
     c.execute("SELECT MAX(numero) FROM concursos")
     ultimo = c.fetchone()[0] or 0
@@ -206,7 +217,7 @@ def analisar(jogo,mc=1.5,mf=1.1,msc=1.2,msf=1.4):
             "confianca":conf,"metodo":"poisson_v1"}
 
 # ═══════════════════════════════════════════════════════════
-# BUSCA DE JOGOS (football-data.org)
+# BUSCA DE JOGOS
 # ═══════════════════════════════════════════════════════════
 def jogos_simulados(liga_key):
     base={"brasileirao":[("Flamengo","Palmeiras"),("São Paulo","Corinthians"),
@@ -257,44 +268,17 @@ _coleta = {"rodando":False,"relatorio":None,"erro":None}
 # ═══════════════════════════════════════════════════════════
 @app.route("/")
 def index():
-
-
-
-    
-    from flask import Response
-
-
-
-    
-    for pasta in [os.path.dirname(os.path.abspath(__file__)), os.getcwd(), "/opt/render/project/src"]:
-
-
-
-        
+    for pasta in [
+        os.path.dirname(os.path.abspath(__file__)),
+        os.getcwd(),
+        "/opt/render/project/src",
+        "/opt/render/project",
+    ]:
         caminho = os.path.join(pasta, "index.html")
-
-
-
-        
         if os.path.exists(caminho):
-
-
-
-            
             with open(caminho, "r", encoding="utf-8") as f:
-
-
-
-                
                 return Response(f.read(), mimetype="text/html")
-
-
-
-    
-    return f"nao encontrado. CWD:{os.getcwd()}", 404
-
-
-
+    return f"index.html nao encontrado. CWD:{os.getcwd()}", 404
 
 @app.route("/api/ligas")
 def listar_ligas():
@@ -341,7 +325,6 @@ def analisar_grade():
     return jsonify({"total":len(res),"secos":secos,"duplos":duplos,"triplos":triplos,
                     "custo":round(3.0*(2**duplos)*(3**triplos)/100,2),"jogos":res})
 
-# ── Coletor ──────────────────────────────────────────────────────────────────
 @app.route("/api/coletar",methods=["POST"])
 def iniciar_coleta():
     global _coleta
@@ -360,17 +343,16 @@ def iniciar_coleta():
         except Exception as e:
             _coleta={"rodando":False,"relatorio":None,"erro":str(e)}
     threading.Thread(target=_run,daemon=True).start()
-    return jsonify({"status":"iniciado","msg":f"Coletando a partir do concurso {inicio}. Consulte /api/coletar/status"})
+    return jsonify({"status":"iniciado","msg":f"Coletando a partir do concurso {inicio}"})
 
 @app.route("/api/coletar/status")
 def status_coleta():
     return jsonify(_coleta)
 
-# ── Histórico ────────────────────────────────────────────────────────────────
 @app.route("/api/historico/resumo")
 def hist_resumo():
     try:
-        conn=sqlite3.connect(DB_PATH); c=conn.cursor()
+        conn=sqlite3.connect(_db_path_real()); c=conn.cursor()
         c.execute("SELECT COUNT(*) FROM concursos"); tc=c.fetchone()[0]
         c.execute("SELECT COUNT(*) FROM jogos"); tj=c.fetchone()[0]
         c.execute("SELECT MIN(numero),MAX(numero),MIN(data_apuracao),MAX(data_apuracao) FROM concursos")
@@ -385,12 +367,12 @@ def hist_resumo():
                         "data_mais_antiga":dm,"data_mais_recente":dM,
                         "distribuicao_resultados":dist,"top_10_times":top})
     except Exception as e:
-        return jsonify({"erro":str(e),"msg":"Banco vazio. Rode POST /api/coletar primeiro."}),500
+        return jsonify({"erro":str(e),"msg":"Banco vazio ou não encontrado."}),500
 
 @app.route("/api/historico/time/<nome>")
 def hist_time(nome):
     try:
-        conn=sqlite3.connect(DB_PATH); c=conn.cursor()
+        conn=sqlite3.connect(_db_path_real()); c=conn.cursor()
         c.execute("SELECT resultado,COUNT(*) FROM jogos WHERE mandante=? GROUP BY resultado",(nome,))
         casa=dict(c.fetchall())
         c.execute("SELECT resultado,COUNT(*) FROM jogos WHERE visitante=? GROUP BY resultado",(nome,))
@@ -411,7 +393,7 @@ def hist_confronto():
     m=request.args.get("mandante",""); v=request.args.get("visitante","")
     if not m or not v: return jsonify({"erro":"Informe mandante e visitante"}),400
     try:
-        conn=sqlite3.connect(DB_PATH); c=conn.cursor()
+        conn=sqlite3.connect(_db_path_real()); c=conn.cursor()
         c.execute("""SELECT j.concurso,co.data_apuracao,j.resultado
                      FROM jogos j JOIN concursos co ON j.concurso=co.numero
                      WHERE j.mandante=? AND j.visitante=?
@@ -428,17 +410,29 @@ def hist_confronto():
 
 @app.route("/api/status")
 def api_status():
+    db = _db_path_real()
+    dbs_encontrados = glob.glob("/opt/render/project/**/*.db", recursive=True)
     try:
-        conn=sqlite3.connect(DB_PATH); c=conn.cursor()
+        conn=sqlite3.connect(db); c=conn.cursor()
         c.execute("SELECT COUNT(*) FROM concursos"); tc=c.fetchone()[0]
         conn.close()
         banco="populado" if tc>0 else "vazio"
         banco_info=f"{tc} concursos"
-    except: banco="não encontrado"; banco_info="0 concursos"
-    return jsonify({"status":"online","versao":"3.0-historico",
-                    "banco_historico":banco,"banco_info":banco_info,
-                    "football_data":"configurada" if FDATA_KEY else "ausente (simulado)",
-                    "odds_api":"configurada" if ODDS_KEY else "ausente"})
+    except Exception as e:
+        banco="não encontrado"
+        banco_info=f"erro: {str(e)}"
+    return jsonify({
+        "status":"online",
+        "versao":"3.1",
+        "banco_historico":banco,
+        "banco_info":banco_info,
+        "db_path_usado":db,
+        "db_existe":os.path.exists(db),
+        "cwd":os.getcwd(),
+        "dbs_no_servidor":dbs_encontrados,
+        "football_data":"configurada" if FDATA_KEY else "ausente (simulado)",
+        "odds_api":"configurada" if ODDS_KEY else "ausente"
+    })
 
 if __name__=="__main__":
     criar_banco()
