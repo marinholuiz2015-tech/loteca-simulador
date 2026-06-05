@@ -4,266 +4,1236 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loteca Elite Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --verde:#1a7a3c;--verde2:#22a04e;--ouro:#f0c040;--escuro:#0f1c14;
-    --card:#162b1e;--borda:#2a4a34;--texto:#e8f5ec;--cinza:#8aaa94;
-    --seco:#22c55e;--duplo:#f0c040;--triplo:#ef4444;
-    --hist:#60a5fa;--misto:#a78bfa;--liga:#94a3b8;--sim:#fb923c;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--escuro);color:var(--texto);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
-  header{background:linear-gradient(135deg,#0b1a0f,#1a3a24);border-bottom:2px solid var(--ouro);padding:18px 32px;display:flex;align-items:center;gap:16px}
-  .logo-icon{width:44px;height:44px;background:var(--ouro);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#0f1c14}
-  .logo-text h1{font-size:20px;font-weight:800;letter-spacing:1px}
-  .logo-text p{font-size:11px;color:var(--ouro);letter-spacing:2px;text-transform:uppercase}
-  .header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
-  .status-badge{background:rgba(34,160,78,.2);border:1px solid var(--verde2);border-radius:20px;padding:4px 14px;font-size:12px;color:var(--verde2)}
-  .db-badge{border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700}
-  .db-on{background:rgba(96,165,250,.15);border:1px solid rgba(96,165,250,.5);color:var(--hist)}
-  .db-off{background:rgba(148,163,184,.1);border:1px solid rgba(148,163,184,.3);color:var(--liga)}
-  main{max-width:1300px;margin:0 auto;padding:28px 24px}
-  .controles{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:22px;margin-bottom:24px;display:grid;grid-template-columns:1.5fr 1fr 1fr auto auto;gap:14px;align-items:end}
-  .campo label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--cinza);margin-bottom:6px}
-  select,input[type=number]{width:100%;background:#0f1c14;border:1px solid var(--borda);border-radius:8px;color:var(--texto);padding:10px 14px;font-size:14px;outline:none}
-  select:focus,input:focus{border-color:var(--verde2)}
-  .btn{padding:11px 22px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s;white-space:nowrap}
-  .btn-primary{background:var(--verde2);color:#fff}
-  .btn-primary:hover{background:#28c060;transform:translateY(-1px)}
-  .btn-primary:disabled{background:var(--borda);cursor:not-allowed;transform:none}
-  .btn-secondary{background:transparent;border:1px solid var(--borda);color:var(--cinza)}
-  .btn-secondary:hover{border-color:var(--verde2);color:var(--verde2)}
-  .aviso{border-radius:10px;padding:11px 18px;font-size:13px;margin-bottom:18px;display:none}
-  .aviso.visivel{display:block}
-  .aviso-sim{background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.4);color:var(--ouro)}
-  .aviso-err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);color:#fca5a5}
-  .cobertura-bar{background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:none}
-  .cobertura-bar.visivel{display:block}
-  .cob-titulo{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--cinza);margin-bottom:10px}
-  .cob-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  .cob-item{display:flex;align-items:center;gap:6px;font-size:12px}
-  .cob-dot{width:10px;height:10px;border-radius:50%}
-  .cob-hist{background:var(--hist)}.cob-liga{background:var(--liga)}.cob-sim{background:var(--sim)}
-  .sumario{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px}
-  .card-stat{background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:18px;text-align:center}
-  .card-stat .valor{font-size:30px;font-weight:800;line-height:1;margin-bottom:4px}
-  .card-stat .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--cinza)}
-  .card-stat.seco .valor{color:var(--seco)}.card-stat.duplo .valor{color:var(--duplo)}
-  .card-stat.triplo .valor{color:var(--triplo)}.card-stat.total .valor{color:var(--ouro)}
-  .card-stat.custo .valor{font-size:20px;color:var(--hist)}
-  .grade-header{display:grid;grid-template-columns:32px 1.8fr 70px 70px 70px 80px 100px 90px;gap:8px;padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--cinza);border-bottom:1px solid var(--borda);margin-bottom:6px}
-  .jogo-card{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:12px 14px;margin-bottom:7px;display:grid;grid-template-columns:32px 1.8fr 70px 70px 70px 80px 100px 90px;gap:8px;align-items:center;transition:border-color .15s}
-  .jogo-card:hover{border-color:var(--verde2)}
-  .jogo-num{font-size:12px;font-weight:700;color:var(--cinza);text-align:center}
-  .jogo-times .mandante{font-weight:700;font-size:14px}
-  .jogo-times .vs{font-size:11px;color:var(--cinza);margin:2px 0}
-  .jogo-times .visitante{font-size:13px;color:#b0c8ba}
-  .prob{text-align:center;font-size:13px;font-weight:700;padding:4px 6px;border-radius:6px;background:rgba(255,255,255,.04)}
-  .prob.maior{background:rgba(34,160,78,.25);color:#6ee7a0}
-  .classificacao{text-align:center;font-size:11px;font-weight:800;letter-spacing:.5px;padding:4px 8px;border-radius:20px}
-  .class-SECO{background:rgba(34,197,94,.2);color:var(--seco);border:1px solid rgba(34,197,94,.4)}
-  .class-DUPLO{background:rgba(240,192,64,.2);color:var(--duplo);border:1px solid rgba(240,192,64,.4)}
-  .class-TRIPLO{background:rgba(239,68,68,.2);color:var(--triplo);border:1px solid rgba(239,68,68,.4)}
-  .fonte-badge{font-size:10px;font-weight:700;letter-spacing:.5px;padding:3px 8px;border-radius:12px;text-align:center}
-  .fonte-HISTORICO{background:rgba(96,165,250,.15);color:var(--hist);border:1px solid rgba(96,165,250,.4)}
-  .fonte-MISTO{background:rgba(167,139,250,.15);color:var(--misto);border:1px solid rgba(167,139,250,.4)}
-  .fonte-LIGA{background:rgba(148,163,184,.1);color:var(--liga);border:1px solid rgba(148,163,184,.3)}
-  .fonte-SIMULADO{background:rgba(251,146,60,.1);color:var(--sim);border:1px solid rgba(251,146,60,.4)}
-  .conf-bar{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--cinza)}
-  .conf-bar .barra{flex:1;height:5px;background:var(--borda);border-radius:3px;overflow:hidden}
-  .conf-bar .fill{height:100%;background:var(--verde2);border-radius:3px;transition:width .5s}
-  .loading{text-align:center;padding:60px;color:var(--cinza);display:none}
-  .loading.visivel{display:block}
-  .spinner{width:40px;height:40px;border:3px solid var(--borda);border-top-color:var(--verde2);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .vazio{text-align:center;padding:60px;color:var(--cinza)}
-  .vazio .icon{font-size:48px;margin-bottom:16px}
-  .vazio h3{font-size:18px;margin-bottom:8px;color:var(--texto)}
-  .legenda{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:14px 18px;margin-top:20px;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
-  .legenda-titulo{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--cinza)}
-  .leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--cinza)}
-  @media(max-width:1000px){
-    .controles{grid-template-columns:1fr 1fr}
-    .sumario{grid-template-columns:repeat(3,1fr)}
-    .grade-header{display:none}
-    .jogo-card{grid-template-columns:24px 1fr auto auto}
-    .jogo-card>*:not(.jogo-num):not(.jogo-times):not(.classificacao):not(.fonte-badge){display:none}
-  }
-  @media(max-width:600px){
-    .controles{grid-template-columns:1fr}
-    .sumario{grid-template-columns:1fr 1fr}
-    header{padding:14px 16px}
-    main{padding:16px}
-  }
+:root {
+  --verde:   #1a7a3c;
+  --verde2:  #22a04e;
+  --ouro:    #f0c040;
+  --escuro:  #0f1c14;
+  --painel:  #131f18;
+  --card:    #1a2a1f;
+  --borda:   #2a3d2e;
+  --texto:   #d4e8d8;
+  --subtxt:  #7a9e82;
+  --branco:  #f0f5f1;
+  --seco:    #22a04e;
+  --duplo:   #f0c040;
+  --triplo:  #e05a2a;
+  --r1:      #3a8fff;
+  --rx:      #f0c040;
+  --r2:      #ff5a5a;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--escuro);
+  color: var(--texto);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── HEADER ── */
+header {
+  background: linear-gradient(135deg, #0a1410 0%, #0f1c14 60%, #162a1c 100%);
+  border-bottom: 1px solid var(--borda);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 26px;
+  letter-spacing: 3px;
+  color: var(--ouro);
+  text-shadow: 0 0 20px rgba(240,192,64,0.3);
+}
+
+.logo span { color: var(--verde2); }
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(34,160,78,0.1);
+  border: 1px solid rgba(34,160,78,0.3);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--subtxt);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.status-pill:hover { background: rgba(34,160,78,0.2); }
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #888;
+  transition: background 0.3s;
+}
+.status-dot.online { background: var(--verde2); box-shadow: 0 0 6px var(--verde2); }
+.status-dot.erro   { background: var(--triplo); }
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--painel);
+  border-bottom: 1px solid var(--borda);
+  padding: 0 24px;
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--subtxt);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+.tab:hover { color: var(--texto); }
+.tab.ativo { color: var(--ouro); border-bottom-color: var(--ouro); }
+
+/* ── MAIN ── */
+main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+.secao { display: none; }
+.secao.ativa { display: block; }
+
+/* ── CARDS ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 20px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.card-titulo {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--subtxt);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+
+.card-valor {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  color: var(--branco);
+  letter-spacing: 2px;
+}
+
+.card-sub {
+  font-size: 12px;
+  color: var(--subtxt);
+  margin-top: 4px;
+}
+
+/* ── BOTÕES ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+}
+
+.btn-primario {
+  background: var(--verde);
+  color: #fff;
+}
+.btn-primario:hover { background: var(--verde2); transform: translateY(-1px); }
+
+.btn-ouro {
+  background: var(--ouro);
+  color: var(--escuro);
+  font-weight: 600;
+}
+.btn-ouro:hover { background: #f5cc55; transform: translateY(-1px); }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--borda);
+  color: var(--subtxt);
+}
+.btn-ghost:hover { border-color: var(--verde2); color: var(--texto); }
+
+.btn-perigo {
+  background: rgba(224,90,42,0.15);
+  border: 1px solid rgba(224,90,42,0.4);
+  color: var(--triplo);
+}
+.btn-perigo:hover { background: rgba(224,90,42,0.25); }
+
+/* ── INPUTS ── */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.input-group label {
+  font-size: 12px;
+  color: var(--subtxt);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.inp {
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--texto);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.inp:focus { outline: none; border-color: var(--verde2); }
+.inp::placeholder { color: var(--subtxt); opacity: 0.6; }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.8px;
+  font-family: 'DM Mono', monospace;
+}
+.badge-seco   { background: rgba(34,160,78,0.2);  color: var(--seco);  border: 1px solid rgba(34,160,78,0.4); }
+.badge-duplo  { background: rgba(240,192,64,0.2); color: var(--duplo); border: 1px solid rgba(240,192,64,0.4); }
+.badge-triplo { background: rgba(224,90,42,0.2);  color: var(--triplo);border: 1px solid rgba(224,90,42,0.4); }
+.badge-h2h    { background: rgba(58,143,255,0.2); color: var(--r1);    border: 1px solid rgba(58,143,255,0.4); }
+.badge-poisson{ background: rgba(122,158,130,0.2);color: var(--subtxt);border: 1px solid var(--borda); }
+
+/* ── TABELA DE JOGOS ── */
+.tabela-jogos { width: 100%; border-collapse: collapse; }
+
+.tabela-jogos th {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--subtxt);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--borda);
+}
+
+.tabela-jogos td {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(42,61,46,0.5);
+  vertical-align: middle;
+}
+
+.tabela-jogos tr:hover td { background: rgba(34,160,78,0.05); }
+.tabela-jogos tr:last-child td { border-bottom: none; }
+
+.jogo-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--subtxt);
+  width: 32px;
+}
+
+.jogo-times {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--branco);
+}
+
+.jogo-times .vs {
+  font-size: 11px;
+  color: var(--subtxt);
+  margin: 0 8px;
+}
+
+/* ── BARRAS DE PROBABILIDADE ── */
+.prob-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  gap: 1px;
+  min-width: 120px;
+}
+
+.prob-1  { background: var(--r1);  transition: width 0.5s ease; }
+.prob-x  { background: var(--rx);  transition: width 0.5s ease; }
+.prob-2  { background: var(--r2);  transition: width 0.5s ease; }
+
+.prob-nums {
+  display: flex;
+  gap: 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.p1-txt { color: var(--r1); }
+.px-txt { color: var(--rx); }
+.p2-txt { color: var(--r2); }
+
+/* ── CONFIANÇA ── */
+.conf-bar-wrap {
+  background: var(--painel);
+  border-radius: 4px;
+  height: 4px;
+  width: 80px;
+  overflow: hidden;
+}
+.conf-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--verde), var(--ouro));
+  transition: width 0.5s ease;
+}
+
+/* ── RESUMO DA GRADE ── */
+.grade-resumo {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.resumo-item {
+  background: var(--card);
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  padding: 14px 20px;
+  text-align: center;
+  min-width: 110px;
+}
+
+.resumo-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  letter-spacing: 2px;
+}
+
+.resumo-lbl {
+  font-size: 11px;
+  color: var(--subtxt);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-top: 2px;
+}
+
+/* ── LOADING ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  gap: 12px;
+  color: var(--subtxt);
+  font-size: 14px;
+}
+
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--borda);
+  border-top-color: var(--verde2);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── ALERTA ── */
+.alerta {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: none;
+}
+.alerta.ok    { background: rgba(34,160,78,0.15); border: 1px solid rgba(34,160,78,0.3); color: var(--verde2); }
+.alerta.erro  { background: rgba(224,90,42,0.15); border: 1px solid rgba(224,90,42,0.3); color: var(--triplo); }
+.alerta.info  { background: rgba(58,143,255,0.15);border: 1px solid rgba(58,143,255,0.3); color: var(--r1); }
+.alerta.show  { display: block; }
+
+/* ── SEÇÃO TÍTULO ── */
+.sec-titulo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: var(--ouro);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sec-titulo::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--borda);
+}
+
+/* ── POSIÇÃO BADGE ── */
+.pos-badge {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  color: var(--subtxt);
+}
+
+/* ── FONTE BADGE ── */
+.fonte-badge {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'DM Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.fonte-h2h     { background: rgba(58,143,255,0.15); color: var(--r1); }
+.fonte-poisson { background: rgba(34,160,78,0.15);  color: var(--verde2); }
+.fonte-pos     { background: rgba(240,192,64,0.15); color: var(--ouro); }
+.fonte-global  { background: rgba(122,158,130,0.15);color: var(--subtxt); }
+
+/* ── COLETA STATUS ── */
+.coleta-log {
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--verde2);
+  min-height: 80px;
+  margin-top: 12px;
+  line-height: 1.8;
+}
+
+/* ── DISTRIBUIÇÃO GRÁFICO ── */
+.dist-barra {
+  display: flex;
+  height: 32px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 12px 0;
+  gap: 2px;
+}
+.dist-1 { background: var(--r1); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #fff; transition: width 0.8s ease; }
+.dist-x { background: var(--rx); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--escuro); transition: width 0.8s ease; }
+.dist-2 { background: var(--r2); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #fff; transition: width 0.8s ease; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  main { padding: 16px; }
+  .tabela-jogos { font-size: 12px; }
+  .jogo-times { font-size: 13px; }
+  .prob-bar { min-width: 80px; }
+}
+
+/* ── RESULTADO REAL ── */
+.res-real {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+}
+.res-1 { background: rgba(58,143,255,0.2); color: var(--r1); border: 1px solid rgba(58,143,255,0.4); }
+.res-x { background: rgba(240,192,64,0.2); color: var(--rx); border: 1px solid rgba(240,192,64,0.4); }
+.res-2 { background: rgba(255,90,90,0.2);  color: var(--r2); border: 1px solid rgba(255,90,90,0.4); }
+.res-? { background: var(--painel); color: var(--subtxt); border: 1px solid var(--borda); }
+
+/* ── CUSTO DESTAQUE ── */
+.custo-box {
+  background: linear-gradient(135deg, rgba(240,192,64,0.1), rgba(240,192,64,0.05));
+  border: 1px solid rgba(240,192,64,0.3);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.custo-lbl { font-size: 12px; color: var(--subtxt); }
+.custo-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: var(--ouro);
+  letter-spacing: 2px;
+}
 </style>
 </head>
 <body>
+
 <header>
-  <div class="logo-icon">L</div>
-  <div class="logo-text">
-    <h1>LOTECA ELITE PRO</h1>
-    <p>Motor Preditivo · Camada 2</p>
-  </div>
-  <div class="header-right">
-    <span class="db-badge db-off" id="badgeDB">⏳ DB</span>
-    <span class="status-badge" id="badgeStatus">● Carregando…</span>
+  <div class="logo">LOTECA <span>ELITE</span> PRO</div>
+  <div class="status-pill" onclick="verificarStatus()" id="statusPill">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusTxt">verificando...</span>
   </div>
 </header>
+
+<div class="tabs">
+  <div class="tab ativo" onclick="mudarTab('concurso')">🏆 Concurso Atual</div>
+  <div class="tab" onclick="mudarTab('analisar')">⚡ Analisar Jogo</div>
+  <div class="tab" onclick="mudarTab('historico')">📊 Histórico</div>
+  <div class="tab" onclick="mudarTab('confronto')">⚔️ Confronto H2H</div>
+  <div class="tab" onclick="mudarTab('posicoes')">📍 Posições</div>
+  <div class="tab" onclick="mudarTab('coletar')">🔄 Coletor CEF</div>
+  <div class="tab" onclick="mudarTab('banco')">🗄️ Banco</div>
+</div>
+
 <main>
-  <div class="controles">
-    <div class="campo">
-      <label>Liga</label>
-      <select id="selLiga"><option value="">Carregando…</option></select>
-    </div>
-    <div class="campo">
-      <label>Janela (dias)</label>
-      <input type="number" id="inputDias" value="14" min="1" max="60">
-    </div>
-    <div class="campo">
-      <label>Últimos jogos (histórico)</label>
-      <input type="number" id="inputNHist" value="10" min="3" max="30">
-    </div>
-    <button class="btn btn-primary" id="btnBuscar" onclick="buscarGrade()">⚡ Analisar Grade</button>
-    <button class="btn btn-secondary" onclick="limparGrade()">✕ Limpar</button>
-  </div>
-  <div class="aviso aviso-sim" id="avisoSimulado">
-    ⚠️ <strong>Dados simulados</strong> — Configure <code>FOOTBALL_DATA_KEY</code> no Render para jogos reais.
-  </div>
-  <div class="aviso aviso-err" id="painelErro"></div>
-  <div class="cobertura-bar" id="coberturaBar">
-    <div class="cob-titulo">Cobertura do histórico nesta análise</div>
-    <div class="cob-row" id="coberturaRow"></div>
-  </div>
-  <div class="sumario" id="sumario" style="display:none">
-    <div class="card-stat total"><div class="valor" id="statTotal">0</div><div class="label">Jogos</div></div>
-    <div class="card-stat seco"><div class="valor" id="statSecos">0</div><div class="label">Secos</div></div>
-    <div class="card-stat duplo"><div class="valor" id="statDuplos">0</div><div class="label">Duplos</div></div>
-    <div class="card-stat triplo"><div class="valor" id="statTriplos">0</div><div class="label">Triplos</div></div>
-    <div class="card-stat custo"><div class="valor" id="statCusto">R$0</div><div class="label">Custo estimado</div></div>
-  </div>
-  <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <p>Buscando jogos e calculando probabilidades…</p>
-  </div>
-  <div id="gradeContainer">
-    <div class="vazio">
-      <div class="icon">⚽</div>
-      <h3>Selecione uma liga e clique em Analisar</h3>
-      <p>Camada 2 ativa — Poisson com médias reais do histórico por time.</p>
+
+<!-- ══ CONCURSO ATUAL ══ -->
+<div class="secao ativa" id="sec-concurso">
+  <div class="sec-titulo">Concurso Atual</div>
+
+  <div id="alertaConcurso" class="alerta"></div>
+
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+    <button class="btn btn-ouro" onclick="carregarConcursoAtual()">⚡ Carregar Concurso</button>
+    <button class="btn btn-ghost" onclick="carregarDemo()">🎮 Modo Demo</button>
+    <div class="input-group" style="margin:0;flex-direction:row;align-items:center;gap:8px;">
+      <input class="inp" type="number" id="numConcurso" placeholder="Nº concurso" style="width:140px">
+      <button class="btn btn-ghost" onclick="carregarConcursoNumero()">Buscar</button>
     </div>
   </div>
-  <div class="legenda" id="legenda" style="display:none">
-    <span class="legenda-titulo">Fonte:</span>
-    <div class="leg-item"><span class="fonte-badge fonte-HISTORICO">HIST</span> médias reais do time</div>
-    <div class="leg-item"><span class="fonte-badge fonte-MISTO">MISTO</span> um time com histórico</div>
-    <div class="leg-item"><span class="fonte-badge fonte-LIGA">LIGA</span> média global da liga</div>
-    <div class="leg-item"><span class="fonte-badge fonte-SIMULADO">SIM</span> dados de teste</div>
+
+  <div id="gradeSumario" style="display:none">
+    <div class="grade-resumo" id="gradeResumo"></div>
+    <div class="custo-box">
+      <div>
+        <div class="custo-lbl">CUSTO MÍNIMO ESTIMADO</div>
+        <div class="custo-val" id="custoVal">R$ —</div>
+      </div>
+      <div style="text-align:right">
+        <div class="custo-lbl" id="concursoInfo"></div>
+        <div class="custo-lbl" id="dataInfo"></div>
+      </div>
+    </div>
+    <div class="card" style="overflow-x:auto">
+      <table class="tabela-jogos" id="tabelaJogos">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Mandante</th>
+            <th>Visitante</th>
+            <th>Probabilidades</th>
+            <th>Classificação</th>
+            <th>Confiança</th>
+            <th>Fonte</th>
+            <th>Resultado</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyJogos"></tbody>
+      </table>
+    </div>
   </div>
+
+  <div id="loadingConcurso" class="loading" style="display:none">
+    <div class="spinner"></div> Buscando concurso na CEF...
+  </div>
+</div>
+
+<!-- ══ ANALISAR JOGO ══ -->
+<div class="secao" id="sec-analisar">
+  <div class="sec-titulo">Analisar Jogo</div>
+
+  <div class="card" style="max-width:500px">
+    <div class="grid-2">
+      <div class="input-group">
+        <label>MANDANTE</label>
+        <input class="inp" type="text" id="inpMandante" placeholder="Ex: Flamengo">
+      </div>
+      <div class="input-group">
+        <label>VISITANTE</label>
+        <input class="inp" type="text" id="inpVisitante" placeholder="Ex: Palmeiras">
+      </div>
+    </div>
+    <div class="input-group">
+      <label>POSIÇÃO NA GRADE (1–14, opcional)</label>
+      <input class="inp" type="number" id="inpPosicao" placeholder="Ex: 7" min="1" max="14" style="width:120px">
+    </div>
+    <button class="btn btn-ouro" onclick="analisarJogo()">⚡ Analisar</button>
+  </div>
+
+  <div id="resultadoAnalise" style="display:none;margin-top:20px"></div>
+</div>
+
+<!-- ══ HISTÓRICO ══ -->
+<div class="secao" id="sec-historico">
+  <div class="sec-titulo">Histórico</div>
+
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end">
+    <div class="input-group" style="margin:0">
+      <label>BUSCAR TIME</label>
+      <input class="inp" type="text" id="inpTime" placeholder="Ex: Flamengo" style="width:200px">
+    </div>
+    <button class="btn btn-primario" onclick="buscarTime()">🔍 Buscar</button>
+    <button class="btn btn-ghost" onclick="carregarResumoHistorico()">📊 Resumo Geral</button>
+  </div>
+
+  <div id="alertaHistorico" class="alerta"></div>
+  <div id="resultadoHistorico"></div>
+</div>
+
+<!-- ══ CONFRONTO H2H ══ -->
+<div class="secao" id="sec-confronto">
+  <div class="sec-titulo">Confronto Direto H2H</div>
+
+  <div class="card" style="max-width:500px;margin-bottom:20px">
+    <div class="grid-2">
+      <div class="input-group">
+        <label>TIME 1 (MANDANTE)</label>
+        <input class="inp" type="text" id="h2hMandante" placeholder="Ex: Flamengo">
+      </div>
+      <div class="input-group">
+        <label>TIME 2 (VISITANTE)</label>
+        <input class="inp" type="text" id="h2hVisitante" placeholder="Ex: Palmeiras">
+      </div>
+    </div>
+    <button class="btn btn-ouro" onclick="buscarH2H()">⚔️ Ver Confronto</button>
+  </div>
+
+  <div id="alertaH2H" class="alerta"></div>
+  <div id="resultadoH2H"></div>
+</div>
+
+<!-- ══ POSIÇÕES ══ -->
+<div class="secao" id="sec-posicoes">
+  <div class="sec-titulo">Probabilidades por Posição</div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-titulo">Distribuição histórica real — 17.374 jogos (1994–2024)</div>
+    <div id="distGlobal"></div>
+  </div>
+
+  <div id="tabelaPosicoes"></div>
+  <button class="btn btn-ghost" onclick="carregarPosicoes()" style="margin-top:12px">🔄 Carregar</button>
+</div>
+
+<!-- ══ COLETOR CEF ══ -->
+<div class="secao" id="sec-coletar">
+  <div class="sec-titulo">Coletor CEF</div>
+
+  <div class="card" style="max-width:500px;margin-bottom:20px">
+    <div class="card-titulo">COLETAR CONCURSOS</div>
+    <div class="grid-2">
+      <div class="input-group">
+        <label>CONCURSO INICIAL</label>
+        <input class="inp" type="number" id="coletarInicio" placeholder="Ex: 1242" value="1242">
+      </div>
+      <div class="input-group">
+        <label>CONCURSO FINAL (opcional)</label>
+        <input class="inp" type="number" id="coletarFim" placeholder="deixe vazio = até o atual">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ouro" onclick="iniciarColeta()">🔄 Iniciar Coleta</button>
+      <button class="btn btn-ghost" onclick="verificarStatusColeta()">📊 Ver Status</button>
+    </div>
+    <div class="coleta-log" id="coletaLog">Aguardando início da coleta...</div>
+  </div>
+</div>
+
+<!-- ══ BANCO ══ -->
+<div class="secao" id="sec-banco">
+  <div class="sec-titulo">Informações do Banco</div>
+  <button class="btn btn-ghost" onclick="carregarDBInfo()" style="margin-bottom:16px">🗄️ Atualizar Info</button>
+  <div id="resultadoBanco"></div>
+</div>
+
 </main>
+
 <script>
-const API='';
-async function init(){await Promise.all([carregarStatus(),carregarLigas()])}
-async function carregarStatus(){
-  try{
-    const d=await fetch(`${API}/api/status`).then(r=>r.json());
-    const b=document.getElementById('badgeStatus');
-    b.textContent='● Online · v'+(d.versao||'3.0');b.style.color='#22c55e';b.style.borderColor='#22c55e';
-    const db=document.getElementById('badgeDB');
-    const dbOn=d.integracoes?.loteca_historico_db==='conectado';
-    db.textContent=dbOn?'🗄️ DB Conectado':'⚠️ DB Ausente';
-    db.className='db-badge '+(dbOn?'db-on':'db-off');
-  }catch{document.getElementById('badgeStatus').textContent='● Offline'}
+const BASE = '';
+
+// ── UTILIDADES ──────────────────────────────────────────
+
+function mudarTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativo'));
+  document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+  event.target.classList.add('ativo');
+  document.getElementById('sec-' + id).classList.add('ativa');
 }
-async function carregarLigas(){
-  try{
-    const d=await fetch(`${API}/api/ligas`).then(r=>r.json());
-    const sel=document.getElementById('selLiga');sel.innerHTML='';
-    d.ligas.forEach(l=>{const o=document.createElement('option');o.value=l.key;o.textContent=`${l.nome} (${l.pais})`;if(l.key==='brasileirao')o.selected=true;sel.appendChild(o)});
-  }catch(e){console.error(e)}
+
+function mostrarAlerta(id, tipo, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'alerta ' + tipo + ' show';
+  el.textContent = msg;
+  setTimeout(() => el.classList.remove('show'), 5000);
 }
-async function buscarGrade(){
-  const liga=document.getElementById('selLiga').value;
-  const dias=document.getElementById('inputDias').value||14;
-  const nHist=document.getElementById('inputNHist').value||10;
-  if(!liga){mostrarErro('Selecione uma liga.');return}
-  setLoading(true);limparResultados();
-  try{
-    const d=await fetch(`${API}/api/grade-automatica?liga=${liga}&dias=${dias}&max=14&n_historico=${nHist}`).then(r=>r.json());
-    if(d.erro){mostrarErro(d.erro);return}
-    if(d.simulado)document.getElementById('avisoSimulado').classList.add('visivel');
-    renderSumario(d);renderCobertura(d.cobertura_historico||{},d.total);renderGrade(d.jogos);
-    document.getElementById('legenda').style.display='flex';
-  }catch(e){mostrarErro('Erro ao conectar com o servidor.')}
-  finally{setLoading(false)}
+
+function classBadge(cls) {
+  if (cls === 'SECO')   return 'badge badge-seco';
+  if (cls === 'DUPLO')  return 'badge badge-duplo';
+  if (cls === 'TRIPLO') return 'badge badge-triplo';
+  return 'badge';
 }
-function renderSumario(d){
-  document.getElementById('sumario').style.display='grid';
-  document.getElementById('statTotal').textContent=d.total;
-  document.getElementById('statSecos').textContent=d.secos;
-  document.getElementById('statDuplos').textContent=d.duplos;
-  document.getElementById('statTriplos').textContent=d.triplos;
-  document.getElementById('statCusto').textContent='R$ '+(d.custo_estimado_reais||0).toFixed(2);
+
+function fonteBadge(fonte) {
+  const mapa = {
+    'h2h': ['fonte-h2h', 'H2H'],
+    'poisson_real': ['fonte-poisson', 'POISSON'],
+    'aproveitamento': ['fonte-poisson', 'APROV'],
+    'posicao': ['fonte-pos', 'POSIÇÃO'],
+    'global': ['fonte-global', 'GLOBAL'],
+    'historico_real': ['fonte-poisson', 'HISTÓRICO'],
+    'historico_parcial': ['fonte-pos', 'PARCIAL'],
+    'media_liga': ['fonte-global', 'LIGA'],
+    'simulado': ['fonte-global', 'DEMO'],
+  };
+  const [cls, label] = mapa[fonte] || ['fonte-global', fonte?.toUpperCase() || '?'];
+  return `<span class="fonte-badge ${cls}">${label}</span>`;
 }
-function renderCobertura(cob,total){
-  const bar=document.getElementById('coberturaBar');
-  const row=document.getElementById('coberturaRow');
-  if(!total){bar.classList.remove('visivel');return}
-  const hist=cob.com_historico||0,liga=cob.apenas_liga||0,sim=cob.simulado||0;
-  const pct=v=>total?Math.round(v/total*100):0;
-  row.innerHTML=`
-    <div class="cob-item"><div class="cob-dot cob-hist"></div><strong>${hist}</strong> com histórico (${pct(hist)}%)</div>
-    <div class="cob-item"><div class="cob-dot cob-liga"></div><strong>${liga}</strong> só via liga (${pct(liga)}%)</div>
-    ${sim?`<div class="cob-item"><div class="cob-dot cob-sim"></div><strong>${sim}</strong> simulados</div>`:''}`;
-  bar.classList.add('visivel');
+
+function resReal(r) {
+  if (!r || r === '?') return `<span class="res-real res-?">?</span>`;
+  if (r === '1') return `<span class="res-real res-1">1</span>`;
+  if (r === 'X') return `<span class="res-real res-x">X</span>`;
+  if (r === '2') return `<span class="res-real res-2">2</span>`;
+  return `<span class="res-real res-?">${r}</span>`;
 }
-function renderGrade(jogos){
-  const c=document.getElementById('gradeContainer');
-  if(!jogos||jogos.length===0){c.innerHTML='<div class="vazio"><div class="icon">📭</div><h3>Nenhum jogo encontrado</h3><p>Tente aumentar a janela de dias.</p></div>';return}
-  const header=`<div class="grade-header"><div>#</div><div>Confronto</div><div style="text-align:center">P1</div><div style="text-align:center">PX</div><div style="text-align:center">P2</div><div style="text-align:center">Tipo</div><div style="text-align:center">Fonte</div><div style="text-align:center">Confiança</div></div>`;
-  const cards=jogos.map((j,i)=>{
-    const p=j.probabilidades||{p1:.33,px:.33,p2:.34};
-    const max=Math.max(p.p1,p.px,p.p2);
-    const cl=j.classificacao||'TRIPLO';
-    const fd=j.fonte_dados||'LIGA';
-    const conf=j.confianca||0;
-    const dt=j.data_utc?new Date(j.data_utc).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'';
-    const pc=v=>v===max?'prob maior':'prob';
-    const det=j.detalhe_fontes||{};
-    const pm=det.mandante?`${det.mandante.time}: ${det.mandante.fonte} (${det.mandante.n_jogos}j)`:'';
-    const pv=det.visitante?`${det.visitante.time}: ${det.visitante.fonte} (${det.visitante.n_jogos}j)`:'';
-    const lam=j.lambda_casa!=null?`λ=${j.lambda_casa}/${j.lambda_fora}`:'';
-    const tip=[pm,pv,lam].filter(Boolean).join(' · ');
-    return`<div class="jogo-card" title="${tip}">
-      <div class="jogo-num">${i+1}</div>
-      <div class="jogo-times"><div class="mandante">${j.mandante||'Time 1'}</div><div class="vs">× ${dt}</div><div class="visitante">${j.visitante||'Time 2'}</div></div>
-      <div class="${pc(p.p1)}">${pct(p.p1)}</div>
-      <div class="${pc(p.px)}">${pct(p.px)}</div>
-      <div class="${pc(p.p2)}">${pct(p.p2)}</div>
-      <div><span class="classificacao class-${cl}">${cl}</span></div>
-      <div><span class="fonte-badge fonte-${fd}">${fd==='HISTORICO'?'HIST':fd}</span></div>
-      <div class="conf-bar"><div class="barra"><div class="fill" style="width:${conf}%"></div></div><span>${conf.toFixed(0)}%</span></div>
-    </div>`;
-  }).join('');
-  c.innerHTML=header+cards;
+
+function renderJogo(j) {
+  const p = j.probabilidades || {};
+  const p1 = ((p.casa || 0) * 100).toFixed(1);
+  const px = ((p.empate || 0) * 100).toFixed(1);
+  const p2 = ((p.fora || 0) * 100).toFixed(1);
+  const conf = j.confianca || 0;
+
+  return `<tr>
+    <td class="jogo-num">${j.numero_jogo || '—'}</td>
+    <td><div class="jogo-times">${j.mandante || '—'}</div></td>
+    <td><div class="jogo-times">${j.visitante || '—'}</div></td>
+    <td>
+      <div class="prob-bar">
+        <div class="prob-1" style="width:${p1}%"></div>
+        <div class="prob-x" style="width:${px}%"></div>
+        <div class="prob-2" style="width:${p2}%"></div>
+      </div>
+      <div class="prob-nums">
+        <span class="p1-txt">1:${p1}%</span>
+        <span class="px-txt">X:${px}%</span>
+        <span class="p2-txt">2:${p2}%</span>
+      </div>
+    </td>
+    <td><span class="${classBadge(j.classificacao)}">${j.classificacao || '—'}</span></td>
+    <td>
+      <div class="conf-bar-wrap">
+        <div class="conf-bar-fill" style="width:${conf}%"></div>
+      </div>
+      <div style="font-size:11px;color:var(--subtxt);margin-top:2px;font-family:'DM Mono',monospace">${conf.toFixed(1)}%</div>
+    </td>
+    <td>${fonteBadge(j.fonte_dados || j.fonte || 'global')}</td>
+    <td>${resReal(j.resultado_real)}</td>
+  </tr>`;
 }
-function pct(v){return Math.round((v||0)*100)+'%'}
-function setLoading(on){document.getElementById('loading').classList.toggle('visivel',on);document.getElementById('btnBuscar').disabled=on}
-function mostrarErro(msg){const el=document.getElementById('painelErro');el.textContent='⚠️ '+msg;el.classList.add('visivel')}
-function limparResultados(){
-  ['painelErro','avisoSimulado'].forEach(id=>document.getElementById(id).classList.remove('visivel'));
-  document.getElementById('coberturaBar').classList.remove('visivel');
-  document.getElementById('sumario').style.display='none';
-  document.getElementById('legenda').style.display='none';
-  document.getElementById('gradeContainer').innerHTML='<div class="vazio"><div class="icon">⚽</div><h3>Carregando…</h3></div>';
+
+function renderGrade(data) {
+  const resumo = document.getElementById('gradeResumo');
+  const custo  = document.getElementById('custoVal');
+  const info   = document.getElementById('concursoInfo');
+  const data_  = document.getElementById('dataInfo');
+  const tbody  = document.getElementById('tbodyJogos');
+  const sumario= document.getElementById('gradeSumario');
+
+  resumo.innerHTML = `
+    <div class="resumo-item"><div class="resumo-num" style="color:var(--seco)">${data.secos||0}</div><div class="resumo-lbl">Secos</div></div>
+    <div class="resumo-item"><div class="resumo-num" style="color:var(--duplo)">${data.duplos||0}</div><div class="resumo-lbl">Duplos</div></div>
+    <div class="resumo-item"><div class="resumo-num" style="color:var(--triplo)">${data.triplos||0}</div><div class="resumo-lbl">Triplos</div></div>
+    <div class="resumo-item"><div class="resumo-num">${data.total||0}</div><div class="resumo-lbl">Total</div></div>
+  `;
+
+  custo.textContent = `R$ ${(data.custo_minimo||0).toFixed(2)}`;
+  info.textContent  = data.concurso ? `Concurso #${data.concurso}` : 'Demo';
+  data_.textContent = data.data_apuracao || '';
+
+  tbody.innerHTML = (data.jogos || []).map(renderJogo).join('');
+  sumario.style.display = 'block';
+
+  if (data.aviso) mostrarAlerta('alertaConcurso', 'info', data.aviso);
 }
-function limparGrade(){
-  ['painelErro','avisoSimulado'].forEach(id=>document.getElementById(id).classList.remove('visivel'));
-  document.getElementById('coberturaBar').classList.remove('visivel');
-  document.getElementById('sumario').style.display='none';
-  document.getElementById('legenda').style.display='none';
-  document.getElementById('gradeContainer').innerHTML='<div class="vazio"><div class="icon">⚽</div><h3>Selecione uma liga e clique em Analisar</h3><p>Camada 2 ativa — Poisson com médias reais do histórico por time.</p></div>';
+
+// ── STATUS ───────────────────────────────────────────────
+
+async function verificarStatus() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusTxt');
+  txt.textContent = 'verificando...';
+  dot.className = 'status-dot';
+  try {
+    const r = await fetch(BASE + '/api/status');
+    const d = await r.json();
+    if (d.status === 'online') {
+      dot.className = 'status-dot online';
+      const banco = d.integracoes?.banco_historico || '';
+      txt.textContent = `v${d.versao} · ${banco}`;
+    } else { throw new Error(); }
+  } catch {
+    dot.className = 'status-dot erro';
+    txt.textContent = 'offline';
+  }
 }
-init();
+
+// ── CONCURSO ─────────────────────────────────────────────
+
+async function carregarConcursoAtual() {
+  document.getElementById('loadingConcurso').style.display = 'flex';
+  document.getElementById('gradeSumario').style.display = 'none';
+  try {
+    const r = await fetch(BASE + '/api/concurso/atual');
+    const d = await r.json();
+    renderGrade(d);
+  } catch (e) {
+    mostrarAlerta('alertaConcurso', 'erro', 'Erro ao buscar concurso: ' + e.message);
+  } finally {
+    document.getElementById('loadingConcurso').style.display = 'none';
+  }
+}
+
+async function carregarConcursoNumero() {
+  const n = document.getElementById('numConcurso').value;
+  if (!n) return;
+  document.getElementById('loadingConcurso').style.display = 'flex';
+  document.getElementById('gradeSumario').style.display = 'none';
+  try {
+    const r = await fetch(BASE + `/api/concurso/${n}/analisar`);
+    if (!r.ok) { mostrarAlerta('alertaConcurso','erro',`Concurso ${n} não encontrado`); return; }
+    const d = await r.json();
+    renderGrade(d);
+  } catch (e) {
+    mostrarAlerta('alertaConcurso', 'erro', 'Erro: ' + e.message);
+  } finally {
+    document.getElementById('loadingConcurso').style.display = 'none';
+  }
+}
+
+async function carregarDemo() {
+  document.getElementById('loadingConcurso').style.display = 'flex';
+  document.getElementById('gradeSumario').style.display = 'none';
+  try {
+    const r = await fetch(BASE + '/api/concurso/atual');
+    const d = await r.json();
+    d.aviso = '🎮 Modo demo ativo';
+    renderGrade(d);
+  } catch {
+    mostrarAlerta('alertaConcurso', 'info', 'Modo demo carregado');
+  } finally {
+    document.getElementById('loadingConcurso').style.display = 'none';
+  }
+}
+
+// ── ANALISAR JOGO ─────────────────────────────────────────
+
+async function analisarJogo() {
+  const m = document.getElementById('inpMandante').value.trim();
+  const v = document.getElementById('inpVisitante').value.trim();
+  const p = document.getElementById('inpPosicao').value;
+  if (!m || !v) return;
+
+  const el = document.getElementById('resultadoAnalise');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Analisando...</div>';
+  el.style.display = 'block';
+
+  try {
+    let url = `${BASE}/api/analisar?mandante=${encodeURIComponent(m)}&visitante=${encodeURIComponent(v)}`;
+    if (p) url += `&posicao=${p}`;
+    const r = await fetch(url);
+    const d = await r.json();
+
+    const prob = d.probabilidades || {};
+    const p1 = ((prob.casa||0)*100).toFixed(1);
+    const px = ((prob.empate||0)*100).toFixed(1);
+    const p2 = ((prob.fora||0)*100).toFixed(1);
+    const conf = (d.confianca||0).toFixed(1);
+
+    el.innerHTML = `
+      <div class="card" style="max-width:600px">
+        <div style="font-size:18px;font-weight:600;color:var(--branco);margin-bottom:16px">
+          ${m} <span style="color:var(--subtxt);font-size:14px">vs</span> ${v}
+        </div>
+        <div class="prob-bar" style="height:12px;margin-bottom:8px">
+          <div class="prob-1" style="width:${p1}%"></div>
+          <div class="prob-x" style="width:${px}%"></div>
+          <div class="prob-2" style="width:${p2}%"></div>
+        </div>
+        <div class="prob-nums" style="font-size:14px;gap:20px;margin-bottom:16px">
+          <span class="p1-txt"><strong>1:</strong> ${p1}%</span>
+          <span class="px-txt"><strong>X:</strong> ${px}%</span>
+          <span class="p2-txt"><strong>2:</strong> ${p2}%</span>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+          <span class="${classBadge(d.classificacao)}" style="font-size:14px;padding:6px 14px">${d.classificacao}</span>
+          <span style="font-size:13px;color:var(--subtxt)">Confiança: <strong style="color:var(--texto)">${conf}%</strong></span>
+          ${fonteBadge(d.fonte_dados||'global')}
+          ${d.eh_selecoes ? '<span class="badge badge-h2h">SELEÇÕES</span>' : ''}
+        </div>
+        ${d.jogos_historico ? `<div style="font-size:12px;color:var(--subtxt);margin-top:12px">Base histórica: ${d.jogos_historico} jogos</div>` : ''}
+        ${d.lambda_casa ? `<div style="font-size:11px;color:var(--subtxt);margin-top:4px;font-family:'DM Mono',monospace">λ casa: ${d.lambda_casa} · λ fora: ${d.lambda_fora}</div>` : ''}
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<div class="alerta erro show">Erro: ${e.message}</div>`;
+  }
+}
+
+// ── HISTÓRICO ─────────────────────────────────────────────
+
+async function buscarTime() {
+  const nome = document.getElementById('inpTime').value.trim();
+  if (!nome) return;
+  const el = document.getElementById('resultadoHistorico');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Buscando...</div>';
+  try {
+    const r = await fetch(`${BASE}/api/historico/time/${encodeURIComponent(nome)}`);
+    const d = await r.json();
+    if (d.erro) { el.innerHTML = `<div class="alerta erro show">${d.erro}</div>`; return; }
+
+    const total = d.total_jogos || 0;
+    const vc = d.casa?.V || 0, ec = d.casa?.E || 0, dc = d.casa?.D || 0;
+    const vf = d.fora?.V || 0, ef = d.fora?.E || 0, df = d.fora?.D || 0;
+
+    el.innerHTML = `
+      <div class="grid-2" style="max-width:700px">
+        <div class="card">
+          <div class="card-titulo">COMO MANDANTE</div>
+          <div class="card-valor">${d.casa?.jogos||0}</div>
+          <div style="margin-top:12px;font-size:13px;color:var(--subtxt)">
+            <span style="color:var(--r1)">V:${vc}</span> · 
+            <span style="color:var(--rx)">E:${ec}</span> · 
+            <span style="color:var(--r2)">D:${dc}</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-titulo">COMO VISITANTE</div>
+          <div class="card-valor">${d.fora?.jogos||0}</div>
+          <div style="margin-top:12px;font-size:13px;color:var(--subtxt)">
+            <span style="color:var(--r1)">V:${vf}</span> · 
+            <span style="color:var(--rx)">E:${ef}</span> · 
+            <span style="color:var(--r2)">D:${df}</span>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="max-width:700px">
+        <div class="card-titulo">TOTAL: ${total} JOGOS · APROVEITAMENTO: ${d.aproveitamento_pct||0}%</div>
+        ${d.historico_recente?.length ? `
+          <table class="tabela-jogos" style="margin-top:12px">
+            <thead><tr><th>Concurso</th><th>Data</th><th>Mandante</th><th>Visitante</th><th>Resultado</th></tr></thead>
+            <tbody>${d.historico_recente.slice(0,10).map(j=>`
+              <tr>
+                <td class="jogo-num">#${j.concurso}</td>
+                <td style="font-size:12px;color:var(--subtxt)">${j.data||'—'}</td>
+                <td>${j.mandante}</td>
+                <td>${j.visitante}</td>
+                <td>${resReal(j.resultado)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>` : '<div style="color:var(--subtxt);font-size:13px;margin-top:8px">Nenhum histórico encontrado</div>'}
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<div class="alerta erro show">Erro: ${e.message}</div>`;
+  }
+}
+
+async function carregarResumoHistorico() {
+  const el = document.getElementById('resultadoHistorico');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Carregando resumo...</div>';
+  try {
+    const r = await fetch(`${BASE}/api/historico/resumo`);
+    const d = await r.json();
+
+    const dist = d.distribuicao_resultados || {};
+    const total = (dist['1']||0) + (dist['X']||0) + (dist['2']||0) || 1;
+    const p1 = ((dist['1']||0)/total*100).toFixed(1);
+    const px = ((dist['X']||0)/total*100).toFixed(1);
+    const p2 = ((dist['2']||0)/total*100).toFixed(1);
+
+    el.innerHTML = `
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-titulo">BANCO HISTÓRICO</div>
+          <div class="card-valor">${d.total_concursos||0}</div>
+          <div class="card-sub">concursos · ${d.total_jogos||0} jogos</div>
+          <div class="card-sub" style="margin-top:4px">#${d.concurso_mais_antigo||'—'} → #${d.concurso_mais_recente||'—'}</div>
+        </div>
+        <div class="card">
+          <div class="card-titulo">DISTRIBUIÇÃO REAL 1/X/2</div>
+          <div class="dist-barra">
+            <div class="dist-1" style="width:${p1}%">1</div>
+            <div class="dist-x" style="width:${px}%">X</div>
+            <div class="dist-2" style="width:${p2}%">2</div>
+          </div>
+          <div class="prob-nums" style="font-size:13px">
+            <span class="p1-txt">1: ${p1}%</span>
+            <span class="px-txt">X: ${px}%</span>
+            <span class="p2-txt">2: ${p2}%</span>
+          </div>
+        </div>
+      </div>
+      ${d.top_15_times ? `
+        <div class="card">
+          <div class="card-titulo">TOP TIMES NO BANCO</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+            ${d.top_15_times.map(t=>`
+              <div style="background:var(--painel);border:1px solid var(--borda);border-radius:6px;padding:6px 12px;font-size:12px">
+                <strong style="color:var(--branco)">${t.time}</strong>
+                <span style="color:var(--subtxt);margin-left:6px">${t.jogos} jogos</span>
+              </div>`).join('')}
+          </div>
+        </div>` : ''}`;
+  } catch (e) {
+    el.innerHTML = `<div class="alerta erro show">Erro: ${e.message}</div>`;
+  }
+}
+
+// ── H2H ──────────────────────────────────────────────────
+
+async function buscarH2H() {
+  const m = document.getElementById('h2hMandante').value.trim();
+  const v = document.getElementById('h2hVisitante').value.trim();
+  if (!m || !v) return;
+  const el = document.getElementById('resultadoH2H');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Buscando confrontos...</div>';
+  try {
+    const r = await fetch(`${BASE}/api/historico/confronto?mandante=${encodeURIComponent(m)}&visitante=${encodeURIComponent(v)}`);
+    const d = await r.json();
+    const total = d.total || 0;
+    if (total === 0) {
+      el.innerHTML = `<div class="alerta info show">Nenhum confronto direto encontrado entre ${m} e ${v}</div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="grid-3" style="max-width:600px">
+        <div class="card" style="text-align:center">
+          <div class="card-titulo">${m}</div>
+          <div class="card-valor" style="color:var(--r1)">${d.vitorias_t1||0}</div>
+          <div class="card-sub">vitórias</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div class="card-titulo">EMPATES</div>
+          <div class="card-valor" style="color:var(--rx)">${d.empates||0}</div>
+          <div class="card-sub">${total} jogos</div>
+        </div>
+        <div class="card" style="text-align:center">
+          <div class="card-titulo">${v}</div>
+          <div class="card-valor" style="color:var(--r2)">${d.vitorias_t2||0}</div>
+          <div class="card-sub">vitórias</div>
+        </div>
+      </div>
+      ${d.jogos?.length ? `
+        <div class="card" style="max-width:700px">
+          <div class="card-titulo">HISTÓRICO DE CONFRONTOS</div>
+          <table class="tabela-jogos" style="margin-top:12px">
+            <thead><tr><th>Concurso</th><th>Data</th><th>Mandante</th><th>Visitante</th><th>Resultado</th></tr></thead>
+            <tbody>${d.jogos.map(j=>`
+              <tr>
+                <td class="jogo-num">#${j.concurso}</td>
+                <td style="font-size:12px;color:var(--subtxt)">${j.data||'—'}</td>
+                <td>${j.mandante}</td>
+                <td>${j.visitante}</td>
+                <td>${resReal(j.resultado)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : ''}`;
+  } catch (e) {
+    el.innerHTML = `<div class="alerta erro show">Erro: ${e.message}</div>`;
+  }
+}
+
+// ── POSIÇÕES ─────────────────────────────────────────────
+
+async function carregarPosicoes() {
+  const el = document.getElementById('tabelaPosicoes');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const r = await fetch(`${BASE}/api/posicoes`);
+    const d = await r.json();
+    const posicoes = d.posicoes || d;
+
+    if (d.global) {
+      const g = d.global;
+      const t = (g['1']||0)+(g['X']||0)+(g['2']||0)||1;
+      const p1=((g['1']||0)/t*100).toFixed(1);
+      const px=((g['X']||0)/t*100).toFixed(1);
+      const p2=((g['2']||0)/t*100).toFixed(1);
+      document.getElementById('distGlobal').innerHTML = `
+        <div class="dist-barra">
+          <div class="dist-1" style="width:${p1}%">1·${p1}%</div>
+          <div class="dist-x" style="width:${px}%">X·${px}%</div>
+          <div class="dist-2" style="width:${p2}%">2·${p2}%</div>
+        </div>`;
+    }
+
+    if (Array.isArray(posicoes) && posicoes.length) {
+      el.innerHTML = `
+        <div class="card">
+          <div class="card-titulo">PROBABILIDADE POR POSIÇÃO NA GRADE</div>
+          <table class="tabela-jogos" style="margin-top:12px">
+            <thead><tr><th>Pos</th><th>Jogos</th><th>% 1</th><th>% X</th><th>% 2</th><th>Distribuição</th></tr></thead>
+            <tbody>${posicoes.map(p=>{
+              const tot=(p.total||p.jogos||1);
+              const r1=((p['1']||p.p1||0)/tot*100).toFixed(1);
+              const rx=((p['X']||p.px||0)/tot*100).toFixed(1);
+              const r2=((p['2']||p.p2||0)/tot*100).toFixed(1);
+              return `<tr>
+                <td><div class="pos-badge">${p.posicao||p.pos}</div></td>
+                <td style="font-size:12px;color:var(--subtxt)">${tot}</td>
+                <td class="p1-txt" style="font-family:'DM Mono',monospace">${r1}%</td>
+                <td class="px-txt" style="font-family:'DM Mono',monospace">${rx}%</td>
+                <td class="p2-txt" style="font-family:'DM Mono',monospace">${r2}%</td>
+                <td>
+                  <div class="prob-bar">
+                    <div class="prob-1" style="width:${r1}%"></div>
+                    <div class="prob-x" style="width:${rx}%"></div>
+                    <div class="prob-2" style="width:${r2}%"></div>
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>`;
+    } else {
+      el.innerHTML = '<div class="alerta info show">Dados de posição não disponíveis ainda — colete o histórico primeiro</div>';
+    }
+  } catch (e) {
+    el.innerHTML = `<div class="alerta erro show">Erro: ${e.message}</div>`;
+  }
+}
+
+// ── COLETOR ───────────────────────────────────────────────
+
+let _coletaInterval = null;
+
+async function iniciarColeta() {
+  const inicio = parseInt(document.getElementById('coletarInicio').value) || 1242;
+  const fimVal = document.getElementById('coletarFim').value;
+  const body = { inicio };
+  if (fimVal) body.fim = parseInt(fimVal);
+
+  const log = document.getElementById('coletaLog');
+  log.textContent = `Iniciando coleta a partir do concurso ${inicio}...`;
+
+  try {
+    const r = await fetch(`${BASE}/api/coletar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    log.textContent = d.mensagem || d.status || 'Coleta iniciada';
+
+    if (_coletaInterval) clearInterval(_coletaInterval);
+    _coletaInterval = setInterval(verificarStatusColeta, 3000);
+  } catch (e) {
+    log.textContent = 'Erro: ' + e.message;
+  }
+}
+
+async function verificarStatusColeta() {
+  const log = document.getElementById('coletaLog');
+  try {
+    const r = await fetch(`${BASE}/api/coletar/status`);
+    const d = await r.json();
+    const linhas = [];
+    if (d.rodando) linhas.push('⟳ Coleta em andamento...');
+    if (d.concursos_coletados !== undefined) linhas.push(`Coletados: ${d.concursos_coletados} novos concursos`);
+    if (d.ultimo_concurso) linhas.push(`Último: #${d.ultimo_concurso}`);
+    if (d.relatorio) {
+      const rel = d.relatorio;
+      linhas.push(`✅ Concluído: ${rel.coletados} novos | Total: ${rel.total_concursos} concursos, ${rel.total_jogos} jogos`);
+      linhas.push(`Período: #${rel.min} → #${rel.max}`);
+      if (_coletaInterval) { clearInterval(_coletaInterval); _coletaInterval = null; }
+    }
+    if (d.erro) {
+      linhas.push(`❌ Erro: ${d.erro}`);
+      if (_coletaInterval) { clearInterval(_coletaInterval); _coletaInterval = null; }
+    }
+    if (!d.rodando && !d.relatorio && !d.erro) linhas.push('Nenhuma coleta ativa');
+    log.textContent = linhas.join('\n');
+  } catch (e) {
+    log.textContent = 'Erro ao verificar status: ' + e.message;
+  }
+}
+
+// ── DB INFO ───────────────────────────────────────────────
+
+async function carregarDBInfo() {
+  const el = document.getElementById('resultadoBanco');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const r = await fetch(`${BASE}/api/db-info`);
+    const d = await r.json();
+    el.innerHTML = `
+      <div class="grid-4">
+        <div class="card">
+          <div class="card-titulo">CONECTADO</div>
+          <div class="card-valor" style="font-size:24px;color:${d.db_conectado?'var(--seco)':'var(--triplo)'}">${d.db_conectado?'SIM':'NÃO'}</div>
+        </div>
+        <div class="card">
+          <div class="card-titulo">CONCURSOS</div>
+          <div class="card-valor">${d.total_concursos||0}</div>
+          <div class="card-sub">#${d.concurso_min||'—'} → #${d.concurso_max||'—'}</div>
+        </div>
+        <div class="card">
+          <div class="card-titulo">JOGOS</div>
+          <div class="card-valor">${d.total_jogos||0}</div>
+        </div>
+        <div class="card">
+          <div class="card-titulo">CAMINHO</div>
+          <div style="font-size:11px;color:var(--subtxt);font-family:'DM Mono',monospace;word-break:break-all;margin-top:6px">${d.caminho||'—'}</div>
+        </div>
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<div class="alerta erro show">Erro: ${e.message}</div>`;
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  verificarStatus();
+  carregarResumoHistorico();
+});
 </script>
 </body>
 </html>
