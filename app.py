@@ -411,8 +411,8 @@ def _coletar_worker(inicio,fim):
     global _coleta,_dados_ok
     try:
         conn=sqlite3.connect(_db()); conn.execute("PRAGMA journal_mode=WAL")
-        c=conn.cursor(); ccm=_col_concurso_meta()
-        c.execute(f"SELECT MAX({ccm}) FROM concursos"); ultimo=c.fetchone()[0] or 0
+        c=conn.cursor()
+        c.execute("SELECT MAX(concurso) FROM concursos"); ultimo=c.fetchone()[0] or 0
         if inicio<=ultimo: inicio=ultimo+1
         falhas=coletados=0; numero=inicio
         while True:
@@ -426,7 +426,7 @@ def _coletar_worker(inicio,fim):
             _coleta["coletados"]=coletados; numero+=1; time.sleep(0.4)
         c.execute("SELECT COUNT(*) FROM concursos"); tc=c.fetchone()[0]
         c.execute(f"SELECT COUNT(*) FROM {_tj()}"); tj2=c.fetchone()[0]
-        c.execute(f"SELECT MAX({ccm}) FROM concursos"); mx=c.fetchone()[0]
+        c.execute("SELECT MAX(concurso) FROM concursos"); mx=c.fetchone()[0]
         conn.close(); _dados_ok=False
         _coleta={"rodando":False,"relatorio":{"coletados":coletados,"total_concursos":tc,
                  "total_jogos":tj2,"ultimo":mx},"erro":None,"coletados":coletados}
@@ -450,8 +450,8 @@ def index():
 def api_status():
     carregar_dados(); tj=_tj()
     try:
-        conn=sqlite3.connect(_db()); c=conn.cursor(); ccm=_col_concurso_meta()
-        c.execute(f"SELECT COUNT(*),MIN({ccm}),MAX({ccm}),MIN(data_sorteio),MAX(data_sorteio) FROM concursos")
+        conn=sqlite3.connect(_db()); c=conn.cursor()
+        c.execute("SELECT COUNT(*),MIN(concurso),MAX(concurso),MIN(data_sorteio),MAX(data_sorteio) FROM concursos")
         tc,mn,mx,dm,dM=c.fetchone()
         c.execute(f"SELECT COUNT(*) FROM {tj}"); tj2=c.fetchone()[0]
         conn.close(); banco_ok=bool(tc and tc>0)
@@ -531,8 +531,12 @@ def api_concurso_atual():
     if dados:
         numero=dados.get("numero",dados.get("numeroConcurso",0))
         if numero:
-            con,jos=parsear_cef(numero,dados)
+            con, jos = parsear_cef(numero, dados)
             if jos:
+                # Monta a resposta DIRETO do dado ao vivo da Caixa, sem
+                # depender do banco local já ter esse concurso salvo —
+                # antes disso, se o banco local não tivesse o concurso
+                # ao vivo, a chamada abaixo caia no ultimo concurso salvo.
                 resultado=[]
                 for j in jos:
                     probs=calcular_probs(j["mandante"],j["visitante"],j["posicao"])
@@ -552,8 +556,8 @@ def api_concurso_atual():
                                 "custo_minimo":round(3.0*(2**duplos)*(3**triplos)/100,2),"jogos":resultado})
             return api_analisar_concurso(numero)
     try:
-        conn=sqlite3.connect(_db()); c=conn.cursor(); ccm=_col_concurso_meta()
-        c.execute(f"SELECT MAX({ccm}) FROM concursos"); ultimo=c.fetchone()[0]; conn.close()
+        conn=sqlite3.connect(_db()); c=conn.cursor()
+        c.execute("SELECT MAX(concurso) FROM concursos"); ultimo=c.fetchone()[0]; conn.close()
         if ultimo: return api_analisar_concurso(ultimo)
     except: pass
     return jsonify({"erro":"Nenhuma fonte disponível"}),503
@@ -575,8 +579,8 @@ def api_sentinela_atualizar():
 def hist_resumo():
     tj=_tj()
     try:
-        conn=sqlite3.connect(_db()); c=conn.cursor(); ccm=_col_concurso_meta()
-        c.execute(f"SELECT COUNT(*),MIN({ccm}),MAX({ccm}),MIN(data_sorteio),MAX(data_sorteio) FROM concursos")
+        conn=sqlite3.connect(_db()); c=conn.cursor()
+        c.execute("SELECT COUNT(*),MIN(concurso),MAX(concurso),MIN(data_sorteio),MAX(data_sorteio) FROM concursos")
         tc,mn,mx,dm,dM=c.fetchone()
         c.execute(f"SELECT COUNT(*) FROM {tj}"); tj2=c.fetchone()[0]
         c.execute(f"SELECT resultado,COUNT(*) FROM {tj} WHERE resultado IN ('1','X','2') GROUP BY resultado")
@@ -642,8 +646,8 @@ def api_posicoes():
 def api_db_info():
     db=_db(); info=_tabela_cols(); tj=info["tabela"]
     try:
-        conn=sqlite3.connect(db); c=conn.cursor(); ccm=_col_concurso_meta()
-        c.execute(f"SELECT COUNT(*),MIN({ccm}),MAX({ccm}) FROM concursos"); tc,mn,mx=c.fetchone()
+        conn=sqlite3.connect(db); c=conn.cursor()
+        c.execute("SELECT COUNT(*),MIN(concurso),MAX(concurso) FROM concursos"); tc,mn,mx=c.fetchone()
         c.execute(f"SELECT COUNT(*) FROM {tj}"); tj2=c.fetchone()[0]
         c.execute("SELECT name FROM sqlite_master WHERE type='table'"); tabelas=[r[0] for r in c.fetchall()]
         conn.close()
