@@ -737,9 +737,9 @@ function resReal(r) {
 
 function renderJogo(j) {
   const p = j.probabilidades || {};
-  const p1 = ((p.casa || 0) * 100).toFixed(1);
-  const px = ((p.empate || 0) * 100).toFixed(1);
-  const p2 = ((p.fora || 0) * 100).toFixed(1);
+  const p1 = ((p.p1 || 0) * 100).toFixed(1);
+  const px = ((p.px || 0) * 100).toFixed(1);
+  const p2 = ((p.p2 || 0) * 100).toFixed(1);
   const conf = j.confianca || 0;
 
   return `<tr>
@@ -807,7 +807,7 @@ async function verificarStatus() {
     const d = await r.json();
     if (d.status === 'online') {
       dot.className = 'status-dot online';
-      const banco = d.integracoes?.banco_historico || '';
+      const banco = d.integracoes?.loteca_historico_db || '';
       txt.textContent = `v${d.versao} · ${banco}`;
     } else { throw new Error(); }
   } catch {
@@ -883,9 +883,9 @@ async function analisarJogo() {
     const d = await r.json();
 
     const prob = d.probabilidades || {};
-    const p1 = ((prob.casa||0)*100).toFixed(1);
-    const px = ((prob.empate||0)*100).toFixed(1);
-    const p2 = ((prob.fora||0)*100).toFixed(1);
+    const p1 = ((prob.p1||0)*100).toFixed(1);
+    const px = ((prob.px||0)*100).toFixed(1);
+    const p2 = ((prob.p2||0)*100).toFixed(1);
     const conf = (d.confianca||0).toFixed(1);
 
     el.innerHTML = `
@@ -929,15 +929,16 @@ async function buscarTime() {
     const d = await r.json();
     if (d.erro) { el.innerHTML = `<div class="alerta erro show">${d.erro}</div>`; return; }
 
-    const total = d.total_jogos || 0;
-    const vc = d.casa?.V || 0, ec = d.casa?.E || 0, dc = d.casa?.D || 0;
-    const vf = d.fora?.V || 0, ef = d.fora?.E || 0, df = d.fora?.D || 0;
+    const vc = d.casa?.v || 0, ec = d.casa?.e || 0, dc = d.casa?.d || 0, tc = d.casa?.total || 0;
+    const vf = d.fora?.v || 0, ef = d.fora?.e || 0, df = d.fora?.d || 0, tf = d.fora?.total || 0;
+    const total = tc + tf;
+    const aprovPct = total ? (((vc+vf)/total)*100).toFixed(1) : 0;
 
     el.innerHTML = `
       <div class="grid-2" style="max-width:700px">
         <div class="card">
           <div class="card-titulo">COMO MANDANTE</div>
-          <div class="card-valor">${d.casa?.jogos||0}</div>
+          <div class="card-valor">${tc}</div>
           <div style="margin-top:12px;font-size:13px;color:var(--subtxt)">
             <span style="color:var(--r1)">V:${vc}</span> · 
             <span style="color:var(--rx)">E:${ec}</span> · 
@@ -946,7 +947,7 @@ async function buscarTime() {
         </div>
         <div class="card">
           <div class="card-titulo">COMO VISITANTE</div>
-          <div class="card-valor">${d.fora?.jogos||0}</div>
+          <div class="card-valor">${tf}</div>
           <div style="margin-top:12px;font-size:13px;color:var(--subtxt)">
             <span style="color:var(--r1)">V:${vf}</span> · 
             <span style="color:var(--rx)">E:${ef}</span> · 
@@ -955,11 +956,11 @@ async function buscarTime() {
         </div>
       </div>
       <div class="card" style="max-width:700px">
-        <div class="card-titulo">TOTAL: ${total} JOGOS · APROVEITAMENTO: ${d.aproveitamento_pct||0}%</div>
-        ${d.historico_recente?.length ? `
+        <div class="card-titulo">TOTAL: ${total} JOGOS · APROVEITAMENTO: ${aprovPct}%</div>
+        ${d.ultimos_jogos?.length ? `
           <table class="tabela-jogos" style="margin-top:12px">
             <thead><tr><th>Concurso</th><th>Data</th><th>Mandante</th><th>Visitante</th><th>Resultado</th></tr></thead>
-            <tbody>${d.historico_recente.slice(0,10).map(j=>`
+            <tbody>${d.ultimos_jogos.slice(0,10).map(j=>`
               <tr>
                 <td class="jogo-num">#${j.concurso}</td>
                 <td style="font-size:12px;color:var(--subtxt)">${j.data||'—'}</td>
@@ -982,11 +983,10 @@ async function carregarResumoHistorico() {
     const r = await fetch(`${BASE}/api/historico/resumo`);
     const d = await r.json();
 
-    const dist = d.distribuicao_resultados || {};
-    const total = (dist['1']||0) + (dist['X']||0) + (dist['2']||0) || 1;
-    const p1 = ((dist['1']||0)/total*100).toFixed(1);
-    const px = ((dist['X']||0)/total*100).toFixed(1);
-    const p2 = ((dist['2']||0)/total*100).toFixed(1);
+    const dist = d.distribuicao || {};
+    const p1 = (dist['1']?.pct || 0).toFixed(1);
+    const px = (dist['X']?.pct || 0).toFixed(1);
+    const p2 = (dist['2']?.pct || 0).toFixed(1);
 
     el.innerHTML = `
       <div class="grid-2">
@@ -994,7 +994,7 @@ async function carregarResumoHistorico() {
           <div class="card-titulo">BANCO HISTÓRICO</div>
           <div class="card-valor">${d.total_concursos||0}</div>
           <div class="card-sub">concursos · ${d.total_jogos||0} jogos</div>
-          <div class="card-sub" style="margin-top:4px">#${d.concurso_mais_antigo||'—'} → #${d.concurso_mais_recente||'—'}</div>
+          <div class="card-sub" style="margin-top:4px">#${d.min||'—'} → #${d.max||'—'}</div>
         </div>
         <div class="card">
           <div class="card-titulo">DISTRIBUIÇÃO REAL 1/X/2</div>
@@ -1089,7 +1089,7 @@ async function carregarPosicoes() {
   try {
     const r = await fetch(`${BASE}/api/posicoes`);
     const d = await r.json();
-    const posicoes = d.posicoes || d;
+    const posicoes = Array.isArray(d) ? d : Object.entries(d).map(([pos, v]) => ({posicao: pos, ...v}));
 
     if (d.global) {
       const g = d.global;
