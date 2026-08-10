@@ -448,36 +448,39 @@ def index():
 
 @app.route("/api/debug/caixa")
 def debug_caixa():
-    """Rota TEMPORARIA de diagnostico — testa se o servidor consegue
-    alcançar a API da Caixa a partir de onde o app está rodando de verdade
-    (Render), sem precisar de Shell. Pode remover depois de confirmar."""
+    """Rota TEMPORARIA de diagnostico."""
     import time as _t
-    resultado = {"tentativas": []}
-    t0 = _t.time()
+    tentativas_headers = [
+        {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+         "Accept":"application/json, text/plain, */*",
+         "Accept-Language":"pt-BR,pt;q=0.9",
+         "Referer":"https://loterias.caixa.gov.br/",
+         "Origin":"https://loterias.caixa.gov.br"},
+        {"User-Agent":"Mozilla/5.0"},
+        {},
+    ]
+    resultados = []
+    for i, headers in enumerate(tentativas_headers):
+        t0 = _t.time()
+        try:
+            r = requests.get(URL_CEF, timeout=10, headers=headers)
+            resultados.append({
+                "tentativa": i+1, "headers_enviados": list(headers.keys()),
+                "status_code": r.status_code, "tempo_seg": round(_t.time()-t0,2),
+                "tamanho_bytes": len(r.content),
+                "e_json_valido": _tenta_json(r),
+            })
+        except Exception as e:
+            resultados.append({"tentativa": i+1, "headers_enviados": list(headers.keys()),
+                               "erro": f"{type(e).__name__}: {str(e)[:200]}"})
+    return jsonify({"resultados": resultados})
+
+def _tenta_json(r):
     try:
-        r = requests.get(URL_CEF, timeout=12, headers={"User-Agent":"Mozilla/5.0"})
-        resultado["status_code"] = r.status_code
-        resultado["tempo_resposta_seg"] = round(_t.time()-t0, 2)
-        resultado["tamanho_resposta_bytes"] = len(r.content)
-        if r.status_code == 200:
-            try:
-                d = r.json()
-                resultado["numero_concurso_retornado"] = d.get("numero")
-                resultado["ultimo_concurso_flag"] = d.get("ultimoConcurso")
-                resultado["proximo_concurso"] = d.get("numeroConcursoProximo")
-            except Exception as e:
-                resultado["erro_ao_parsear_json"] = str(e)
-                resultado["primeiros_500_chars"] = r.text[:500]
-        else:
-            resultado["primeiros_500_chars_resposta"] = r.text[:500]
-    except requests.exceptions.Timeout:
-        resultado["erro"] = "TIMEOUT — a chamada não voltou em 12s (sinal de bloqueio de rede/firewall, não de erro de dado)"
-        resultado["tempo_decorrido_seg"] = round(_t.time()-t0, 2)
-    except requests.exceptions.ConnectionError as e:
-        resultado["erro"] = f"CONNECTION_ERROR — {str(e)[:300]} (sinal forte de bloqueio de IP/rede)"
-    except Exception as e:
-        resultado["erro"] = f"{type(e).__name__}: {str(e)[:300]}"
-    return jsonify(resultado)
+        d = r.json()
+        return {"numero": d.get("numero"), "ultimoConcurso": d.get("ultimoConcurso")}
+    except Exception:
+        return None
 
 @app.route("/api/status")
 def api_status():
