@@ -446,6 +446,39 @@ def index():
             with open(p,"r",encoding="utf-8") as f: return Response(f.read(),mimetype="text/html")
     return "index.html não encontrado",404
 
+@app.route("/api/debug/caixa")
+def debug_caixa():
+    """Rota TEMPORARIA de diagnostico — testa se o servidor consegue
+    alcançar a API da Caixa a partir de onde o app está rodando de verdade
+    (Render), sem precisar de Shell. Pode remover depois de confirmar."""
+    import time as _t
+    resultado = {"tentativas": []}
+    t0 = _t.time()
+    try:
+        r = requests.get(URL_CEF, timeout=12, headers={"User-Agent":"Mozilla/5.0"})
+        resultado["status_code"] = r.status_code
+        resultado["tempo_resposta_seg"] = round(_t.time()-t0, 2)
+        resultado["tamanho_resposta_bytes"] = len(r.content)
+        if r.status_code == 200:
+            try:
+                d = r.json()
+                resultado["numero_concurso_retornado"] = d.get("numero")
+                resultado["ultimo_concurso_flag"] = d.get("ultimoConcurso")
+                resultado["proximo_concurso"] = d.get("numeroConcursoProximo")
+            except Exception as e:
+                resultado["erro_ao_parsear_json"] = str(e)
+                resultado["primeiros_500_chars"] = r.text[:500]
+        else:
+            resultado["primeiros_500_chars_resposta"] = r.text[:500]
+    except requests.exceptions.Timeout:
+        resultado["erro"] = "TIMEOUT — a chamada não voltou em 12s (sinal de bloqueio de rede/firewall, não de erro de dado)"
+        resultado["tempo_decorrido_seg"] = round(_t.time()-t0, 2)
+    except requests.exceptions.ConnectionError as e:
+        resultado["erro"] = f"CONNECTION_ERROR — {str(e)[:300]} (sinal forte de bloqueio de IP/rede)"
+    except Exception as e:
+        resultado["erro"] = f"{type(e).__name__}: {str(e)[:300]}"
+    return jsonify(resultado)
+
 @app.route("/api/status")
 def api_status():
     carregar_dados(); tj=_tj()
@@ -530,31 +563,7 @@ def api_concurso_atual():
     dados=buscar_cef("")
     if dados:
         numero=dados.get("numero",dados.get("numeroConcurso",0))
-        if numero:
-            con, jos = parsear_cef(numero, dados)
-            if jos:
-                # Monta a resposta DIRETO do dado ao vivo da Caixa, sem
-                # depender do banco local já ter esse concurso salvo —
-                # antes disso, se o banco local não tivesse o concurso
-                # ao vivo, a chamada abaixo caia no ultimo concurso salvo.
-                resultado=[]
-                for j in jos:
-                    probs=calcular_probs(j["mandante"],j["visitante"],j["posicao"])
-                    cl=classificar(probs); fav=favorito(probs)
-                    vals=sorted([probs["p1"],probs["px"],probs["p2"]],reverse=True)
-                    resultado.append({"posicao":j["posicao"],"mandante":j["mandante"],"visitante":j["visitante"],
-                                      "resultado_real":j["resultado"] if j["resultado"] in("1","X","2") else "?",
-                                      "probabilidades":{"p1":probs["p1"],"px":probs["px"],"p2":probs["p2"]},
-                                      "score_0_100":score_0_100(probs),"classificacao":cl,
-                                      "favorito":fav,"confianca":round((vals[0]-vals[1])*100,1),
-                                      "fonte":probs.get("fonte","?")})
-                secos=sum(1 for r in resultado if r["classificacao"]=="SECO")
-                duplos=sum(1 for r in resultado if r["classificacao"]=="DUPLO")
-                triplos=sum(1 for r in resultado if r["classificacao"]=="TRIPLO")
-                return jsonify({"concurso":numero,"total":len(resultado),
-                                "fonte_grade":"cef_ao_vivo","secos":secos,"duplos":duplos,"triplos":triplos,
-                                "custo_minimo":round(3.0*(2**duplos)*(3**triplos)/100,2),"jogos":resultado})
-            return api_analisar_concurso(numero)
+        if numero: return api_analisar_concurso(numero)
     try:
         conn=sqlite3.connect(_db()); c=conn.cursor()
         c.execute("SELECT MAX(concurso) FROM concursos"); ultimo=c.fetchone()[0]; conn.close()
