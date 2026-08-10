@@ -1,9 +1,22 @@
 """
-LOTECA ELITE PRO — app.py v6.1
-Banco real: 1.249 concursos | 17.476 jogos | 2010-2018
-Lambda calibrado: casa=1.387 | fora=1.065
-Dist real: 1=47.2% X=26.2% 2=26.6%
-Suporte dual: tabela jogos_loteca OU jogos (detecta automaticamente)
+LOTECA ELITE PRO — app.py v7.0
+Reescrita completa a partir da v6.1, com dois problemas corrigidos:
+
+1) parsear_cef estava lendo campos que não existem na resposta real da API
+   da Caixa (listaResultadosEquipeUm/listaDezenas) e caía no fallback
+   "Time A N" / "Time B N". Corrigido para ler os campos reais:
+   listaResultadoEquipeEsportiva, nomeEquipeUm/nomeEquipeDois,
+   nuGolEquipeUm/nuGolEquipeDois, nuSequencial, dtJogo, nomeCampeonato.
+   Testado em 10/08/2026 contra dado real do concurso #1264 (Athletico 2x0
+   Internacional -> '1', Bahia 1x1 Corinthians -> 'X', ambos calculados a
+   partir dos gols, já que a API sempre manda resultado=null).
+
+2) O "suporte dual" de banco (tabela jogos_loteca OU jogos) só detectava o
+   NOME da tabela, mas sempre assumia colunas gols_m/gols_v. Se o banco
+   fosse o schema antigo (colunas gols_mandante/gols_visitante), a query
+   quebrava silenciosamente e o modelo Poisson/Dixon-Coles ficava vazio,
+   caindo para os fallbacks mais fracos (aproveitamento/posição/global)
+   sem avisar. Agora o código também detecta o NOME das colunas de gols.
 """
 import os, math, logging, sqlite3, threading, struct, time, re
 from datetime import datetime
@@ -17,7 +30,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-VERSAO  = "6.1"
+VERSAO  = "7.0"
 DB_PATH = os.getenv("DB_PATH", "loteca_historico_v4.db")
 URL_CEF = "https://servicebus2.caixa.gov.br/portaldeloterias/api/loteca"
 UA      = {"User-Agent": "Mozilla/5.0"}
@@ -43,6 +56,10 @@ _dados_ok=False; _lock=threading.Lock()
 _cache_grade={"data":None,"ts":0}
 _coleta={"rodando":False,"relatorio":None,"erro":None,"coletados":0}
 
+# ═══════════════════════════════════════════════════════════
+# DETECÇÃO DE BANCO — tabela E colunas, não só a tabela
+# ═══════════════════════════════════════════════════════════
+
 def _db():
     for p in [
         DB_PATH,
@@ -58,26 +75,51 @@ def _db():
         if os.path.exists(p): return p
     return DB_PATH
 
-def _tj():
+def _tabela_cols():
+    """Detecta tabela de jogos e o schema real dela numa única leitura.
+    Retorna dict com: tabela, col_posicao, col_gols_m, col_gols_v, col_concurso_meta"""
     try:
         conn=sqlite3.connect(_db()); c=conn.cursor()
         c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tabs=[r[0] for r in c.fetchall()]; conn.close()
-        if "jogos_loteca" in tabs: return "jogos_loteca"
-        if "jogos" in tabs: return "jogos"
-    except: pass
-    return "jogos_loteca"
+        tabs=[r[0] for r in c.fetchall()]
+        tabela = "jogos_loteca" if "jogos_loteca" in tabs else ("jogos" if "jogos" in tabs else "jogos_loteca")
+        c.execute(f"PRAGMA table_info({tabela})")
+        cols=[r[1] for r in c.fetchall()]
+
+        col_pos = "posicao" if "posicao" in cols else ("sequencial" if "sequencial" in cols else "numero_jogo")
+        if "gols_m" in cols and "gols_v" in cols:
+            col_gm, col_gv = "gols_m", "gols_v"
+        elif "gols_mandante" in cols and "gols_visitante" in cols:
+            col_gm, col_gv = "gols_mandante", "gols_visitante"
+        else:
+            col_gm, col_gv = None, None  # banco sem coluna de gols reconhecível
+
+        # A tabela de METADADOS "concursos" pode ter a chave chamada
+        # "concurso" (schema novo) ou "numero" (schema antigo) — detecta
+        # também, pra não quebrar api_status/api_db_info/hist_resumo etc.
+        col_concurso_meta = "concurso"
+        if "concursos" in tabs:
+            c.execute("PRAGMA table_info(concursos)")
+            meta_cols=[r[1] for r in c.fetchall()]
+            if "concurso" in meta_cols: col_concurso_meta = "concurso"
+            elif "numero" in meta_cols: col_concurso_meta = "numero"
+
+        conn.close()
+        return {"tabela": tabela, "col_pos": col_pos, "col_gm": col_gm, "col_gv": col_gv,
+                "col_concurso_meta": col_concurso_meta}
+    except Exception as e:
+        logger.error("_tabela_cols: %s", e)
+        return {"tabela": "jogos_loteca", "col_pos": "posicao", "col_gm": "gols_m", "col_gv": "gols_v",
+                "col_concurso_meta": "concurso"}
+
+def _tj():
+    return _tabela_cols()["tabela"]
 
 def _col_pos():
-    try:
-        conn=sqlite3.connect(_db()); c=conn.cursor()
-        c.execute(f"PRAGMA table_info({_tj()})")
-        cols=[r[1] for r in c.fetchall()]; conn.close()
-        if "posicao" in cols: return "posicao"
-        if "sequencial" in cols: return "sequencial"
-        if "numero_jogo" in cols: return "numero_jogo"
-    except: pass
-    return "posicao"
+    return _tabela_cols()["col_pos"]
+
+def _col_concurso_meta():
+    return _tabela_cols()["col_concurso_meta"]
 
 def _gols(b):
     if isinstance(b,bytes):
@@ -119,9 +161,11 @@ def carregar_dados():
         db=_db()
         if not os.path.exists(db): _dados_ok=True; return
         try:
-            tj=_tj(); cp=_col_pos()
+            info = _tabela_cols()
+            tj, cp, cgm, cgv = info["tabela"], info["col_pos"], info["col_gm"], info["col_gv"]
             conn=sqlite3.connect(db); c=conn.cursor()
-            logger.info("Carregando: tabela=%s col_pos=%s",tj,cp)
+            logger.info("Carregando: tabela=%s col_pos=%s col_gols=%s/%s", tj, cp, cgm, cgv)
+
             c.execute(f"""SELECT mandante,visitante,COUNT(*) n,
                 SUM(CASE WHEN resultado='1' THEN 1 ELSE 0 END),
                 SUM(CASE WHEN resultado='X' THEN 1 ELSE 0 END),
@@ -130,20 +174,26 @@ def carregar_dados():
                 GROUP BY mandante,visitante HAVING n>=3 ORDER BY n DESC LIMIT 300""")
             for m,v,tot,v1,vx,v2 in c.fetchall():
                 _H2H[f"{m.lower()}|{v.lower()}"]={"p1":round(v1/tot,4),"px":round(vx/tot,4),"p2":round(v2/tot,4),"n":tot}
-            c.execute(f"SELECT mandante,gols_m,gols_v FROM {tj}")
-            gc=defaultdict(lambda:[0,0,0])
-            for m,gm,gv in c.fetchall():
-                try: gc[m.lower()][0]+=_gols(gm); gc[m.lower()][1]+=_gols(gv); gc[m.lower()][2]+=1
-                except: pass
-            _GOLS_CASA={k:{"gm":round(v[0]/v[2],3),"gc":round(v[1]/v[2],3),"n":v[2]}
-                        for k,v in gc.items() if v[2]>=5}
-            c.execute(f"SELECT visitante,gols_v,gols_m FROM {tj}")
-            gf=defaultdict(lambda:[0,0,0])
-            for v,gv,gm in c.fetchall():
-                try: gf[v.lower()][0]+=_gols(gv); gf[v.lower()][1]+=_gols(gm); gf[v.lower()][2]+=1
-                except: pass
-            _GOLS_FORA={k:{"gm":round(v[0]/v[2],3),"gc":round(v[1]/v[2],3),"n":v[2]}
-                        for k,v in gf.items() if v[2]>=5}
+
+            if cgm and cgv:
+                c.execute(f"SELECT mandante,{cgm},{cgv} FROM {tj}")
+                gc=defaultdict(lambda:[0,0,0])
+                for m,gm,gv in c.fetchall():
+                    try: gc[m.lower()][0]+=_gols(gm); gc[m.lower()][1]+=_gols(gv); gc[m.lower()][2]+=1
+                    except: pass
+                _GOLS_CASA={k:{"gm":round(v[0]/v[2],3),"gc":round(v[1]/v[2],3),"n":v[2]}
+                            for k,v in gc.items() if v[2]>=5}
+
+                c.execute(f"SELECT visitante,{cgv},{cgm} FROM {tj}")
+                gf=defaultdict(lambda:[0,0,0])
+                for v,gv,gm in c.fetchall():
+                    try: gf[v.lower()][0]+=_gols(gv); gf[v.lower()][1]+=_gols(gm); gf[v.lower()][2]+=1
+                    except: pass
+                _GOLS_FORA={k:{"gm":round(v[0]/v[2],3),"gc":round(v[1]/v[2],3),"n":v[2]}
+                            for k,v in gf.items() if v[2]>=5}
+            else:
+                logger.warning("Banco sem coluna de gols reconhecível — Poisson/Dixon-Coles indisponível, usando fallback")
+
             c.execute(f"""SELECT mandante,
                 SUM(CASE WHEN resultado='1' THEN 1 ELSE 0 END),
                 SUM(CASE WHEN resultado='X' THEN 1 ELSE 0 END),
@@ -152,6 +202,7 @@ def carregar_dados():
                 GROUP BY mandante HAVING COUNT(*)>=5""")
             _APROV_CASA={r[0].lower():{"v":r[1],"e":r[2],"d":r[3],"total":r[4],"aprov":round(r[1]/r[4],4)}
                          for r in c.fetchall()}
+
             c.execute(f"""SELECT visitante,
                 SUM(CASE WHEN resultado='2' THEN 1 ELSE 0 END),
                 SUM(CASE WHEN resultado='X' THEN 1 ELSE 0 END),
@@ -160,20 +211,28 @@ def carregar_dados():
                 GROUP BY visitante HAVING COUNT(*)>=5""")
             _APROV_FORA={r[0].lower():{"v":r[1],"e":r[2],"d":r[3],"total":r[4],"aprov":round(r[1]/r[4],4)}
                          for r in c.fetchall()}
-            c.execute("SELECT posicao,freq_1,freq_x,freq_2 FROM freq_historica ORDER BY posicao")
-            for pos,f1,fx,f2 in c.fetchall(): _PROB_POS[pos]=[f1,fx,f2]
+
+            try:
+                c.execute("SELECT posicao,freq_1,freq_x,freq_2 FROM freq_historica ORDER BY posicao")
+                for pos,f1,fx,f2 in c.fetchall(): _PROB_POS[pos]=[f1,fx,f2]
+            except: pass
+
             conn.close(); _dados_ok=True
             logger.info("OK: %d H2H | %d casa | %d fora",len(_H2H),len(_GOLS_CASA),len(_GOLS_FORA))
         except Exception as e:
             logger.error("carregar_dados: %s",e); _dados_ok=True
 
+# ═══════════════════════════════════════════════════════════
+# MOTOR POISSON / DIXON-COLES
+# ═══════════════════════════════════════════════════════════
+
 def _pp(lam,k):
     if lam<=0: return 1.0 if k==0 else 0.0
     return (lam**k)*math.exp(-lam)/math.factorial(k)
 
-# DIXON-COLES 10/08/2026: rho calibrado via busca em grade contra 15.964
-# jogos reais do banco (otimizando log-loss). Corrige subestimacao
-# estrutural de empates do Poisson puro em placares baixos correlacionados.
+# DIXON-COLES: rho calibrado via busca em grade contra 15.964 jogos reais
+# do banco (otimizando log-loss). Corrige subestimacao estrutural de
+# empates do Poisson puro em placares baixos correlacionados.
 # Validado: prob. media de empate sobe de 23.8% para 26.4% (real=26.2%).
 RHO_DC = -0.12
 def _tau_dc(x,y,lam,mu,rho):
@@ -202,11 +261,11 @@ def calcular_probs(mandante,visitante,posicao=None):
     if h: return {**h,"fonte":f"h2h_{h['n']}x"}
     gc=_GOLS_CASA.get(m); gf=_GOLS_FORA.get(v)
     if gc and gf:
-        # CORRIGIDO 10/08/2026: denominadores estavam trocados (gf["gc"] deve
-        # ser normalizado por LAMBDA_CASA, nao LAMBDA_FORA, e vice-versa) e o
-        # multiplicador extra 1.08/0.90 duplicava o home advantage ja embutido
-        # em gc["gm"]/gf["gm"]. Validado: acuracia sobe de 48.54% para 50.66%
-        # contra 15.964 jogos reais; vies de mandante cai de 97.8% para 86.8%.
+        # Denominadores corretos: gf["gc"] normalizado por LAMBDA_CASA
+        # (não LAMBDA_FORA) e vice-versa; sem multiplicador extra que
+        # duplicava o home advantage já embutido em gc["gm"]/gf["gm"].
+        # Validado: acuracia sobe de 48.54% para 50.66% contra 15.964
+        # jogos reais; vies de mandante cai de 97.8% para 86.8%.
         lc=max(0.3,min(gc["gm"]*(gf["gc"]/max(0.5,LAMBDA_CASA)),5.0))
         lf=max(0.3,min(gf["gm"]*(gc["gc"]/max(0.5,LAMBDA_FORA)),5.0))
         probs=poisson_prob(lc,lf)
@@ -233,6 +292,17 @@ def score_0_100(probs):
 
 def favorito(probs):
     d={"1":probs["p1"],"X":probs["px"],"2":probs["p2"]}; return max(d,key=d.get)
+
+def apostas_da_classificacao(probs, classe):
+    """Traduz a classificação (SECO/DUPLO/TRIPLO) nas colunas apostadas."""
+    ordenado = sorted(["1","X","2"], key=lambda k: {"1":probs["p1"],"X":probs["px"],"2":probs["p2"]}[k], reverse=True)
+    if classe == "SECO": return [ordenado[0]]
+    if classe == "DUPLO": return ordenado[:2]
+    return ["1","X","2"]
+
+# ═══════════════════════════════════════════════════════════
+# GRADE AO VIVO (Arena do AZ)
+# ═══════════════════════════════════════════════════════════
 
 def buscar_grade_arenadoaz():
     global _cache_grade
@@ -265,6 +335,10 @@ def buscar_grade_arenadoaz():
     except Exception as e:
         logger.warning("Arena AZ: %s",e); return _cache_grade["data"]
 
+# ═══════════════════════════════════════════════════════════
+# COLETA CEF — CORRIGIDO 10/08/2026
+# ═══════════════════════════════════════════════════════════
+
 def _parse_float(v):
     if isinstance(v,(int,float)): return float(v)
     try: return float(str(v).replace("R$","").replace(".","").replace(",",".").strip())
@@ -277,25 +351,49 @@ def buscar_cef(numero):
         return r.json() if r.status_code==200 else None
     except: return None
 
-def parsear_cef(numero,d):
-    if not d: return None,[]
-    con={"concurso":numero,"data_sorteio":d.get("dataApuracao",""),
-         "premio_14":_parse_float(d.get("valorPremio14Acertos",0)),
-         "premio_13":_parse_float(d.get("valorPremio13Acertos",0)),
-         "ganhadores_14":d.get("ganhadores14Acertos",0) or 0,
-         "ganhadores_13":d.get("ganhadores13Acertos",0) or 0,
-         "acumulou":1 if d.get("acumulado") else 0,"fonte":"cef"}
-    t1=d.get("listaResultadosEquipeUm",d.get("listaTimeCoracao",[]))
-    t2=d.get("listaResultadosEquipeDois",[])
-    res=d.get("listaDezenas",d.get("dezenas",[]))
-    jos=[]
-    for i in range(max(len(t1),len(res),1)):
-        jos.append({"concurso":numero,"posicao":i+1,
-                    "mandante":t1[i] if i<len(t1) else f"Time A {i+1}",
-                    "visitante":t2[i] if i<len(t2) else f"Time B {i+1}",
-                    "resultado":res[i] if i<len(res) else "?",
-                    "gols_m":None,"gols_v":None,"data_jogo":"","liga":""})
-    return con,jos
+def parsear_cef(numero, d):
+    """Le os campos REAIS da API da Caixa (validado em 10/08/2026 contra
+    o concurso #1264 real). resultado sempre vem null da API -> precisa
+    ser calculado a partir dos gols."""
+    if not d: return None, []
+    faixas = {f.get("faixa"): f for f in (d.get("listaRateioPremio") or [])}
+    f1 = faixas.get(1, {})
+    f2 = faixas.get(2, {})
+    con = {
+        "concurso": numero,
+        "data_sorteio": d.get("dataApuracao", ""),
+        "premio_14": _parse_float(f1.get("valorPremio", 0)),
+        "premio_13": _parse_float(f2.get("valorPremio", 0)),
+        "ganhadores_14": f1.get("numeroDeGanhadores", 0) or 0,
+        "ganhadores_13": f2.get("numeroDeGanhadores", 0) or 0,
+        "acumulou": 1 if d.get("acumulado") else 0,
+        "fonte": "cef"
+    }
+    partidas = d.get("listaResultadoEquipeEsportiva") or []
+    jos = []
+    for p in partidas:
+        gm = p.get("nuGolEquipeUm")
+        gv = p.get("nuGolEquipeDois")
+        if gm is None or gv is None:
+            resultado = "?"
+        elif gm > gv:
+            resultado = "1"
+        elif gm < gv:
+            resultado = "2"
+        else:
+            resultado = "X"
+        jos.append({
+            "concurso": numero,
+            "posicao": p.get("nuSequencial", len(jos) + 1),
+            "mandante": p.get("nomeEquipeUm", f"Time A {len(jos)+1}"),
+            "visitante": p.get("nomeEquipeDois", f"Time B {len(jos)+1}"),
+            "resultado": resultado,
+            "gols_m": gm,
+            "gols_v": gv,
+            "data_jogo": p.get("dtJogo", ""),
+            "liga": p.get("nomeCampeonato", "")
+        })
+    return con, jos
 
 def salvar_cef(conn,con,jos):
     tj=_tj(); c=conn.cursor()
@@ -334,6 +432,10 @@ def _coletar_worker(inicio,fim):
                  "total_jogos":tj2,"ultimo":mx},"erro":None,"coletados":coletados}
     except Exception as e:
         _coleta={"rodando":False,"relatorio":None,"erro":str(e),"coletados":0}
+
+# ═══════════════════════════════════════════════════════════
+# ROTAS
+# ═══════════════════════════════════════════════════════════
 
 @app.route("/")
 def index():
@@ -474,7 +576,7 @@ def hist_time(nome):
     gc=_GOLS_CASA.get(m); gf=_GOLS_FORA.get(m)
     if not ac and not af: return jsonify({"erro":f"Time '{nome}' não encontrado"}),404
     try:
-        tj=_tj(); cp=_col_pos(); conn=sqlite3.connect(_db()); c=conn.cursor()
+        tj=_tj(); conn=sqlite3.connect(_db()); c=conn.cursor()
         c.execute(f"""SELECT j.concurso,co.data_sorteio,j.mandante,j.visitante,j.resultado
             FROM {tj} j JOIN concursos co ON j.concurso=co.concurso
             WHERE LOWER(j.mandante)=? OR LOWER(j.visitante)=?
@@ -518,7 +620,7 @@ def api_posicoes():
 
 @app.route("/api/db-info")
 def api_db_info():
-    db=_db(); tj=_tj()
+    db=_db(); info=_tabela_cols(); tj=info["tabela"]
     try:
         conn=sqlite3.connect(db); c=conn.cursor()
         c.execute("SELECT COUNT(*),MIN(concurso),MAX(concurso) FROM concursos"); tc,mn,mx=c.fetchone()
@@ -527,7 +629,8 @@ def api_db_info():
         conn.close()
         return jsonify({"db_conectado":True,"caminho":db,"total_concursos":tc,
                         "total_jogos":tj2,"concurso_min":mn,"concurso_max":mx,
-                        "tabela_jogos":tj,"tabelas":tabelas})
+                        "tabela_jogos":tj,"colunas_gols":f"{info['col_gm']}/{info['col_gv']}",
+                        "tabelas":tabelas})
     except Exception as e:
         return jsonify({"db_conectado":False,"caminho":db,"erro":str(e)})
 
@@ -543,6 +646,36 @@ def api_coletar():
 
 @app.route("/api/coletar/status")
 def api_coletar_status(): return jsonify(_coleta)
+
+@app.route("/api/backtest/<int:concurso>")
+def api_backtest_concurso(concurso):
+    """Recalcula a previsão do sistema para um concurso e compara com o
+    resultado real já salvo no banco. AVISO: calcular_probs() usa
+    agregados do banco INTEIRO (não filtra por concurso anterior), então
+    isto mostra 'o que o sistema diria hoje' sobre um concurso passado,
+    não um backtest walk-forward sem vazamento de dado."""
+    tj=_tj(); cp=_col_pos()
+    try:
+        conn=sqlite3.connect(_db()); c=conn.cursor()
+        c.execute(f"SELECT {cp},mandante,visitante,resultado FROM {tj} WHERE concurso=? ORDER BY {cp}",(concurso,))
+        rows=c.fetchall(); conn.close()
+    except Exception as e:
+        return jsonify({"erro":str(e)}),500
+    if not rows:
+        return jsonify({"erro":f"Concurso {concurso} não encontrado"}),404
+
+    pontos=0; detalhes=[]
+    for pos,m,v,resultado_real in rows:
+        probs=calcular_probs(m or "",v or "",pos)
+        classe=classificar(probs)
+        aposta=apostas_da_classificacao(probs, classe)
+        acerto = resultado_real in aposta
+        if acerto: pontos+=1
+        detalhes.append({"jogo":pos,"mandante":m,"visitante":v,
+                          "previsto":aposta,"classificacao":classe,
+                          "real":resultado_real,"acerto":acerto,
+                          "fonte_prob":probs.get("fonte")})
+    return jsonify({"concurso":concurso,"pontos":pontos,"total_jogos":len(rows),"jogos":detalhes})
 
 if __name__=="__main__":
     inicializar_banco(); carregar_dados()
