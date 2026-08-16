@@ -1,7 +1,8 @@
 """
-LOTECA ELITE PRO — app.py v8.0
+LOTECA ELITE PRO — app.py v8.1
 Benter Blending: Odds(40%) + Poisson-DC(30%) + H2H(20%) + Posição(10%)
-The Odds API integrada | Dixon-Coles com rho=-0.12 calibrado
+API-Football integrada: lesões, forma, xG, árbitro
+The Odds API expandida: BR-A, BR-B, PL, LaLiga, CL, Copa
 
 1) parsear_cef estava lendo campos que não existem na resposta real da API
    da Caixa (listaResultadosEquipeUm/listaDezenas) e caía no fallback
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-VERSAO  = "8.0"
+VERSAO  = "8.1"
 DB_PATH = os.getenv("DB_PATH", "loteca_historico_v4.db")
 URL_CEF = "https://servicebus2.caixa.gov.br/portaldeloterias/api/loteca"
 UA      = {"User-Agent": "Mozilla/5.0"}
@@ -39,8 +40,37 @@ UA      = {"User-Agent": "Mozilla/5.0"}
 LAMBDA_CASA = 1.387
 LAMBDA_FORA = 1.065
 DIST_GLOBAL = {"p1": 0.4722, "px": 0.2616, "p2": 0.2663, "total": 17476}
-ODDS_KEY = os.getenv("ODDS_API_KEY", "")
-ODDS_SPORT = "soccer_brazil_campeonato"  # esporte padrão
+ODDS_KEY        = os.getenv("ODDS_API_KEY", "")
+APIFOOTBALL_KEY = os.getenv("APIFOOTBALL_KEY", "")
+
+# Esportes suportados pela The Odds API — expandido para cobrir toda a grade Loteca
+ODDS_SPORTS = [
+    "soccer_brazil_campeonato",        # Brasileirão Série A
+    "soccer_brazil_serie_b",           # Série B
+    "soccer_england_premier_league",   # Premier League
+    "soccer_spain_la_liga",            # La Liga
+    "soccer_germany_bundesliga",       # Bundesliga
+    "soccer_italy_serie_a",            # Serie A Italiana
+    "soccer_france_ligue_one",         # Ligue 1
+    "soccer_uefa_champs_league",       # Champions League
+    "soccer_conmebol_copa_libertadores", # Libertadores
+    "soccer_brazil_campeonato_serie_c", # Série C
+]
+
+# Mapeamento de ligas para API-Football
+AF_LIGAS = {
+    "brasileirao": 71,   # Série A
+    "serie_b":     72,   # Série B
+    "serie_c":     75,   # Série C
+    "premier":     39,   # Premier League
+    "laliga":      140,  # La Liga
+    "bundesliga":  78,   # Bundesliga
+    "seriea_it":   135,  # Serie A Italiana
+    "ligue1":      61,   # Ligue 1
+    "champions":   2,    # Champions League
+    "libertadores":13,   # Copa Libertadores
+    "copa_brasil": 73,   # Copa do Brasil
+}
 
 # ── PESOS BENTER — combinação ponderada de fontes ─────────────────────────
 # Baseado em: Bill Benter (1994), Shin (1993), Ziemba & Hausch (1987)
@@ -289,52 +319,69 @@ def odds_para_prob(odd_1, odd_x, odd_2):
         return {"p1":round(p1/t,4),"px":round(px/t,4),"p2":round(p2/t,4)}
     except: return None
 
+def _match_time(home, away, m_norm, v_norm):
+    """Verifica se mandante/visitante correspondem ao jogo buscado."""
+    h = home.lower(); a = away.lower()
+    return ((m_norm in h or h in m_norm or _sim(m_norm,h)>0.7) and
+            (v_norm in a or a in v_norm or _sim(v_norm,a)>0.7))
+
+def _sim(a, b):
+    """Similaridade simples entre strings."""
+    a,b = set(a.split()),set(b.split())
+    return len(a&b)/max(len(a|b),1)
+
 def buscar_odds_ao_vivo(mandante, visitante):
-    """Busca odds ao vivo da The Odds API com cache de 30min."""
+    """
+    Busca odds ao vivo em TODOS os esportes configurados.
+    Cache de 30min por jogo. Tenta cada sport até encontrar.
+    """
     if not ODDS_KEY: return None
     chave = f"{mandante.lower()}|{visitante.lower()}"
     agora = time.time()
-    if chave in _cache_odds and agora - _cache_odds[chave].get("ts",0) < 1800:
+    if chave in _cache_odds and agora-_cache_odds[chave].get("ts",0)<1800:
         return _cache_odds[chave]
-    try:
-        url = f"https://api.the-odds-api.com/v4/sports/{ODDS_SPORT}/odds/"
-        params = {
-            "apiKey": ODDS_KEY,
-            "regions": "eu,uk",
-            "markets": "h2h",
-            "oddsFormat": "decimal",
-            "bookmakers": "bet365,betano,betway",
-        }
-        r = requests.get(url, params=params, timeout=8)
-        if r.status_code != 200: return None
-        jogos = r.json()
-        # Busca o jogo correspondente
-        m_norm = mandante.lower().strip()
-        v_norm = visitante.lower().strip()
-        for jogo in jogos:
-            home = jogo.get("home_team","").lower()
-            away = jogo.get("away_team","").lower()
-            if (m_norm in home or home in m_norm) and (v_norm in away or away in v_norm):
-                # Extrai médias de odds entre bookmakers
+    m_norm = mandante.lower().strip()
+    v_norm = visitante.lower().strip()
+    params = {
+        "apiKey": ODDS_KEY,
+        "regions": "eu,uk,us",
+        "markets": "h2h",
+        "oddsFormat": "decimal",
+        "bookmakers": "bet365,betano,betway,pinnacle",
+    }
+    for sport in ODDS_SPORTS:
+        try:
+            r = requests.get(
+                f"https://api.the-odds-api.com/v4/sports/{sport}/odds/",
+                params=params, timeout=8)
+            if r.status_code != 200: continue
+            for jogo in r.json():
+                home = jogo.get("home_team","")
+                away = jogo.get("away_team","")
+                if not _match_time(home, away, m_norm, v_norm): continue
                 o1s=[]; oxs=[]; o2s=[]
                 for bk in jogo.get("bookmakers",[]):
-                    for market in bk.get("markets",[]):
-                        if market["key"]=="h2h":
-                            outs = {o["name"]:o["price"] for o in market["outcomes"]}
-                            h = outs.get(jogo["home_team"])
-                            a = outs.get(jogo["away_team"])
-                            d = outs.get("Draw")
+                    for mkt in bk.get("markets",[]):
+                        if mkt["key"]=="h2h":
+                            outs={o["name"]:o["price"] for o in mkt["outcomes"]}
+                            h=outs.get(jogo["home_team"])
+                            a=outs.get(jogo["away_team"])
+                            d=outs.get("Draw")
                             if h and d and a:
-                                o1s.append(h); oxs.append(d); o2s.append(a)
+                                o1s.append(h);oxs.append(d);o2s.append(a)
                 if o1s:
-                    o1=sum(o1s)/len(o1s); ox=sum(oxs)/len(oxs); o2=sum(o2s)/len(o2s)
-                    prob = odds_para_prob(o1, ox, o2)
+                    o1=round(sum(o1s)/len(o1s),2)
+                    ox=round(sum(oxs)/len(oxs),2)
+                    o2=round(sum(o2s)/len(o2s),2)
+                    prob=odds_para_prob(o1,ox,o2)
                     if prob:
-                        result = {**prob,"odd_1":round(o1,2),"odd_x":round(ox,2),"odd_2":round(o2,2),"ts":agora}
-                        _cache_odds[chave] = result
+                        result={**prob,"odd_1":o1,"odd_x":ox,"odd_2":o2,
+                                "sport":sport,"ts":agora}
+                        _cache_odds[chave]=result
+                        logger.info("Odds: %s x %s → %s (sport:%s)",m_norm,v_norm,prob,sport)
                         return result
-    except Exception as e:
-        logger.warning("Odds API: %s", e)
+        except Exception as e:
+            logger.warning("Odds sport=%s: %s",sport,e)
     return None
 
 def calcular_probs(mandante, visitante, posicao=None):
@@ -396,14 +443,30 @@ def calcular_probs(mandante, visitante, posicao=None):
 
     # Normaliza para somar 1
     t = p1_blend + px_blend + p2_blend
+    p1f = p1_blend/t
+    px_f = px_blend/t
+    p2f = p2_blend/t
+
+    # ── AJUSTE API-FOOTBALL (forma recente + lesões) ──────────────────
+    af = calcular_fator_apifootball(mandante, visitante)
+    if af["fator_m"] != 1.0 or af["fator_v"] != 1.0:
+        p1f *= af["fator_m"]   # mandante vence mais/menos
+        p2f *= af["fator_v"]   # visitante vence mais/menos
+        t2 = p1f + px_f + p2f
+        p1f /= t2; px_f /= t2; p2f /= t2
+
     fonte_str = "benter[" + "+".join(fontes_nomes) + "]"
+    if af["alertas"]: fonte_str += "+af"
 
     return {
-        "p1": round(p1_blend/t, 4),
-        "px": round(px_blend/t, 4),
-        "p2": round(p2_blend/t, 4),
+        "p1": round(p1f, 4),
+        "px": round(px_f, 4),
+        "p2": round(p2f, 4),
         "fonte": fonte_str,
         "n_fontes": len(fontes_ativas),
+        "alertas_af": af.get("alertas", []),
+        "forma_m": af.get("forma_m",""),
+        "forma_v": af.get("forma_v",""),
     }
 
 def classificar(probs):
@@ -562,6 +625,138 @@ def _coletar_worker(inicio,fim):
 # ═══════════════════════════════════════════════════════════
 # ROTAS
 # ═══════════════════════════════════════════════════════════
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# API-FOOTBALL — lesões, forma, xG, árbitro
+# ═══════════════════════════════════════════════════════════════════════════
+
+_cache_af = {}  # {chave: {dados, ts}}
+
+def _af_get(endpoint, params):
+    """Chamada genérica à API-Football v3."""
+    if not APIFOOTBALL_KEY: return None
+    try:
+        r = requests.get(
+            f"https://v3.football.api-sports.io/{endpoint}",
+            headers={"x-apisports-key": APIFOOTBALL_KEY},
+            params=params, timeout=10)
+        if r.status_code == 200:
+            return r.json().get("response", [])
+    except Exception as e:
+        logger.warning("API-Football %s: %s", endpoint, e)
+    return None
+
+def buscar_forma_time(time_nome, liga_id=71, temporada=2025):
+    """
+    Busca forma recente do time (últimos 5 jogos).
+    Retorna: {"vitorias":N,"empates":N,"derrotas":N,"gols_pro":N,"gols_contra":N,"forma":"VVDVE"}
+    """
+    chave = f"forma_{time_nome.lower()}_{liga_id}"
+    agora = time.time()
+    if chave in _cache_af and agora-_cache_af[chave].get("ts",0)<3600:
+        return _cache_af[chave]["dados"]
+    try:
+        resp = _af_get("teams/statistics", {
+            "team": _buscar_id_time(time_nome, liga_id, temporada),
+            "league": liga_id,
+            "season": temporada,
+        })
+        if not resp: return None
+        stats = resp[0] if isinstance(resp, list) else resp
+        forma_str = stats.get("form","")[-5:] if stats.get("form") else ""
+        fixtures = stats.get("fixtures",{})
+        gols = stats.get("goals",{})
+        resultado = {
+            "vitorias": fixtures.get("wins",{}).get("total",0),
+            "empates":  fixtures.get("draws",{}).get("total",0),
+            "derrotas": fixtures.get("loses",{}).get("total",0),
+            "gols_pro":    gols.get("for",{}).get("average",{}).get("total",0),
+            "gols_contra": gols.get("against",{}).get("average",{}).get("total",0),
+            "forma": forma_str,
+            "ts": agora,
+        }
+        _cache_af[chave] = {"dados": resultado, "ts": agora}
+        return resultado
+    except Exception as e:
+        logger.warning("Forma time %s: %s", time_nome, e)
+    return None
+
+def _buscar_id_time(nome, liga_id, temporada):
+    """Busca o ID do time na API-Football pelo nome."""
+    chave = f"id_{nome.lower()}_{liga_id}"
+    if chave in _cache_af: return _cache_af[chave].get("dados")
+    resp = _af_get("teams", {"name": nome, "league": liga_id, "season": temporada})
+    if resp and len(resp) > 0:
+        tid = resp[0].get("team",{}).get("id")
+        _cache_af[chave] = {"dados": tid, "ts": time.time()}
+        return tid
+    return None
+
+def buscar_lesoes(time_id, liga_id=71, temporada=2025):
+    """Busca lesões e suspensões do time."""
+    chave = f"lesoes_{time_id}_{liga_id}"
+    agora = time.time()
+    if chave in _cache_af and agora-_cache_af[chave].get("ts",0)<3600:
+        return _cache_af[chave]["dados"]
+    resp = _af_get("injuries", {
+        "team": time_id, "league": liga_id, "season": temporada})
+    if resp is None: return []
+    lesoes = [
+        {"jogador": p.get("player",{}).get("name",""),
+         "tipo": p.get("player",{}).get("reason","")}
+        for p in resp
+    ]
+    _cache_af[chave] = {"dados": lesoes, "ts": agora}
+    return lesoes
+
+def calcular_fator_apifootball(mandante, visitante, liga_id=71):
+    """
+    Calcula fator de ajuste baseado em API-Football.
+    Retorna: {"fator_m":float, "fator_v":float, "alertas":[str]}
+    Fator > 1.0 = favorece; < 1.0 = desfavorece
+    """
+    if not APIFOOTBALL_KEY:
+        return {"fator_m": 1.0, "fator_v": 1.0, "alertas": [], "fonte": "sem_apifootball"}
+
+    alertas = []
+    fator_m = 1.0
+    fator_v = 1.0
+
+    # Forma recente mandante
+    forma_m = buscar_forma_time(mandante, liga_id)
+    if forma_m:
+        forma = forma_m.get("forma","")
+        vitorias_recentes = forma.count("W")
+        derrotas_recentes = forma.count("L")
+        if vitorias_recentes >= 4:
+            fator_m *= 1.08
+            alertas.append(f"🔥 {mandante}: {vitorias_recentes} vitórias nos últimos 5 jogos")
+        elif derrotas_recentes >= 3:
+            fator_m *= 0.92
+            alertas.append(f"⚠️ {mandante}: {derrotas_recentes} derrotas nos últimos 5 jogos")
+
+    # Forma recente visitante
+    forma_v = buscar_forma_time(visitante, liga_id)
+    if forma_v:
+        forma = forma_v.get("forma","")
+        vitorias_recentes = forma.count("W")
+        derrotas_recentes = forma.count("L")
+        if vitorias_recentes >= 4:
+            fator_v *= 1.08
+            alertas.append(f"🔥 {visitante}: {vitorias_recentes} vitórias nos últimos 5 jogos")
+        elif derrotas_recentes >= 3:
+            fator_v *= 0.92
+            alertas.append(f"⚠️ {visitante}: {derrotas_recentes} derrotas nos últimos 5 jogos")
+
+    return {
+        "fator_m": round(fator_m, 3),
+        "fator_v": round(fator_v, 3),
+        "alertas": alertas,
+        "forma_m": forma_m.get("forma","") if forma_m else "",
+        "forma_v": forma_v.get("forma","") if forma_v else "",
+        "fonte": "apifootball"
+    }
 
 @app.route("/")
 def index():
@@ -868,6 +1063,41 @@ def api_odds_status():
         return jsonify({"configurada":True,"status":"erro","http":r.status_code})
     except Exception as e:
         return jsonify({"configurada":True,"status":"erro","detalhe":str(e)})
+
+
+
+@app.route("/api/apifootball/status")
+def api_apifootball_status():
+    """Verifica status da integração com API-Football."""
+    if not APIFOOTBALL_KEY:
+        return jsonify({"configurada":False,"msg":"APIFOOTBALL_KEY não configurada"})
+    try:
+        r = requests.get(
+            "https://v3.football.api-sports.io/status",
+            headers={"x-apisports-key": APIFOOTBALL_KEY},
+            timeout=8)
+        if r.status_code == 200:
+            d = r.json().get("response",{})
+            return jsonify({
+                "configurada": True,
+                "status": "conectada",
+                "plano": d.get("subscription",{}).get("plan","?"),
+                "requests_dia": d.get("requests",{}).get("current","?"),
+                "requests_limite": d.get("requests",{}).get("limit_day","?"),
+            })
+        return jsonify({"configurada":True,"status":"erro","http":r.status_code})
+    except Exception as e:
+        return jsonify({"configurada":True,"status":"erro","detalhe":str(e)})
+
+@app.route("/api/apifootball/forma")
+def api_af_forma():
+    """Retorna forma recente de um time via API-Football."""
+    nome = request.args.get("time","").strip()
+    liga = request.args.get("liga", 71, type=int)
+    if not nome: return jsonify({"erro":"Informe o nome do time"}),400
+    forma = buscar_forma_time(nome, liga)
+    if not forma: return jsonify({"erro":f"Dados não encontrados para '{nome}'"}),404
+    return jsonify({"time":nome,"liga":liga,"forma":forma})
 
 
 if __name__=="__main__":
