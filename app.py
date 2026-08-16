@@ -1,1106 +1,519 @@
 """
-LOTECA ELITE PRO — app.py v8.1
-Benter Blending: Odds(40%) + Poisson-DC(30%) + H2H(20%) + Posição(10%)
-API-Football integrada: lesões, forma, xG, árbitro
-The Odds API expandida: BR-A, BR-B, PL, LaLiga, CL, Copa
+Loteca Elite Pro — app.py VERSÃO FINAL
+Arquivo único. Sem dependências externas obrigatórias.
+APIs opcionais: se falharem o serviço continua no ar.
 
-1) parsear_cef estava lendo campos que não existem na resposta real da API
-   da Caixa (listaResultadosEquipeUm/listaDezenas) e caía no fallback
-   "Time A N" / "Time B N". Corrigido para ler os campos reais:
-   listaResultadoEquipeEsportiva, nomeEquipeUm/nomeEquipeDois,
-   nuGolEquipeUm/nuGolEquipeDois, nuSequencial, dtJogo, nomeCampeonato.
-   Testado em 10/08/2026 contra dado real do concurso #1264 (Athletico 2x0
-   Internacional -> '1', Bahia 1x1 Corinthians -> 'X', ambos calculados a
-   partir dos gols, já que a API sempre manda resultado=null).
-
-2) O "suporte dual" de banco (tabela jogos_loteca OU jogos) só detectava o
-   NOME da tabela, mas sempre assumia colunas gols_m/gols_v. Se o banco
-   fosse o schema antigo (colunas gols_mandante/gols_visitante), a query
-   quebrava silenciosamente e o modelo Poisson/Dixon-Coles ficava vazio,
-   caindo para os fallbacks mais fracos (aproveitamento/posição/global)
-   sem avisar. Agora o código também detecta o NOME das colunas de gols.
+Variáveis de ambiente no Render:
+  RAPIDAPI_KEY  → API-Football (fixtures, lesões, escalação)
+  ODDS_API_KEY  → The Odds API (odds de mercado Bet365/Pinnacle)
+  DATABASE_URL  → PostgreSQL (se ausente usa SQLite temporário)
 """
-import os, math, logging, sqlite3, threading, struct, time, re
+
+import os, math, sqlite3, logging, requests
 from datetime import datetime
-from collections import defaultdict
-import requests
-from flask import Flask, jsonify, request, Response
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+log = logging.getLogger("loteca")
+
 app = Flask(__name__)
 CORS(app)
 
-VERSAO  = "8.1"
-DB_PATH = os.getenv("DB_PATH", "loteca_historico_v4.db")
-URL_CEF = "https://servicebus2.caixa.gov.br/portaldeloterias/api/loteca"
-UA      = {"User-Agent": "Mozilla/5.0"}
+# ─── Variáveis de ambiente ────────────────────────────────────
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
+ODDS_KEY     = os.getenv("ODDS_API_KEY", "")
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+USE_PG       = DATABASE_URL.startswith("postgres")
 
-LAMBDA_CASA = 1.387
-LAMBDA_FORA = 1.065
-DIST_GLOBAL = {"p1": 0.4722, "px": 0.2616, "p2": 0.2663, "total": 17476}
-ODDS_KEY        = os.getenv("ODDS_API_KEY", "")
-APIFOOTBALL_KEY = os.getenv("APIFOOTBALL_KEY", "")
+# ─── Banco de dados ───────────────────────────────────────────
+def get_conn():
+    if USE_PG:
+        import psycopg2
+        return psycopg2.connect(DATABASE_URL)
+    conn = sqlite3.connect("/tmp/loteca_elite.db")
+    conn.row_factory = sqlite3.Row
+    return conn
 
-# Esportes suportados pela The Odds API — expandido para cobrir toda a grade Loteca
-ODDS_SPORTS = [
-    "soccer_brazil_campeonato",        # Brasileirão Série A
-    "soccer_brazil_serie_b",           # Série B
-    "soccer_england_premier_league",   # Premier League
-    "soccer_spain_la_liga",            # La Liga
-    "soccer_germany_bundesliga",       # Bundesliga
-    "soccer_italy_serie_a",            # Serie A Italiana
-    "soccer_france_ligue_one",         # Ligue 1
-    "soccer_uefa_champs_league",       # Champions League
-    "soccer_conmebol_copa_libertadores", # Libertadores
-    "soccer_brazil_campeonato_serie_c", # Série C
-]
-
-# Mapeamento de ligas para API-Football
-AF_LIGAS = {
-    "brasileirao": 71,   # Série A
-    "serie_b":     72,   # Série B
-    "serie_c":     75,   # Série C
-    "premier":     39,   # Premier League
-    "laliga":      140,  # La Liga
-    "bundesliga":  78,   # Bundesliga
-    "seriea_it":   135,  # Serie A Italiana
-    "ligue1":      61,   # Ligue 1
-    "champions":   2,    # Champions League
-    "libertadores":13,   # Copa Libertadores
-    "copa_brasil": 73,   # Copa do Brasil
-}
-
-# ── PESOS BENTER — combinação ponderada de fontes ─────────────────────────
-# Baseado em: Bill Benter (1994), Shin (1993), Ziemba & Hausch (1987)
-# Pesos calibrados com 15.964 jogos reais do banco histórico
-PESOS_BENTER = {
-    "odds_mercado":   0.40,  # maior peso — odds precificam tudo
-    "poisson_dc":     0.30,  # Dixon-Coles calibrado
-    "h2h_historico":  0.20,  # confrontos diretos
-    "posicao_grade":  0.10,  # frequência histórica por posição
-}
-
-# Decaimento temporal — jogos mais recentes pesam mais
-# Meia-vida: 365 dias (jogo de 1 ano atrás vale 50% de um jogo de hoje)
-DECAIMENTO_MEIA_VIDA_DIAS = 365
-
-
-
-PROB_POR_POSICAO = {
-    1:[0.4463,0.2901,0.2636], 2:[0.4492,0.2626,0.2882],
-    3:[0.4860,0.2562,0.2578], 4:[0.4551,0.2628,0.2821],
-    5:[0.4708,0.2618,0.2674], 6:[0.4832,0.2564,0.2604],
-    7:[0.4563,0.2791,0.2646], 8:[0.4736,0.2516,0.2748],
-    9:[0.4487,0.2700,0.2812],10:[0.5148,0.2578,0.2274],
-   11:[0.4960,0.2420,0.2620],12:[0.4892,0.2490,0.2618],
-   13:[0.4856,0.2564,0.2580],14:[0.4559,0.2660,0.2780],
-}
-
-_H2H={}; _GOLS_CASA={}; _GOLS_FORA={}
-_APROV_CASA={}; _APROV_FORA={}
-_PROB_POS=dict(PROB_POR_POSICAO)
-_dados_ok=False; _lock=threading.Lock()
-_cache_grade={"data":None,"ts":0}
-_cache_odds={}  # {chave: {p1,px,p2,odd_1,odd_x,odd_2,ts}}
-
-_coleta={"rodando":False,"relatorio":None,"erro":None,"coletados":0}
-
-# ═══════════════════════════════════════════════════════════
-# DETECÇÃO DE BANCO — tabela E colunas, não só a tabela
-# ═══════════════════════════════════════════════════════════
-
-def _db():
-    for p in [
-        DB_PATH,
-        os.path.join(os.path.dirname(os.path.abspath(__file__)),"loteca_historico_v4.db"),
-        os.path.join(os.getcwd(),"loteca_historico_v4.db"),
-        "/opt/render/project/src/loteca_historico_v4.db",
-        "/opt/render/project/loteca_historico_v4.db",
-        os.path.join(os.path.dirname(os.path.abspath(__file__)),"loteca_historico.db"),
-        os.path.join(os.getcwd(),"loteca_historico.db"),
-        "/opt/render/project/src/loteca_historico.db",
-        "/opt/render/project/loteca_historico.db",
-    ]:
-        if os.path.exists(p): return p
-    return DB_PATH
-
-def _tabela_cols():
-    """Detecta tabela de jogos e o schema real dela numa única leitura.
-    Retorna dict com: tabela, col_posicao, col_gols_m, col_gols_v, col_concurso_meta"""
+def init_db():
     try:
-        conn=sqlite3.connect(_db()); c=conn.cursor()
-        c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tabs=[r[0] for r in c.fetchall()]
-        tabela = "jogos_loteca" if "jogos_loteca" in tabs else ("jogos" if "jogos" in tabs else "jogos_loteca")
-        c.execute(f"PRAGMA table_info({tabela})")
-        cols=[r[1] for r in c.fetchall()]
-
-        col_pos = "posicao" if "posicao" in cols else ("sequencial" if "sequencial" in cols else "numero_jogo")
-        if "gols_m" in cols and "gols_v" in cols:
-            col_gm, col_gv = "gols_m", "gols_v"
-        elif "gols_mandante" in cols and "gols_visitante" in cols:
-            col_gm, col_gv = "gols_mandante", "gols_visitante"
-        else:
-            col_gm, col_gv = None, None  # banco sem coluna de gols reconhecível
-
-        # A tabela de METADADOS "concursos" pode ter a chave chamada
-        # "concurso" (schema novo) ou "numero" (schema antigo) — detecta
-        # também, pra não quebrar api_status/api_db_info/hist_resumo etc.
-        col_concurso_meta = "concurso"
-        if "concursos" in tabs:
-            c.execute("PRAGMA table_info(concursos)")
-            meta_cols=[r[1] for r in c.fetchall()]
-            if "concurso" in meta_cols: col_concurso_meta = "concurso"
-            elif "numero" in meta_cols: col_concurso_meta = "numero"
-
-        conn.close()
-        return {"tabela": tabela, "col_pos": col_pos, "col_gm": col_gm, "col_gv": col_gv,
-                "col_concurso_meta": col_concurso_meta}
+        conn = get_conn()
+        ph   = "%s" if USE_PG else "?"
+        sql  = """CREATE TABLE IF NOT EXISTS historico (
+            id         SERIAL PRIMARY KEY,
+            concurso   INTEGER,
+            mandante   TEXT, visitante TEXT,
+            prob_1     REAL, prob_x REAL, prob_2 REAL,
+            score      REAL, tipo_grade TEXT, coluna TEXT,
+            resultado  TEXT, acertou INTEGER,
+            odd_1 REAL, odd_x REAL, odd_2 REAL,
+            criado_em  TEXT DEFAULT CURRENT_TIMESTAMP
+        )""" if USE_PG else """CREATE TABLE IF NOT EXISTS historico (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            concurso INTEGER, mandante TEXT, visitante TEXT,
+            prob_1 REAL, prob_x REAL, prob_2 REAL,
+            score REAL, tipo_grade TEXT, coluna TEXT,
+            resultado TEXT, acertou INTEGER,
+            odd_1 REAL, odd_x REAL, odd_2 REAL,
+            criado_em TEXT DEFAULT CURRENT_TIMESTAMP
+        )"""
+        conn.cursor().execute(sql)
+        conn.commit(); conn.close()
+        log.info("Banco OK: %s", "PostgreSQL" if USE_PG else "SQLite")
     except Exception as e:
-        logger.error("_tabela_cols: %s", e)
-        return {"tabela": "jogos_loteca", "col_pos": "posicao", "col_gm": "gols_m", "col_gv": "gols_v",
-                "col_concurso_meta": "concurso"}
+        log.warning("Banco indisponível: %s", e)
 
-def _tj():
-    return _tabela_cols()["tabela"]
+init_db()
 
-def _col_pos():
-    return _tabela_cols()["col_pos"]
+# ─── ELO dos times ───────────────────────────────────────────
+ELO = {
+    # Seleções
+    "Argentina":2140,"França":2100,"Inglaterra":2080,"Espanha":2070,
+    "Alemanha":2060,"Portugal":2040,"Holanda":2030,"Brasil":2050,
+    "Bélgica":1990,"Uruguai":1960,"Itália":2010,"México":1880,
+    "Estados Unidos":1880,"Marrocos":1900,"Japão":1870,"Coreia do Sul":1850,
+    "Equador":1830,"Suíça":1870,"Canadá":1840,"Austrália":1820,
+    "Turquia":1840,"Escócia":1820,"Arábia Saudita":1780,"Paraguai":1780,
+    "Catar":1650,"Curaçao":1540,"Cabo Verde":1660,"África do Sul":1700,
+    "Rep. Tcheca":1820,"Haiti":1490,"Egito":1770,"Costa do Marfim":1820,
+    "Senegal":1850,"Congo-Kinshasa":1650,"Argélia":1700,"Noruega":1830,
+    "Iraque":1580,"Croácia":1890,
+    # Clubes Brasileiros
+    "Palmeiras":1820,"Flamengo":1810,"Botafogo":1780,"Fluminense":1750,
+    "Atletico MG":1760,"São Paulo":1740,"Corinthians":1720,"Grêmio":1700,
+    "Internacional":1710,"Cruzeiro":1690,"Vasco da Gama":1660,"Santos":1650,
+    "Fortaleza":1670,"Bahia":1640,"Mirassol":1610,"Juventude":1590,
+    "Vitória":1580,"Sport":1560,"Bragantino":1620,"Athletico PR":1660,
+    "Chapecoense":1480,"Londrina":1470,"Remo":1460,"CRB":1450,
+    # Premier League
+    "Manchester City":1810,"Arsenal":1750,"Liverpool":1790,"Chelsea":1730,
+    "Manchester United":1700,"Tottenham":1690,"Aston Villa":1720,
+    "Crystal Palace":1680,"Everton":1620,"Newcastle":1700,
+}
 
-def _col_concurso_meta():
-    return _tabela_cols()["col_concurso_meta"]
+MEDIA_GOLS = {
+    "copa":    {"casa":1.35,"fora":1.05},
+    "serie_a": {"casa":1.42,"fora":1.05},
+    "serie_b": {"casa":1.35,"fora":1.00},
+    "serie_c": {"casa":1.28,"fora":0.98},
+    "premier": {"casa":1.53,"fora":1.22},
+    "la_liga": {"casa":1.47,"fora":1.10},
+    "libertadores":{"casa":1.38,"fora":0.95},
+}
 
-def _gols(b):
-    if isinstance(b,bytes):
-        try: return struct.unpack('<q',b)[0]
-        except: return 0
-    return b or 0
+# ─── Poisson bivariado ────────────────────────────────────────
+def _poi(lam, k):
+    return math.exp(-lam) * (lam ** k) / math.factorial(k)
 
-def inicializar_banco():
-    conn=sqlite3.connect(_db()); conn.execute("PRAGMA journal_mode=WAL")
-    conn.executescript("""
-    CREATE TABLE IF NOT EXISTS concursos (
-        concurso INTEGER PRIMARY KEY, data_sorteio TEXT,
-        premio_14 REAL, premio_13 REAL,
-        ganhadores_14 INTEGER, ganhadores_13 INTEGER,
-        acumulou INTEGER DEFAULT 0, fonte TEXT
-    );
-    CREATE TABLE IF NOT EXISTS jogos_loteca (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        concurso INTEGER, posicao INTEGER,
-        mandante TEXT, visitante TEXT, resultado TEXT,
-        gols_m BLOB, gols_v BLOB, data_jogo TEXT, liga TEXT,
-        FOREIGN KEY(concurso) REFERENCES concursos(concurso)
-    );
-    CREATE TABLE IF NOT EXISTS freq_historica (
-        posicao INTEGER PRIMARY KEY,
-        freq_1 REAL, freq_x REAL, freq_2 REAL,
-        total INTEGER, updated TEXT
-    );
-    CREATE INDEX IF NOT EXISTS idx_jl_c ON jogos_loteca(concurso);
-    CREATE INDEX IF NOT EXISTS idx_jl_m ON jogos_loteca(mandante);
-    CREATE INDEX IF NOT EXISTS idx_jl_v ON jogos_loteca(visitante);
-    """)
-    conn.commit(); conn.close()
-
-def carregar_dados():
-    global _H2H,_GOLS_CASA,_GOLS_FORA,_APROV_CASA,_APROV_FORA,_PROB_POS,_dados_ok
-    with _lock:
-        if _dados_ok: return
-        db=_db()
-        if not os.path.exists(db): _dados_ok=True; return
-        try:
-            info = _tabela_cols()
-            tj, cp, cgm, cgv = info["tabela"], info["col_pos"], info["col_gm"], info["col_gv"]
-            conn=sqlite3.connect(db); c=conn.cursor()
-            logger.info("Carregando: tabela=%s col_pos=%s col_gols=%s/%s", tj, cp, cgm, cgv)
-
-            c.execute(f"""SELECT mandante,visitante,COUNT(*) n,
-                SUM(CASE WHEN resultado='1' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN resultado='X' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN resultado='2' THEN 1 ELSE 0 END)
-                FROM {tj} WHERE resultado IN ('1','X','2')
-                GROUP BY mandante,visitante HAVING n>=3 ORDER BY n DESC LIMIT 300""")
-            for m,v,tot,v1,vx,v2 in c.fetchall():
-                _H2H[f"{m.lower()}|{v.lower()}"]={"p1":round(v1/tot,4),"px":round(vx/tot,4),"p2":round(v2/tot,4),"n":tot}
-
-            if cgm and cgv:
-                c.execute(f"SELECT mandante,{cgm},{cgv} FROM {tj}")
-                gc=defaultdict(lambda:[0,0,0])
-                for m,gm,gv in c.fetchall():
-                    try: gc[m.lower()][0]+=_gols(gm); gc[m.lower()][1]+=_gols(gv); gc[m.lower()][2]+=1
-                    except: pass
-                _GOLS_CASA={k:{"gm":round(v[0]/v[2],3),"gc":round(v[1]/v[2],3),"n":v[2]}
-                            for k,v in gc.items() if v[2]>=5}
-
-                c.execute(f"SELECT visitante,{cgv},{cgm} FROM {tj}")
-                gf=defaultdict(lambda:[0,0,0])
-                for v,gv,gm in c.fetchall():
-                    try: gf[v.lower()][0]+=_gols(gv); gf[v.lower()][1]+=_gols(gm); gf[v.lower()][2]+=1
-                    except: pass
-                _GOLS_FORA={k:{"gm":round(v[0]/v[2],3),"gc":round(v[1]/v[2],3),"n":v[2]}
-                            for k,v in gf.items() if v[2]>=5}
-            else:
-                logger.warning("Banco sem coluna de gols reconhecível — Poisson/Dixon-Coles indisponível, usando fallback")
-
-            c.execute(f"""SELECT mandante,
-                SUM(CASE WHEN resultado='1' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN resultado='X' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN resultado='2' THEN 1 ELSE 0 END),COUNT(*)
-                FROM {tj} WHERE resultado IN ('1','X','2')
-                GROUP BY mandante HAVING COUNT(*)>=5""")
-            _APROV_CASA={r[0].lower():{"v":r[1],"e":r[2],"d":r[3],"total":r[4],"aprov":round(r[1]/r[4],4)}
-                         for r in c.fetchall()}
-
-            c.execute(f"""SELECT visitante,
-                SUM(CASE WHEN resultado='2' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN resultado='X' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN resultado='1' THEN 1 ELSE 0 END),COUNT(*)
-                FROM {tj} WHERE resultado IN ('1','X','2')
-                GROUP BY visitante HAVING COUNT(*)>=5""")
-            _APROV_FORA={r[0].lower():{"v":r[1],"e":r[2],"d":r[3],"total":r[4],"aprov":round(r[1]/r[4],4)}
-                         for r in c.fetchall()}
-
-            try:
-                c.execute("SELECT posicao,freq_1,freq_x,freq_2 FROM freq_historica ORDER BY posicao")
-                for pos,f1,fx,f2 in c.fetchall(): _PROB_POS[pos]=[f1,fx,f2]
-            except: pass
-
-            conn.close(); _dados_ok=True
-            logger.info("OK: %d H2H | %d casa | %d fora",len(_H2H),len(_GOLS_CASA),len(_GOLS_FORA))
-        except Exception as e:
-            logger.error("carregar_dados: %s",e); _dados_ok=True
-
-# ═══════════════════════════════════════════════════════════
-# MOTOR POISSON / DIXON-COLES
-# ═══════════════════════════════════════════════════════════
-
-def _pp(lam,k):
-    if lam<=0: return 1.0 if k==0 else 0.0
-    return (lam**k)*math.exp(-lam)/math.factorial(k)
-
-# DIXON-COLES: rho calibrado via busca em grade contra 15.964 jogos reais
-# do banco (otimizando log-loss). Corrige subestimacao estrutural de
-# empates do Poisson puro em placares baixos correlacionados.
-# Validado: prob. media de empate sobe de 23.8% para 26.4% (real=26.2%).
-RHO_DC = -0.12
-def _tau_dc(x,y,lam,mu,rho):
-    if x==0 and y==0: return 1-lam*mu*rho
-    elif x==0 and y==1: return 1+lam*rho
-    elif x==1 and y==0: return 1+mu*rho
-    elif x==1 and y==1: return 1-rho
-    return 1.0
-
-def poisson_prob(lc,lf):
-    p1=px=p2=0.0
-    for i in range(8):
-        for j in range(8):
-            p=_pp(lc,i)*_pp(lf,j)
-            if i<=1 and j<=1: p*=_tau_dc(i,j,lc,lf,RHO_DC)
-            if i>j: p1+=p
-            elif i==j: px+=p
-            else: p2+=p
-    t=p1+px+p2
-    return {"p1":round(p1/t,4),"px":round(px/t,4),"p2":round(p2/t,4)} if t else {"p1":0.45,"px":0.25,"p2":0.30}
-
-def odds_para_prob(odd_1, odd_x, odd_2):
-    """Shin (1993) — remove margem da casa de apostas."""
-    if not odd_1 or not odd_x or not odd_2: return None
-    try:
-        # Método simples mas eficaz para remover overround
-        soma = 1/odd_1 + 1/odd_x + 1/odd_2
-        p1 = round((1/odd_1)/soma, 4)
-        px = round((1/odd_x)/soma, 4)
-        p2 = round((1/odd_2)/soma, 4)
-        # Normaliza para somar 1
-        t = p1+px+p2
-        return {"p1":round(p1/t,4),"px":round(px/t,4),"p2":round(p2/t,4)}
-    except: return None
-
-def _match_time(home, away, m_norm, v_norm):
-    """Verifica se mandante/visitante correspondem ao jogo buscado."""
-    h = home.lower(); a = away.lower()
-    return ((m_norm in h or h in m_norm or _sim(m_norm,h)>0.7) and
-            (v_norm in a or a in v_norm or _sim(v_norm,a)>0.7))
-
-def _sim(a, b):
-    """Similaridade simples entre strings."""
-    a,b = set(a.split()),set(b.split())
-    return len(a&b)/max(len(a|b),1)
-
-def buscar_odds_ao_vivo(mandante, visitante):
-    """
-    Busca odds ao vivo em TODOS os esportes configurados.
-    Cache de 30min por jogo. Tenta cada sport até encontrar.
-    """
-    if not ODDS_KEY: return None
-    chave = f"{mandante.lower()}|{visitante.lower()}"
-    agora = time.time()
-    if chave in _cache_odds and agora-_cache_odds[chave].get("ts",0)<1800:
-        return _cache_odds[chave]
-    m_norm = mandante.lower().strip()
-    v_norm = visitante.lower().strip()
-    params = {
-        "apiKey": ODDS_KEY,
-        "regions": "eu,uk,us",
-        "markets": "h2h",
-        "oddsFormat": "decimal",
-        "bookmakers": "bet365,betano,betway,pinnacle",
-    }
-    for sport in ODDS_SPORTS:
-        try:
-            r = requests.get(
-                f"https://api.the-odds-api.com/v4/sports/{sport}/odds/",
-                params=params, timeout=8)
-            if r.status_code != 200: continue
-            for jogo in r.json():
-                home = jogo.get("home_team","")
-                away = jogo.get("away_team","")
-                if not _match_time(home, away, m_norm, v_norm): continue
-                o1s=[]; oxs=[]; o2s=[]
-                for bk in jogo.get("bookmakers",[]):
-                    for mkt in bk.get("markets",[]):
-                        if mkt["key"]=="h2h":
-                            outs={o["name"]:o["price"] for o in mkt["outcomes"]}
-                            h=outs.get(jogo["home_team"])
-                            a=outs.get(jogo["away_team"])
-                            d=outs.get("Draw")
-                            if h and d and a:
-                                o1s.append(h);oxs.append(d);o2s.append(a)
-                if o1s:
-                    o1=round(sum(o1s)/len(o1s),2)
-                    ox=round(sum(oxs)/len(oxs),2)
-                    o2=round(sum(o2s)/len(o2s),2)
-                    prob=odds_para_prob(o1,ox,o2)
-                    if prob:
-                        result={**prob,"odd_1":o1,"odd_x":ox,"odd_2":o2,
-                                "sport":sport,"ts":agora}
-                        _cache_odds[chave]=result
-                        logger.info("Odds: %s x %s → %s (sport:%s)",m_norm,v_norm,prob,sport)
-                        return result
-        except Exception as e:
-            logger.warning("Odds sport=%s: %s",sport,e)
-    return None
-
-def calcular_probs(mandante, visitante, posicao=None):
-    """
-    BENTER BLENDING v8.0 — combinação ponderada de todas as fontes.
-    Substitui hierarquia fixa por blend probabilístico calibrado.
-    Pesos: Odds(40%) + Poisson-DC(30%) + H2H(20%) + Posição(10%)
-    """
-    carregar_dados()
-    m = mandante.lower().strip()
-    v = visitante.lower().strip()
-
-    fontes_ativas = []
-    fontes_nomes  = []
-
-    # ── FONTE 1: Odds ao vivo (peso 0.40) ─────────────────────────────────
-    odds = buscar_odds_ao_vivo(mandante, visitante)
-    if odds:
-        fontes_ativas.append(({"p1":odds["p1"],"px":odds["px"],"p2":odds["p2"]}, PESOS_BENTER["odds_mercado"]))
-        fontes_nomes.append(f"odds({odds.get('odd_1','?')})")
-
-    # ── FONTE 2: Poisson / Dixon-Coles (peso 0.30) ────────────────────────
-    gc = _GOLS_CASA.get(m); gf = _GOLS_FORA.get(v)
-    if gc and gf:
-        lc = max(0.3, min(gc["gm"]*(gf["gc"]/max(0.5,LAMBDA_CASA)), 5.0))
-        lf = max(0.3, min(gf["gm"]*(gc["gc"]/max(0.5,LAMBDA_FORA)), 5.0))
-        probs_dc = poisson_prob(lc, lf)
-        fontes_ativas.append((probs_dc, PESOS_BENTER["poisson_dc"]))
-        fontes_nomes.append("poisson_dc")
-
-    # ── FONTE 3: H2H histórico (peso 0.20) ────────────────────────────────
-    h = _H2H.get(f"{m}|{v}")
-    if h:
-        fontes_ativas.append(({"p1":h["p1"],"px":h["px"],"p2":h["p2"]}, PESOS_BENTER["h2h_historico"]))
-        fontes_nomes.append(f"h2h_{h['n']}x")
-
-    # ── FONTE 4: Posição histórica na grade (peso 0.10) ───────────────────
-    if posicao and posicao in _PROB_POS:
-        p = _PROB_POS[posicao]
-        fontes_ativas.append(({"p1":p[0],"px":p[1],"p2":p[2]}, PESOS_BENTER["posicao_grade"]))
-        fontes_nomes.append(f"pos_{posicao}")
-
-    # ── BLEND PONDERADO ────────────────────────────────────────────────────
-    if not fontes_ativas:
-        # Fallback: aproveitamento ou global
-        ac = _APROV_CASA.get(m); af = _APROV_FORA.get(v)
-        if ac and af:
-            rp1=ac["aprov"]*0.6+(1-af["aprov"])*0.4
-            rp2=af["aprov"]*0.6+(1-ac["aprov"])*0.4
-            rpx=max(0.10,1.0-rp1-rp2); t=rp1+rpx+rp2
-            return {"p1":round(rp1/t,4),"px":round(rpx/t,4),"p2":round(rp2/t,4),"fonte":"aproveitamento"}
-        return {"p1":DIST_GLOBAL["p1"],"px":DIST_GLOBAL["px"],"p2":DIST_GLOBAL["p2"],"fonte":"global"}
-
-    # Normaliza pesos pelas fontes disponíveis
-    peso_total = sum(w for _, w in fontes_ativas)
-    p1_blend = sum(prob["p1"]*w for prob,w in fontes_ativas) / peso_total
-    px_blend = sum(prob["px"]*w for prob,w in fontes_ativas) / peso_total
-    p2_blend = sum(prob["p2"]*w for prob,w in fontes_ativas) / peso_total
-
-    # Normaliza para somar 1
-    t = p1_blend + px_blend + p2_blend
-    p1f = p1_blend/t
-    px_f = px_blend/t
-    p2f = p2_blend/t
-
-    # ── AJUSTE API-FOOTBALL (forma recente + lesões) ──────────────────
-    af = calcular_fator_apifootball(mandante, visitante)
-    if af["fator_m"] != 1.0 or af["fator_v"] != 1.0:
-        p1f *= af["fator_m"]   # mandante vence mais/menos
-        p2f *= af["fator_v"]   # visitante vence mais/menos
-        t2 = p1f + px_f + p2f
-        p1f /= t2; px_f /= t2; p2f /= t2
-
-    fonte_str = "benter[" + "+".join(fontes_nomes) + "]"
-    if af["alertas"]: fonte_str += "+af"
-
+def poisson_probs(mandante, visitante, liga="_default"):
+    ec  = ELO.get(mandante, 1650)
+    ef  = ELO.get(visitante, 1650)
+    med = MEDIA_GOLS.get(liga, {"casa":1.40,"fora":1.05})
+    ajuste = (ec - ef) / 200 * 0.25
+    lc = max(0.3, med["casa"] + ajuste + 0.06)
+    lf = max(0.3, med["fora"] - ajuste)
+    p1 = px = p2 = 0.0
+    for i in range(9):
+        for j in range(9):
+            p = _poi(lc, i) * _poi(lf, j)
+            if i > j:    p1 += p
+            elif i == j: px += p
+            else:        p2 += p
+    t = p1 + px + p2
     return {
-        "p1": round(p1f, 4),
-        "px": round(px_f, 4),
-        "p2": round(p2f, 4),
-        "fonte": fonte_str,
-        "n_fontes": len(fontes_ativas),
-        "alertas_af": af.get("alertas", []),
-        "forma_m": af.get("forma_m",""),
-        "forma_v": af.get("forma_v",""),
+        "1": round(p1/t, 4), "X": round(px/t, 4), "2": round(p2/t, 4),
+        "elo_casa": ec, "elo_fora": ef,
+        "lam_casa": round(lc, 3), "lam_fora": round(lf, 3),
     }
 
-def classificar(probs):
-    v=sorted([probs["p1"],probs["px"],probs["p2"]],reverse=True)
-    if v[0]>=0.60: return "SECO"
-    if v[0]+v[1]>=0.75: return "DUPLO"
-    return "TRIPLO"
+# ─── Remoção de margem ────────────────────────────────────────
+def sem_margem(o1, ox, o2):
+    r1, rx, r2 = 1/o1, 1/ox, 1/o2
+    over = r1 + rx + r2
+    return {"1":round(r1/over,4),"X":round(rx/over,4),"2":round(r2/over,4),"over":round(over,4)}
 
-def score_0_100(probs):
-    v=sorted([probs["p1"],probs["px"],probs["p2"]],reverse=True)
-    return round(v[0]*100+(v[0]-v[1])*30,1)
+# ─── Blending ponderado (Fase 1) ─────────────────────────────
+def blending(prob_m, odds=None, w=0.65):
+    if not odds:
+        return {**prob_m, "fonte":"modelo_puro"}
+    pm = sem_margem(odds["1"], odds["X"], odds["2"])
+    wm = 1 - w
+    out = {}
+    for k in ["1","X","2"]:
+        out[k] = round(prob_m[k]*w + pm[k]*wm, 4)
+    t = sum(out.values())
+    out = {k: round(v/t, 4) for k, v in out.items()}
+    out["fonte"]     = "blend_65_35"
+    out["overround"] = pm["over"]
+    return out
 
-def favorito(probs):
-    d={"1":probs["p1"],"X":probs["px"],"2":probs["p2"]}; return max(d,key=d.get)
+# ─── Classificação Loteca (limiar dinâmico) ───────────────────
+def classificar(probs, odd_1=None, liga="_default"):
+    p1, px, p2 = probs["1"], probs["X"], probs["2"]
+    ordem = sorted([("1",p1),("X",px),("2",p2)], key=lambda x: x[1], reverse=True)
+    top_c, top_v = ordem[0]
+    seg_c, _     = ordem[1]
 
-def apostas_da_classificacao(probs, classe):
-    """Traduz a classificação (SECO/DUPLO/TRIPLO) nas colunas apostadas."""
-    ordenado = sorted(["1","X","2"], key=lambda k: {"1":probs["p1"],"X":probs["px"],"2":probs["p2"]}[k], reverse=True)
-    if classe == "SECO": return [ordenado[0]]
-    if classe == "DUPLO": return ordenado[:2]
-    return ["1","X","2"]
+    # Limiar dinâmico: em Copa com favorito muito curto → força DUPLO
+    lim = 0.52
+    if liga == "copa" and odd_1:
+        if odd_1 < 1.50:   lim = 0.82
+        elif odd_1 < 1.80: lim = 0.62
 
-# ═══════════════════════════════════════════════════════════
-# GRADE AO VIVO (Arena do AZ)
-# ═══════════════════════════════════════════════════════════
+    if top_v >= lim:
+        tipo, cols = "SECO",   [top_c]
+    elif top_v >= 0.40:
+        tipo, cols = "DUPLO",  [top_c, seg_c]
+    else:
+        tipo, cols = "TRIPLO", ["1","X","2"]
 
-def buscar_grade_arenadoaz():
-    global _cache_grade
-    agora=time.time()
-    if _cache_grade["data"] and agora-_cache_grade["ts"]<1800: return _cache_grade["data"]
-    try:
-        r=requests.get("https://arenadoaz.com/simulador/",headers=UA,timeout=12)
-        if r.status_code!=200: return _cache_grade["data"]
-        txt=r.text
-        m=re.search(r"SIMULADOR LOTECA\s+(\d+)",txt)
-        concurso=int(m.group(1)) if m else None
-        linhas=[l.strip() for l in txt.replace('\r','').split('\n') if l.strip()]
-        jogos=[]; i=0
-        while i<len(linhas):
-            if re.match(r'^\d{1,2}$',linhas[i]):
-                pos=int(linhas[i])
-                if 1<=pos<=14:
-                    nomes=[]; j=i+1
-                    while j<len(linhas) and len(nomes)<2:
-                        t=linhas[j]
-                        if len(t)>2 and not re.match(r'^[12X]$|^[→←]|^\.\.\.',t) and '<' not in t and 'http' not in t:
-                            nome=t.split('-')[0].strip()
-                            if len(nome)>1: nomes.append(nome)
-                        j+=1
-                    if len(nomes)==2: jogos.append({"posicao":pos,"mandante":nomes[0],"visitante":nomes[1]})
-            i+=1
-        resultado={"concurso":concurso,"jogos":jogos,"fonte":"arenadoaz","ts":agora}
-        if len(jogos)>=5: _cache_grade={"data":resultado,"ts":agora}
-        return resultado
-    except Exception as e:
-        logger.warning("Arena AZ: %s",e); return _cache_grade["data"]
-
-# ═══════════════════════════════════════════════════════════
-# COLETA CEF — CORRIGIDO 10/08/2026
-# ═══════════════════════════════════════════════════════════
-
-def _parse_float(v):
-    if isinstance(v,(int,float)): return float(v)
-    try: return float(str(v).replace("R$","").replace(".","").replace(",",".").strip())
-    except: return 0.0
-
-def buscar_cef(numero):
-    try:
-        url=f"{URL_CEF}/{numero}" if numero else URL_CEF
-        r=requests.get(url,timeout=12,headers=UA)
-        return r.json() if r.status_code==200 else None
-    except: return None
-
-def parsear_cef(numero, d):
-    """Le os campos REAIS da API da Caixa (validado em 10/08/2026 contra
-    o concurso #1264 real). resultado sempre vem null da API -> precisa
-    ser calculado a partir dos gols."""
-    if not d: return None, []
-    faixas = {f.get("faixa"): f for f in (d.get("listaRateioPremio") or [])}
-    f1 = faixas.get(1, {})
-    f2 = faixas.get(2, {})
-    con = {
-        "concurso": numero,
-        "data_sorteio": d.get("dataApuracao", ""),
-        "premio_14": _parse_float(f1.get("valorPremio", 0)),
-        "premio_13": _parse_float(f2.get("valorPremio", 0)),
-        "ganhadores_14": f1.get("numeroDeGanhadores", 0) or 0,
-        "ganhadores_13": f2.get("numeroDeGanhadores", 0) or 0,
-        "acumulou": 1 if d.get("acumulado") else 0,
-        "fonte": "cef"
+    classe = "A" if top_v>=0.80 else "B" if top_v>=0.65 else \
+             "C" if top_v>=0.50 else "D" if top_v>=0.40 else "E"
+    return {
+        "tipo": tipo,
+        "colunas": cols,
+        "coluna_display": "/".join(sorted(cols)),
+        "confianca": round(top_v*100, 1),
+        "classe": classe,
     }
-    partidas = d.get("listaResultadoEquipeEsportiva") or []
-    jos = []
-    for p in partidas:
-        gm = p.get("nuGolEquipeUm")
-        gv = p.get("nuGolEquipeDois")
-        if gm is None or gv is None:
-            resultado = "?"
-        elif gm > gv:
-            resultado = "1"
-        elif gm < gv:
-            resultado = "2"
-        else:
-            resultado = "X"
-        jos.append({
-            "concurso": numero,
-            "posicao": p.get("nuSequencial", len(jos) + 1),
-            "mandante": p.get("nomeEquipeUm", f"Time A {len(jos)+1}"),
-            "visitante": p.get("nomeEquipeDois", f"Time B {len(jos)+1}"),
-            "resultado": resultado,
-            "gols_m": gm,
-            "gols_v": gv,
-            "data_jogo": p.get("dtJogo", ""),
-            "liga": p.get("nomeCampeonato", "")
-        })
-    return con, jos
 
-def salvar_cef(conn,con,jos):
-    tj=_tj(); c=conn.cursor()
-    c.execute("INSERT OR REPLACE INTO concursos VALUES(?,?,?,?,?,?,?,?)",
-              (con["concurso"],con["data_sorteio"],con["premio_14"],con["premio_13"],
-               con["ganhadores_14"],con["ganhadores_13"],con["acumulou"],con["fonte"]))
-    c.execute(f"DELETE FROM {tj} WHERE concurso=?",(con["concurso"],))
-    for j in jos:
-        c.execute(f"INSERT INTO {tj}(concurso,posicao,mandante,visitante,resultado,gols_m,gols_v,data_jogo,liga) VALUES(?,?,?,?,?,?,?,?,?)",
-                  (j["concurso"],j["posicao"],j["mandante"],j["visitante"],j["resultado"],
-                   j["gols_m"],j["gols_v"],j["data_jogo"],j["liga"]))
-    conn.commit()
+# ─── Kelly Criterion ─────────────────────────────────────────
+def kelly(prob, odd, banca=100.0, fracao=0.25):
+    b  = odd - 1.0
+    kp = (b*prob - (1-prob)) / b if b > 0 else -1.0
+    ev = prob*b - (1-prob)
+    ok = kp > 0.01 and ev > 0.02
+    return {
+        "stake":   round(banca*max(0,kp*fracao), 2) if ok else 0.0,
+        "ev":      round(ev, 4),
+        "apostar": ok,
+    }
 
-def _coletar_worker(inicio,fim):
-    global _coleta,_dados_ok
-    try:
-        conn=sqlite3.connect(_db()); conn.execute("PRAGMA journal_mode=WAL")
-        c=conn.cursor()
-        c.execute("SELECT MAX(concurso) FROM concursos"); ultimo=c.fetchone()[0] or 0
-        if inicio<=ultimo: inicio=ultimo+1
-        falhas=coletados=0; numero=inicio
-        while True:
-            if fim and numero>fim: break
-            if falhas>=5: break
-            dados=buscar_cef(numero)
-            if dados is None: falhas+=1
-            else:
-                falhas=0; con,jos=parsear_cef(numero,dados)
-                if con: salvar_cef(conn,con,jos); coletados+=1
-            _coleta["coletados"]=coletados; numero+=1; time.sleep(0.4)
-        c.execute("SELECT COUNT(*) FROM concursos"); tc=c.fetchone()[0]
-        c.execute(f"SELECT COUNT(*) FROM {_tj()}"); tj2=c.fetchone()[0]
-        c.execute("SELECT MAX(concurso) FROM concursos"); mx=c.fetchone()[0]
-        conn.close(); _dados_ok=False
-        _coleta={"rodando":False,"relatorio":{"coletados":coletados,"total_concursos":tc,
-                 "total_jogos":tj2,"ultimo":mx},"erro":None,"coletados":coletados}
-    except Exception as e:
-        _coleta={"rodando":False,"relatorio":None,"erro":str(e),"coletados":0}
+# ─── Score 0-100 ─────────────────────────────────────────────
+def score(classif, mot=0.70):
+    return round(min(100.0, classif["confianca"]*(0.85+0.15*mot)), 1)
 
-# ═══════════════════════════════════════════════════════════
-# ROTAS
-# ═══════════════════════════════════════════════════════════
+# ─── Painel de custos ────────────────────────────────────────
+def painel(jogos):
+    nd = sum(1 for j in jogos if j["classificacao"]["tipo"]=="DUPLO")
+    nt = sum(1 for j in jogos if j["classificacao"]["tipo"]=="TRIPLO")
+    def c(d,t): return round((2**d)*(3**t)*3.0, 2)
+    return {
+        "secos":  sum(1 for j in jogos if j["classificacao"]["tipo"]=="SECO"),
+        "duplos": nd, "triplos": nt,
+        "custo_minimo":      c(nd, 0),
+        "custo_recomendado": c(nd, min(nt,1)),
+        "custo_completo":    c(nd, nt),
+    }
 
-
-# ═══════════════════════════════════════════════════════════════════════════
-# API-FOOTBALL — lesões, forma, xG, árbitro
-# ═══════════════════════════════════════════════════════════════════════════
-
-_cache_af = {}  # {chave: {dados, ts}}
-
-def _af_get(endpoint, params):
-    """Chamada genérica à API-Football v3."""
-    if not APIFOOTBALL_KEY: return None
+# ─── API-Football: busca jogos ao vivo ───────────────────────
+def apif_get(endpoint, params):
+    if not RAPIDAPI_KEY:
+        return None
     try:
         r = requests.get(
-            f"https://v3.football.api-sports.io/{endpoint}",
-            headers={"x-apisports-key": APIFOOTBALL_KEY},
-            params=params, timeout=10)
+            f"https://api-football-v1.p.rapidapi.com/v3/{endpoint}",
+            headers={"X-RapidAPI-Key": RAPIDAPI_KEY,
+                     "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"},
+            params=params, timeout=8
+        )
         if r.status_code == 200:
-            return r.json().get("response", [])
+            return r.json()
     except Exception as e:
-        logger.warning("API-Football %s: %s", endpoint, e)
+        log.warning("API-Football erro: %s", e)
     return None
 
-def buscar_forma_time(time_nome, liga_id=71, temporada=2025):
-    """
-    Busca forma recente do time (últimos 5 jogos).
-    Retorna: {"vitorias":N,"empates":N,"derrotas":N,"gols_pro":N,"gols_contra":N,"forma":"VVDVE"}
-    """
-    chave = f"forma_{time_nome.lower()}_{liga_id}"
-    agora = time.time()
-    if chave in _cache_af and agora-_cache_af[chave].get("ts",0)<3600:
-        return _cache_af[chave]["dados"]
-    try:
-        resp = _af_get("teams/statistics", {
-            "team": _buscar_id_time(time_nome, liga_id, temporada),
-            "league": liga_id,
-            "season": temporada,
+def buscar_proximos_jogos(league_id, season=2026):
+    data = apif_get("fixtures", {"league": league_id, "season": season,
+                                  "status": "NS", "next": 14})
+    if not data:
+        return []
+    jogos = []
+    for fix in data.get("response", []):
+        f, t = fix["fixture"], fix["teams"]
+        jogos.append({
+            "id":        f["id"],
+            "mandante":  t["home"]["name"],
+            "visitante": t["away"]["name"],
+            "data":      f["date"][:10],
+            "hora":      f["date"][11:16],
+            "status":    f["status"]["short"],
         })
-        if not resp: return None
-        stats = resp[0] if isinstance(resp, list) else resp
-        forma_str = stats.get("form","")[-5:] if stats.get("form") else ""
-        fixtures = stats.get("fixtures",{})
-        gols = stats.get("goals",{})
-        resultado = {
-            "vitorias": fixtures.get("wins",{}).get("total",0),
-            "empates":  fixtures.get("draws",{}).get("total",0),
-            "derrotas": fixtures.get("loses",{}).get("total",0),
-            "gols_pro":    gols.get("for",{}).get("average",{}).get("total",0),
-            "gols_contra": gols.get("against",{}).get("average",{}).get("total",0),
-            "forma": forma_str,
-            "ts": agora,
-        }
-        _cache_af[chave] = {"dados": resultado, "ts": agora}
+    return jogos
+
+# ─── The Odds API ────────────────────────────────────────────
+def buscar_odds(sport="soccer_brazil_campeonato"):
+    if not ODDS_KEY:
+        return {}
+    try:
+        r = requests.get(
+            f"https://api.the-odds-api.com/v4/sports/{sport}/odds",
+            params={"apiKey": ODDS_KEY, "regions":"eu",
+                    "markets":"h2h", "oddsFormat":"decimal"},
+            timeout=8
+        )
+        if r.status_code != 200:
+            return {}
+        resultado = {}
+        for ev in r.json():
+            for book in ev.get("bookmakers", []):
+                if book["key"] not in ("pinnacle","bet365","betfair"):
+                    continue
+                for mkt in book.get("markets", []):
+                    if mkt["key"] != "h2h":
+                        continue
+                    odds = {o["name"]: o["price"] for o in mkt["outcomes"]}
+                    key  = f"{ev['home_team']}|{ev['away_team']}"
+                    resultado[key] = {
+                        "1": odds.get(ev["home_team"], 0),
+                        "X": odds.get("Draw", 0),
+                        "2": odds.get(ev["away_team"], 0),
+                        "casa": book["key"],
+                    }
+                    break
+                break
         return resultado
     except Exception as e:
-        logger.warning("Forma time %s: %s", time_nome, e)
-    return None
+        log.warning("Odds API erro: %s", e)
+        return {}
 
-def _buscar_id_time(nome, liga_id, temporada):
-    """Busca o ID do time na API-Football pelo nome."""
-    chave = f"id_{nome.lower()}_{liga_id}"
-    if chave in _cache_af: return _cache_af[chave].get("dados")
-    resp = _af_get("teams", {"name": nome, "league": liga_id, "season": temporada})
-    if resp and len(resp) > 0:
-        tid = resp[0].get("team",{}).get("id")
-        _cache_af[chave] = {"dados": tid, "ts": time.time()}
-        return tid
-    return None
+# ─── Dados dos concursos ─────────────────────────────────────
+CONCURSOS = {
+    1255: {
+        "nome":"Copa Loteca — 1ª Rodada","periodo":"11-15 jun 2026","liga":"copa",
+        "jogos":[
+            {"id":1, "mandante":"México",         "visitante":"África do Sul","data":"11/06","hora":"16h","odds":{"1":1.85,"X":3.40,"2":4.20}},
+            {"id":2, "mandante":"Coreia do Sul",  "visitante":"Rep. Tcheca",  "data":"11/06","hora":"23h","odds":{"1":2.40,"X":3.10,"2":2.80}},
+            {"id":3, "mandante":"Canadá",         "visitante":"Itália",       "data":"12/06","hora":"16h","odds":{"1":3.20,"X":3.30,"2":2.10}},
+            {"id":4, "mandante":"Estados Unidos", "visitante":"Paraguai",     "data":"12/06","hora":"22h","odds":{"1":1.75,"X":3.50,"2":4.80}},
+            {"id":5, "mandante":"Austrália",      "visitante":"Turquia",      "data":"13/06","hora":"01h","odds":{"1":2.20,"X":3.20,"2":3.10}},
+            {"id":6, "mandante":"Catar",          "visitante":"Suíça",        "data":"13/06","hora":"16h","odds":{"1":4.50,"X":3.60,"2":1.70}},
+            {"id":7, "mandante":"Brasil",         "visitante":"Marrocos",     "data":"13/06","hora":"19h","odds":{"1":1.65,"X":3.60,"2":5.50}},
+            {"id":8, "mandante":"Haiti",          "visitante":"Escócia",      "data":"13/06","hora":"22h","odds":{"1":4.80,"X":3.50,"2":1.65}},
+            {"id":9, "mandante":"Alemanha",       "visitante":"Curaçao",      "data":"14/06","hora":"14h","odds":{"1":1.18,"X":7.00,"2":14.0}},
+            {"id":10,"mandante":"Holanda",        "visitante":"Japão",        "data":"14/06","hora":"17h","odds":{"1":1.90,"X":3.40,"2":3.80}},
+            {"id":11,"mandante":"Costa do Marfim","visitante":"Equador",      "data":"14/06","hora":"20h","odds":{"1":2.50,"X":3.10,"2":2.80}},
+            {"id":12,"mandante":"Espanha",        "visitante":"Cabo Verde",   "data":"15/06","hora":"13h","odds":{"1":1.25,"X":5.50,"2":10.0}},
+            {"id":13,"mandante":"Bélgica",        "visitante":"Egito",        "data":"15/06","hora":"16h","odds":{"1":1.60,"X":3.70,"2":5.80}},
+            {"id":14,"mandante":"Arábia Saudita", "visitante":"Uruguai",      "data":"15/06","hora":"19h","odds":{"1":3.80,"X":3.20,"2":1.90}},
+        ]
+    },
+    1256: {"nome":"Copa Loteca — 2ª Rodada","periodo":"jun 2026","liga":"copa","jogos":[]},
+    1257: {"nome":"Copa Loteca — 3ª Rodada","periodo":"jun 2026","liga":"copa","jogos":[]},
+    1258: {"nome":"Copa Loteca — 4ª Rodada","periodo":"jun 2026","liga":"copa","jogos":[]},
+}
 
-def buscar_lesoes(time_id, liga_id=71, temporada=2025):
-    """Busca lesões e suspensões do time."""
-    chave = f"lesoes_{time_id}_{liga_id}"
-    agora = time.time()
-    if chave in _cache_af and agora-_cache_af[chave].get("ts",0)<3600:
-        return _cache_af[chave]["dados"]
-    resp = _af_get("injuries", {
-        "team": time_id, "league": liga_id, "season": temporada})
-    if resp is None: return []
-    lesoes = [
-        {"jogador": p.get("player",{}).get("name",""),
-         "tipo": p.get("player",{}).get("reason","")}
-        for p in resp
-    ]
-    _cache_af[chave] = {"dados": lesoes, "ts": agora}
-    return lesoes
-
-def calcular_fator_apifootball(mandante, visitante, liga_id=71):
-    """
-    Calcula fator de ajuste baseado em API-Football.
-    Retorna: {"fator_m":float, "fator_v":float, "alertas":[str]}
-    Fator > 1.0 = favorece; < 1.0 = desfavorece
-    """
-    if not APIFOOTBALL_KEY:
-        return {"fator_m": 1.0, "fator_v": 1.0, "alertas": [], "fonte": "sem_apifootball"}
-
-    alertas = []
-    fator_m = 1.0
-    fator_v = 1.0
-
-    # Forma recente mandante
-    forma_m = buscar_forma_time(mandante, liga_id)
-    if forma_m:
-        forma = forma_m.get("forma","")
-        vitorias_recentes = forma.count("W")
-        derrotas_recentes = forma.count("L")
-        if vitorias_recentes >= 4:
-            fator_m *= 1.08
-            alertas.append(f"🔥 {mandante}: {vitorias_recentes} vitórias nos últimos 5 jogos")
-        elif derrotas_recentes >= 3:
-            fator_m *= 0.92
-            alertas.append(f"⚠️ {mandante}: {derrotas_recentes} derrotas nos últimos 5 jogos")
-
-    # Forma recente visitante
-    forma_v = buscar_forma_time(visitante, liga_id)
-    if forma_v:
-        forma = forma_v.get("forma","")
-        vitorias_recentes = forma.count("W")
-        derrotas_recentes = forma.count("L")
-        if vitorias_recentes >= 4:
-            fator_v *= 1.08
-            alertas.append(f"🔥 {visitante}: {vitorias_recentes} vitórias nos últimos 5 jogos")
-        elif derrotas_recentes >= 3:
-            fator_v *= 0.92
-            alertas.append(f"⚠️ {visitante}: {derrotas_recentes} derrotas nos últimos 5 jogos")
-
+# ─── Analisar um jogo ────────────────────────────────────────
+def analisar_jogo(mandante, visitante, liga="_default", odds=None, banca=100.0):
+    pm  = poisson_probs(mandante, visitante, liga)
+    pf  = blending(pm, odds)
+    cl  = classificar(pf, odd_1=odds["1"] if odds else None, liga=liga)
+    sc  = score(cl)
+    # Kelly
+    kelly_res, melhor = {}, None
+    if odds:
+        for res in ["1","X","2"]:
+            if odds.get(res, 0) > 1.0:
+                kelly_res[res] = kelly(pf[res], odds[res], banca)
+        candidatos = [(r,k) for r,k in kelly_res.items() if k["apostar"]]
+        if candidatos:
+            best = max(candidatos, key=lambda x: x[1]["ev"])
+            melhor = {"resultado":best[0],"odd":odds[best[0]],
+                      "ev":best[1]["ev"],"stake":best[1]["stake"]}
     return {
-        "fator_m": round(fator_m, 3),
-        "fator_v": round(fator_v, 3),
-        "alertas": alertas,
-        "forma_m": forma_m.get("forma","") if forma_m else "",
-        "forma_v": forma_v.get("forma","") if forma_v else "",
-        "fonte": "apifootball"
+        "prob_modelo": {"1":pm["1"],"X":pm["X"],"2":pm["2"]},
+        "prob_final":  {"1":pf["1"],"X":pf["X"],"2":pf["2"]},
+        "fonte": pf.get("fonte","modelo_puro"),
+        "overround": pf.get("overround"),
+        "elo_casa":  pm["elo_casa"], "elo_fora": pm["elo_fora"],
+        "lam_casa":  pm["lam_casa"], "lam_fora": pm["lam_fora"],
+        "classificacao": cl,
+        "score": sc,
+        "kelly": kelly_res or None,
+        "melhor_aposta": melhor,
     }
 
-@app.route("/")
-def index():
-    for pasta in [os.path.dirname(os.path.abspath(__file__)),os.getcwd(),
-                  "/opt/render/project/src","/opt/render/project"]:
-        p=os.path.join(pasta,"index.html")
-        if os.path.exists(p):
-            with open(p,"r",encoding="utf-8") as f: return Response(f.read(),mimetype="text/html")
-    return "index.html não encontrado",404
+# ════════════════════════════════════════════════════════════
+# ROTAS
+# ════════════════════════════════════════════════════════════
 
-@app.route("/api/debug/caixa")
-def debug_caixa():
-    """Rota TEMPORARIA de diagnostico."""
-    import time as _t
-    tentativas_headers = [
-        {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-         "Accept":"application/json, text/plain, */*",
-         "Accept-Language":"pt-BR,pt;q=0.9",
-         "Referer":"https://loterias.caixa.gov.br/",
-         "Origin":"https://loterias.caixa.gov.br"},
-        {"User-Agent":"Mozilla/5.0"},
-        {},
-    ]
-    resultados = []
-    for i, headers in enumerate(tentativas_headers):
-        t0 = _t.time()
-        try:
-            r = requests.get(URL_CEF, timeout=10, headers=headers)
-            resultados.append({
-                "tentativa": i+1, "headers_enviados": list(headers.keys()),
-                "status_code": r.status_code, "tempo_seg": round(_t.time()-t0,2),
-                "tamanho_bytes": len(r.content),
-                "e_json_valido": _tenta_json(r),
-            })
-        except Exception as e:
-            resultados.append({"tentativa": i+1, "headers_enviados": list(headers.keys()),
-                               "erro": f"{type(e).__name__}: {str(e)[:200]}"})
-    return jsonify({"resultados": resultados})
-
-def _tenta_json(r):
-    try:
-        d = r.json()
-        return {"numero": d.get("numero"), "ultimoConcurso": d.get("ultimoConcurso")}
-    except Exception:
-        return None
-
+@app.route("/health")
 @app.route("/api/status")
-def api_status():
-    carregar_dados(); tj=_tj()
-    try:
-        conn=sqlite3.connect(_db()); c=conn.cursor()
-        c.execute("SELECT COUNT(*),MIN(concurso),MAX(concurso),MIN(data_sorteio),MAX(data_sorteio) FROM concursos")
-        tc,mn,mx,dm,dM=c.fetchone()
-        c.execute(f"SELECT COUNT(*) FROM {tj}"); tj2=c.fetchone()[0]
-        conn.close(); banco_ok=bool(tc and tc>0)
-    except: tc=tj2=mn=mx=dm=dM=None; banco_ok=False
+def health():
+    apis = {
+        "odds_api":     {"configurada": bool(ODDS_KEY),     "status": "não configurada"},
+        "api_football": {"configurada": bool(RAPIDAPI_KEY), "status": "não configurada"},
+        "banco":        {"tipo": "postgresql" if USE_PG else "sqlite", "status": "ok"},
+    }
+    # Testa Odds API
+    if ODDS_KEY:
+        try:
+            r = requests.get("https://api.the-odds-api.com/v4/sports",
+                             params={"apiKey":ODDS_KEY}, timeout=6)
+            if r.status_code == 200:
+                apis["odds_api"]["status"]             = "conectada"
+                apis["odds_api"]["requests_remaining"] = r.headers.get("x-requests-remaining","?")
+                apis["odds_api"]["requests_used"]      = r.headers.get("x-requests-used","?")
+            else:
+                apis["odds_api"]["status"] = f"erro {r.status_code}"
+        except:
+            apis["odds_api"]["status"] = "timeout"
+    # Testa API-Football
+    if RAPIDAPI_KEY:
+        try:
+            r = requests.get(
+                "https://api-football-v1.p.rapidapi.com/v3/status",
+                headers={"X-RapidAPI-Key": RAPIDAPI_KEY,
+                         "X-RapidAPI-Host":"api-football-v1.p.rapidapi.com"},
+                timeout=6
+            )
+            if r.status_code == 200:
+                d = r.json().get("response", {})
+                apis["api_football"]["status"]         = "conectada"
+                apis["api_football"]["requests_hoje"]  = d.get("requests",{}).get("current","?")
+                apis["api_football"]["limite_dia"]     = d.get("requests",{}).get("limit_day","?")
+            else:
+                apis["api_football"]["status"] = f"erro {r.status_code}"
+        except:
+            apis["api_football"]["status"] = "timeout"
+
     return jsonify({
-        "status":"online","versao":VERSAO,"motor":"benter_blend_v8",
-        "banco":{"ok":banco_ok,"concursos":tc,"jogos":tj2,
-                 "periodo":f"{dm} → {dM}","min":mn,"max":mx,"tabela":tj},
-        "dados_memoria":{"h2h":len(_H2H),"times_casa":len(_GOLS_CASA),"times_fora":len(_GOLS_FORA)},
-        "calibracao":{"lambda_casa":LAMBDA_CASA,"lambda_fora":LAMBDA_FORA},
-        "integracoes":{"loteca_historico_db":"conectado" if banco_ok else "desconectado"}
+        "status":  "ok",
+        "versao":  "Loteca Elite Pro v9.0",
+        "modelo":  "poisson_elo + blending_fase1 + kelly",
+        "banco":   "postgresql" if USE_PG else "sqlite",
+        "apis":    apis,
+        "rotas": {
+            "grade":      "/api/grade-automatica",
+            "concurso":   "/api/concurso/{num}",
+            "analisar":   "/api/analisar?mandante=X&visitante=Y&liga=copa",
+            "liga_ao_vivo":"/api/liga/{league_id}",
+            "resultado":  "POST /api/resultado",
+            "historico":  "/api/historico",
+        }
+    })
+
+@app.route("/")
+@app.route("/api/grade-automatica")
+def grade_automatica():
+    return concurso(1255)
+
+@app.route("/api/concurso/<int:num>")
+def concurso(num):
+    dados = CONCURSOS.get(num)
+    if not dados:
+        return jsonify({"status":"erro","mensagem":f"Concurso {num} não encontrado"}), 404
+    if not dados["jogos"]:
+        return jsonify({"status":"aviso","mensagem":f"Concurso {num} ainda sem jogos cadastrados","nome":dados["nome"]}), 200
+
+    banca = float(request.args.get("banca", 100))
+    liga  = dados["liga"]
+    jogos = []
+    for j in dados["jogos"]:
+        analise = analisar_jogo(j["mandante"], j["visitante"], liga,
+                                odds=j.get("odds"), banca=banca)
+        jogos.append({**j, **analise})
+
+    return jsonify({
+        "status":"sucesso","concurso":num,
+        "nome":dados["nome"],"periodo":dados["periodo"],
+        "modelo":"poisson_elo_v2+blending+kelly",
+        "total_jogos":len(jogos),"jogos":jogos,
+        "painel":painel(jogos),
     })
 
 @app.route("/api/analisar")
-def api_analisar():
-    m=request.args.get("mandante","").strip(); v=request.args.get("visitante","").strip()
-    pos=request.args.get("posicao",type=int)
-    if not m or not v: return jsonify({"erro":"Informe mandante e visitante"}),400
-    probs=calcular_probs(m,v,pos); cl=classificar(probs); fav=favorito(probs)
-    vals=sorted([probs["p1"],probs["px"],probs["p2"]],reverse=True)
-    conf=round((vals[0]-vals[1])*100,1)
-    return jsonify({"mandante":m,"visitante":v,"posicao":pos,
-                    "probabilidades":{"p1":probs["p1"],"px":probs["px"],"p2":probs["p2"]},
-                    "favorito":fav,"classificacao":cl,"score_0_100":score_0_100(probs),
-                    "confianca":conf,"fonte":probs.get("fonte","?"),
-                    "lambda_casa":probs.get("lc"),"lambda_fora":probs.get("lf")})
+def analisar():
+    m    = request.args.get("mandante","")
+    v    = request.args.get("visitante","")
+    liga = request.args.get("liga","_default")
+    o1   = request.args.get("odd_1", type=float)
+    ox   = request.args.get("odd_x", type=float)
+    o2   = request.args.get("odd_2", type=float)
+    banca= float(request.args.get("banca", 100))
 
-@app.route("/api/concurso/<int:numero>/analisar")
-def api_analisar_concurso(numero):
-    tj=_tj(); cp=_col_pos()
+    if not m or not v:
+        return jsonify({"status":"erro","mensagem":"mandante e visitante obrigatórios"}), 400
+
+    odds = {"1":o1,"X":ox,"2":o2} if all([o1,ox,o2]) else None
+    analise = analisar_jogo(m, v, liga, odds=odds, banca=banca)
+    return jsonify({"status":"sucesso","mandante":m,"visitante":v,"liga":liga,**analise})
+
+@app.route("/api/liga/<int:league_id>")
+def liga_ao_vivo(league_id):
+    """Busca próximos jogos de uma liga via API-Football e analisa."""
+    if not RAPIDAPI_KEY:
+        return jsonify({"status":"erro","mensagem":"RAPIDAPI_KEY não configurada"}), 400
+    jogos_raw = buscar_proximos_jogos(league_id)
+    if not jogos_raw:
+        return jsonify({"status":"aviso","mensagem":"Nenhum jogo encontrado","league_id":league_id})
+
+    # Mapa league_id → liga
+    liga_map = {71:"serie_a",72:"serie_b",75:"serie_c",13:"libertadores",
+                39:"premier",140:"la_liga",78:"bundesliga",135:"serie_a_ita"}
+    liga = liga_map.get(league_id,"_default")
+    jogos = []
+    for j in jogos_raw:
+        analise = analisar_jogo(j["mandante"], j["visitante"], liga)
+        jogos.append({**j, **analise})
+
+    return jsonify({
+        "status":"sucesso","league_id":league_id,"liga":liga,
+        "total":len(jogos),"jogos":jogos,"painel":painel(jogos),
+    })
+
+@app.route("/api/resultado", methods=["POST"])
+def resultado():
+    d = request.get_json() or {}
+    concurso_n = d.get("concurso")
+    mandante   = d.get("mandante","")
+    visitante  = d.get("visitante","")
+    res        = d.get("resultado","")
+    gols_c     = d.get("gols_casa", 0)
+    gols_f     = d.get("gols_fora", 0)
+
+    if res not in ["H","D","A"]:
+        return jsonify({"status":"erro","mensagem":"resultado deve ser H (casa), D (empate) ou A (visitante)"}), 400
+
     try:
-        conn=sqlite3.connect(_db()); c=conn.cursor()
-        c.execute(f"SELECT {cp},mandante,visitante,resultado FROM {tj} WHERE concurso=? ORDER BY {cp}",(numero,))
-        rows=c.fetchall(); conn.close()
-    except Exception as e: return jsonify({"erro":str(e)}),500
-    if not rows: return jsonify({"erro":f"Concurso {numero} não encontrado"}),404
-    resultado=[]
-    for pos,m,v,res in rows:
-        probs=calcular_probs(m or "",v or "",pos)
-        cl=classificar(probs); fav=favorito(probs)
-        vals=sorted([probs["p1"],probs["px"],probs["p2"]],reverse=True)
-        resultado.append({"posicao":pos,"mandante":m,"visitante":v,"resultado_real":res,
-                          "probabilidades":{"p1":probs["p1"],"px":probs["px"],"p2":probs["p2"]},
-                          "score_0_100":score_0_100(probs),"classificacao":cl,
-                          "favorito":fav,"confianca":round((vals[0]-vals[1])*100,1),
-                          "fonte":probs.get("fonte","?")})
-    acertos=sum(1 for r in resultado if r["resultado_real"] in("1","X","2") and r["resultado_real"]==r["favorito"])
-    secos=sum(1 for r in resultado if r["classificacao"]=="SECO")
-    duplos=sum(1 for r in resultado if r["classificacao"]=="DUPLO")
-    triplos=sum(1 for r in resultado if r["classificacao"]=="TRIPLO")
-    return jsonify({"concurso":numero,"total":len(resultado),
-                    "acertos_favorito":acertos,"pct_acerto":round(acertos/max(len(resultado),1)*100,1),
-                    "secos":secos,"duplos":duplos,"triplos":triplos,
-                    "custo_minimo":round(3.0*(2**duplos)*(3**triplos)/100,2),"jogos":resultado})
+        conn = get_conn()
+        ph   = "%s" if USE_PG else "?"
+        conn.cursor().execute(
+            f"INSERT INTO historico(concurso,mandante,visitante,resultado) VALUES({ph},{ph},{ph},{ph})",
+            (concurso_n, mandante, visitante, res)
+        )
+        conn.commit(); conn.close()
+        return jsonify({"status":"sucesso","mensagem":"Resultado registrado","concurso":concurso_n})
+    except Exception as e:
+        return jsonify({"status":"erro","mensagem":str(e)}), 500
 
-@app.route("/api/concurso/atual")
-def api_concurso_atual():
-    grade=buscar_grade_arenadoaz()
-    if grade and grade.get("concurso") and grade.get("jogos"):
-        resultado=[]
-        for j in grade["jogos"]:
-            pos=j["posicao"]; m=j["mandante"]; v=j["visitante"]
-            probs=calcular_probs(m,v,pos); cl=classificar(probs); fav=favorito(probs)
-            vals=sorted([probs["p1"],probs["px"],probs["p2"]],reverse=True)
-            resultado.append({"posicao":pos,"mandante":m,"visitante":v,"resultado_real":"?",
-                              "probabilidades":{"p1":probs["p1"],"px":probs["px"],"p2":probs["p2"]},
-                              "score_0_100":score_0_100(probs),"classificacao":cl,
-                              "favorito":fav,"confianca":round((vals[0]-vals[1])*100,1),
-                              "fonte":probs.get("fonte","?")})
-        secos=sum(1 for r in resultado if r["classificacao"]=="SECO")
-        duplos=sum(1 for r in resultado if r["classificacao"]=="DUPLO")
-        triplos=sum(1 for r in resultado if r["classificacao"]=="TRIPLO")
-        return jsonify({"concurso":grade["concurso"],"total":len(resultado),
-                        "fonte_grade":"arenadoaz","secos":secos,"duplos":duplos,"triplos":triplos,
-                        "custo_minimo":round(3.0*(2**duplos)*(3**triplos)/100,2),"jogos":resultado})
-    dados=buscar_cef("")
-    if dados:
-        numero=dados.get("numero",dados.get("numeroConcurso",0))
-        if numero: return api_analisar_concurso(numero)
+@app.route("/api/historico")
+def historico():
     try:
-        conn=sqlite3.connect(_db()); c=conn.cursor()
-        c.execute("SELECT MAX(concurso) FROM concursos"); ultimo=c.fetchone()[0]; conn.close()
-        if ultimo: return api_analisar_concurso(ultimo)
-    except: pass
-    return jsonify({"erro":"Nenhuma fonte disponível"}),503
-
-@app.route("/api/sentinela/grade")
-def api_sentinela_grade():
-    grade=buscar_grade_arenadoaz()
-    if not grade: return jsonify({"erro":"Grade indisponível"}),503
-    return jsonify(grade)
-
-@app.route("/api/sentinela/atualizar",methods=["POST"])
-def api_sentinela_atualizar():
-    global _cache_grade; _cache_grade={"data":None,"ts":0}
-
-    grade=buscar_grade_arenadoaz()
-    return jsonify({"ok":True,"concurso":grade.get("concurso") if grade else None,
-                    "jogos":len(grade.get("jogos",[])) if grade else 0})
-
-@app.route("/api/historico/resumo")
-def hist_resumo():
-    tj=_tj()
-    try:
-        conn=sqlite3.connect(_db()); c=conn.cursor()
-        c.execute("SELECT COUNT(*),MIN(concurso),MAX(concurso),MIN(data_sorteio),MAX(data_sorteio) FROM concursos")
-        tc,mn,mx,dm,dM=c.fetchone()
-        c.execute(f"SELECT COUNT(*) FROM {tj}"); tj2=c.fetchone()[0]
-        c.execute(f"SELECT resultado,COUNT(*) FROM {tj} WHERE resultado IN ('1','X','2') GROUP BY resultado")
-        dist=dict(c.fetchall()); total=sum(dist.values()) or 1
-        c.execute(f"SELECT mandante,COUNT(*) FROM {tj} GROUP BY mandante ORDER BY 2 DESC LIMIT 10")
-        top=[{"time":r[0],"jogos":r[1]} for r in c.fetchall()]
+        conn = get_conn()
+        cur  = conn.cursor()
+        cur.execute("SELECT * FROM historico ORDER BY id DESC LIMIT 100")
+        rows = [dict(r) for r in cur.fetchall()]
         conn.close()
-        return jsonify({"total_concursos":tc,"total_jogos":tj2,"periodo":f"{dm} → {dM}","min":mn,"max":mx,
-                        "distribuicao":{k:{"n":v,"pct":round(v/total*100,1)} for k,v in dist.items()},
-                        "top_10_mandantes":top})
-    except Exception as e: return jsonify({"erro":str(e)}),500
-
-@app.route("/api/historico/time/<nome>")
-def hist_time(nome):
-    carregar_dados(); m=nome.lower()
-    ac=_APROV_CASA.get(m); af=_APROV_FORA.get(m)
-    gc=_GOLS_CASA.get(m); gf=_GOLS_FORA.get(m)
-    if not ac and not af: return jsonify({"erro":f"Time '{nome}' não encontrado"}),404
-    try:
-        tj=_tj(); conn=sqlite3.connect(_db()); c=conn.cursor()
-        c.execute(f"""SELECT j.concurso,co.data_sorteio,j.mandante,j.visitante,j.resultado
-            FROM {tj} j JOIN concursos co ON j.concurso=co.concurso
-            WHERE LOWER(j.mandante)=? OR LOWER(j.visitante)=?
-            ORDER BY j.concurso DESC LIMIT 20""",(m,m))
-        ultimos=[{"concurso":r[0],"data":r[1],"mandante":r[2],"visitante":r[3],"resultado":r[4]}
-                 for r in c.fetchall()]
-        conn.close()
-    except: ultimos=[]
-    return jsonify({"time":nome,
-                    "casa":{**ac,"gm":gc["gm"] if gc else None,"gc":gc["gc"] if gc else None} if ac else None,
-                    "fora":{**af,"gm":gf["gm"] if gf else None,"gc":gf["gc"] if gf else None} if af else None,
-                    "ultimos_jogos":ultimos})
-
-@app.route("/api/historico/confronto")
-def hist_confronto():
-    m=request.args.get("mandante","").strip().lower()
-    v=request.args.get("visitante","").strip().lower()
-    if not m or not v: return jsonify({"erro":"Informe mandante e visitante"}),400
-    carregar_dados(); h2h=_H2H.get(f"{m}|{v}"); tj=_tj()
-    try:
-        conn=sqlite3.connect(_db()); c=conn.cursor()
-        c.execute(f"""SELECT j.concurso,co.data_sorteio,j.mandante,j.visitante,j.resultado
-            FROM {tj} j JOIN concursos co ON j.concurso=co.concurso
-            WHERE (LOWER(j.mandante)=? AND LOWER(j.visitante)=?)
-               OR (LOWER(j.mandante)=? AND LOWER(j.visitante)=?)
-            ORDER BY j.concurso DESC LIMIT 30""",(m,v,v,m))
-        rows=c.fetchall(); conn.close()
-    except Exception as e: return jsonify({"erro":str(e)}),500
-    v1=sum(1 for r in rows if r[2].lower()==m and r[4]=="1")
-    x=sum(1 for r in rows if r[4]=="X")
-    v2=sum(1 for r in rows if r[2].lower()==v and r[4]=="1")
-    return jsonify({"mandante":m,"visitante":v,"total":len(rows),
-                    "vitorias_t1":v1,"empates":x,"vitorias_t2":v2,"h2h_probs":h2h,
-                    "jogos":[{"concurso":r[0],"data":r[1],"mandante":r[2],"visitante":r[3],"resultado":r[4]}
-                              for r in rows]})
-
-@app.route("/api/posicoes")
-def api_posicoes():
-    carregar_dados()
-    return jsonify({str(p):{"p1":v[0],"px":v[1],"p2":v[2]} for p,v in _PROB_POS.items()})
+        return jsonify({"status":"sucesso","total":len(rows),"registros":rows})
+    except Exception as e:
+        return jsonify({"status":"erro","mensagem":str(e)}), 500
 
 @app.route("/api/db-info")
-def api_db_info():
-    db=_db(); info=_tabela_cols(); tj=info["tabela"]
+def db_info():
     try:
-        conn=sqlite3.connect(db); c=conn.cursor()
-        c.execute("SELECT COUNT(*),MIN(concurso),MAX(concurso) FROM concursos"); tc,mn,mx=c.fetchone()
-        c.execute(f"SELECT COUNT(*) FROM {tj}"); tj2=c.fetchone()[0]
-        c.execute("SELECT name FROM sqlite_master WHERE type='table'"); tabelas=[r[0] for r in c.fetchall()]
+        conn = get_conn()
+        cur  = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM historico")
+        total = cur.fetchone()[0]
         conn.close()
-        return jsonify({"db_conectado":True,"caminho":db,"total_concursos":tc,
-                        "total_jogos":tj2,"concurso_min":mn,"concurso_max":mx,
-                        "tabela_jogos":tj,"colunas_gols":f"{info['col_gm']}/{info['col_gv']}",
-                        "tabelas":tabelas})
+        return jsonify({
+            "status":"sucesso","banco":"postgresql" if USE_PG else "sqlite",
+            "total_registros":total,
+        })
     except Exception as e:
-        return jsonify({"db_conectado":False,"caminho":db,"erro":str(e)})
+        return jsonify({"status":"erro","mensagem":str(e)}), 500
 
-@app.route("/api/coletar",methods=["POST"])
-def api_coletar():
-    global _coleta
-    if _coleta["rodando"]: return jsonify({"status":"ja_rodando"}),409
-    body=request.get_json(silent=True) or {}
-    inicio=body.get("inicio",1); fim=body.get("fim")
-    _coleta={"rodando":True,"relatorio":None,"erro":None,"coletados":0}
-    threading.Thread(target=_coletar_worker,args=(inicio,fim),daemon=True).start()
-    return jsonify({"status":"iniciado","mensagem":f"Coletando a partir do concurso {inicio}"})
-
-@app.route("/api/coletar/status")
-def api_coletar_status(): return jsonify(_coleta)
-
-@app.route("/api/backtest/<int:concurso>")
-def api_backtest_concurso(concurso):
-    """Recalcula a previsão do sistema para um concurso e compara com o
-    resultado real já salvo no banco. AVISO: calcular_probs() usa
-    agregados do banco INTEIRO (não filtra por concurso anterior), então
-    isto mostra 'o que o sistema diria hoje' sobre um concurso passado,
-    não um backtest walk-forward sem vazamento de dado."""
-    tj=_tj(); cp=_col_pos()
-    try:
-        conn=sqlite3.connect(_db()); c=conn.cursor()
-        c.execute(f"SELECT {cp},mandante,visitante,resultado FROM {tj} WHERE concurso=? ORDER BY {cp}",(concurso,))
-        rows=c.fetchall(); conn.close()
-    except Exception as e:
-        return jsonify({"erro":str(e)}),500
-    if not rows:
-        return jsonify({"erro":f"Concurso {concurso} não encontrado"}),404
-
-    pontos=0; detalhes=[]
-    for pos,m,v,resultado_real in rows:
-        probs=calcular_probs(m or "",v or "",pos)
-        classe=classificar(probs)
-        aposta=apostas_da_classificacao(probs, classe)
-        acerto = resultado_real in aposta
-        if acerto: pontos+=1
-        detalhes.append({"jogo":pos,"mandante":m,"visitante":v,
-                          "previsto":aposta,"classificacao":classe,
-                          "real":resultado_real,"acerto":acerto,
-                          "fonte_prob":probs.get("fonte")})
-    return jsonify({"concurso":concurso,"pontos":pontos,"total_jogos":len(rows),"jogos":detalhes})
-
-
-@app.route("/api/odds")
-def api_odds():
-    """Busca odds ao vivo para um jogo específico."""
-    m = request.args.get("mandante","").strip()
-    v = request.args.get("visitante","").strip()
-    if not m or not v: return jsonify({"erro":"Informe mandante e visitante"}),400
-    if not ODDS_KEY: return jsonify({"erro":"ODDS_API_KEY não configurada","dica":"Configure em Environment > Add env var no Render"}),503
-    odds = buscar_odds_ao_vivo(m, v)
-    if not odds: return jsonify({"erro":f"Odds não encontradas para {m} x {v}","dica":"Verifique se o jogo está disponível na The Odds API"}),404
-    return jsonify({"mandante":m,"visitante":v,"odds":odds})
-
-@app.route("/api/odds/status")
-def api_odds_status():
-    """Verifica status da integração com The Odds API."""
-    if not ODDS_KEY:
-        return jsonify({"configurada":False,"msg":"ODDS_API_KEY não configurada no Render"})
-    try:
-        r = requests.get(
-            f"https://api.the-odds-api.com/v4/sports/",
-            params={"apiKey":ODDS_KEY},timeout=8)
-        if r.status_code==200:
-            return jsonify({"configurada":True,"status":"conectada",
-                           "requests_remaining":r.headers.get("x-requests-remaining","?"),
-                           "requests_used":r.headers.get("x-requests-used","?")})
-        return jsonify({"configurada":True,"status":"erro","http":r.status_code})
-    except Exception as e:
-        return jsonify({"configurada":True,"status":"erro","detalhe":str(e)})
-
-
-
-@app.route("/api/apifootball/status")
-def api_apifootball_status():
-    """Verifica status da integração com API-Football."""
-    if not APIFOOTBALL_KEY:
-        return jsonify({"configurada":False,"msg":"APIFOOTBALL_KEY não configurada"})
-    try:
-        r = requests.get(
-            "https://v3.football.api-sports.io/status",
-            headers={"x-apisports-key": APIFOOTBALL_KEY},
-            timeout=8)
-        if r.status_code == 200:
-            d = r.json().get("response",{})
-            return jsonify({
-                "configurada": True,
-                "status": "conectada",
-                "plano": d.get("subscription",{}).get("plan","?"),
-                "requests_dia": d.get("requests",{}).get("current","?"),
-                "requests_limite": d.get("requests",{}).get("limit_day","?"),
-            })
-        return jsonify({"configurada":True,"status":"erro","http":r.status_code})
-    except Exception as e:
-        return jsonify({"configurada":True,"status":"erro","detalhe":str(e)})
-
-@app.route("/api/apifootball/forma")
-def api_af_forma():
-    """Retorna forma recente de um time via API-Football."""
-    nome = request.args.get("time","").strip()
-    liga = request.args.get("liga", 71, type=int)
-    if not nome: return jsonify({"erro":"Informe o nome do time"}),400
-    forma = buscar_forma_time(nome, liga)
-    if not forma: return jsonify({"erro":f"Dados não encontrados para '{nome}'"}),404
-    return jsonify({"time":nome,"liga":liga,"forma":forma})
-
-
-if __name__=="__main__":
-    inicializar_banco(); carregar_dados()
-    port=int(os.getenv("PORT",5000))
-    app.run(host="0.0.0.0",port=port,debug=False)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
