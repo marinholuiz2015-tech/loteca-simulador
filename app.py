@@ -207,25 +207,29 @@ def painel(jogos):
     }
 
 # ─── API-Football: busca jogos ao vivo ───────────────────────
-def apif_get(endpoint, params):
+APIF_HOST = "free-api-live-football-data.p.rapidapi.com"
+APIF_BASE = f"https://{APIF_HOST}"
+
+def apif_get(endpoint, params=None):
     if not RAPIDAPI_KEY:
         return None
     try:
         r = requests.get(
-            f"https://api-football-v1.p.rapidapi.com/v3/{endpoint}",
-            headers={"X-RapidAPI-Key": RAPIDAPI_KEY,
-                     "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"},
-            params=params, timeout=8
+            f"{APIF_BASE}/{endpoint}",
+            headers={"X-RapidAPI-Key":  RAPIDAPI_KEY,
+                     "X-RapidAPI-Host": APIF_HOST},
+            params=params or {}, timeout=8
         )
         if r.status_code == 200:
             return r.json()
+        log.warning("API-Football status %s: %s", r.status_code, r.text[:200])
     except Exception as e:
         log.warning("API-Football erro: %s", e)
     return None
 
 def buscar_proximos_jogos(league_id, season=2026):
-    data = apif_get("fixtures", {"league": league_id, "season": season,
-                                  "status": "NS", "next": 14})
+    data = apif_get("football-get-all-fixtures-by-league-by-season",
+                    {"leagueId": league_id, "season": season})
     if not data:
         return []
     jogos = []
@@ -358,20 +362,18 @@ def health():
                 apis["odds_api"]["status"] = f"erro {r.status_code}"
         except:
             apis["odds_api"]["status"] = "timeout"
-    # Testa API-Football
+    # Testa Free API Live Football Data
     if RAPIDAPI_KEY:
         try:
             r = requests.get(
-                "https://api-football-v1.p.rapidapi.com/v3/status",
-                headers={"X-RapidAPI-Key": RAPIDAPI_KEY,
-                         "X-RapidAPI-Host":"api-football-v1.p.rapidapi.com"},
+                f"https://{APIF_HOST}/football-get-all-leagues",
+                headers={"X-RapidAPI-Key":  RAPIDAPI_KEY,
+                         "X-RapidAPI-Host": APIF_HOST},
                 timeout=6
             )
             if r.status_code == 200:
-                d = r.json().get("response", {})
-                apis["api_football"]["status"]         = "conectada"
-                apis["api_football"]["requests_hoje"]  = d.get("requests",{}).get("current","?")
-                apis["api_football"]["limite_dia"]     = d.get("requests",{}).get("limit_day","?")
+                apis["api_football"]["status"] = "conectada"
+                apis["api_football"]["host"]   = APIF_HOST
             else:
                 apis["api_football"]["status"] = f"erro {r.status_code}"
         except:
