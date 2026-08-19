@@ -1,5 +1,5 @@
 """
-Loteca Elite Pro — app.py VERSÃO FINAL
+Loteca Elite Pro — app.py VERSÃO FINAL v9.1
 Arquivo único. Sem dependências externas obrigatórias.
 APIs opcionais: se falharem o serviço continua no ar.
 
@@ -26,6 +26,9 @@ ODDS_KEY     = os.getenv("ODDS_API_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 USE_PG       = DATABASE_URL.startswith("postgres")
 
+APIF_HOST = "free-api-live-football-data.p.rapidapi.com"
+APIF_BASE = f"https://{APIF_HOST}"
+
 # ─── Banco de dados ───────────────────────────────────────────
 def get_conn():
     if USE_PG:
@@ -38,16 +41,14 @@ def get_conn():
 def init_db():
     try:
         conn = get_conn()
-        ph   = "%s" if USE_PG else "?"
-        sql  = """CREATE TABLE IF NOT EXISTS historico (
-            id         SERIAL PRIMARY KEY,
-            concurso   INTEGER,
-            mandante   TEXT, visitante TEXT,
-            prob_1     REAL, prob_x REAL, prob_2 REAL,
-            score      REAL, tipo_grade TEXT, coluna TEXT,
-            resultado  TEXT, acertou INTEGER,
+        sql = """CREATE TABLE IF NOT EXISTS historico (
+            id SERIAL PRIMARY KEY,
+            concurso INTEGER, mandante TEXT, visitante TEXT,
+            prob_1 REAL, prob_x REAL, prob_2 REAL,
+            score REAL, tipo_grade TEXT, coluna TEXT,
+            resultado TEXT, acertou INTEGER,
             odd_1 REAL, odd_x REAL, odd_2 REAL,
-            criado_em  TEXT DEFAULT CURRENT_TIMESTAMP
+            criado_em TEXT DEFAULT CURRENT_TIMESTAMP
         )""" if USE_PG else """CREATE TABLE IF NOT EXISTS historico (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             concurso INTEGER, mandante TEXT, visitante TEXT,
@@ -67,7 +68,6 @@ init_db()
 
 # ─── ELO dos times ───────────────────────────────────────────
 ELO = {
-    # Seleções
     "Argentina":2140,"França":2100,"Inglaterra":2080,"Espanha":2070,
     "Alemanha":2060,"Portugal":2040,"Holanda":2030,"Brasil":2050,
     "Bélgica":1990,"Uruguai":1960,"Itália":2010,"México":1880,
@@ -78,14 +78,12 @@ ELO = {
     "Rep. Tcheca":1820,"Haiti":1490,"Egito":1770,"Costa do Marfim":1820,
     "Senegal":1850,"Congo-Kinshasa":1650,"Argélia":1700,"Noruega":1830,
     "Iraque":1580,"Croácia":1890,
-    # Clubes Brasileiros
     "Palmeiras":1820,"Flamengo":1810,"Botafogo":1780,"Fluminense":1750,
     "Atletico MG":1760,"São Paulo":1740,"Corinthians":1720,"Grêmio":1700,
     "Internacional":1710,"Cruzeiro":1690,"Vasco da Gama":1660,"Santos":1650,
     "Fortaleza":1670,"Bahia":1640,"Mirassol":1610,"Juventude":1590,
     "Vitória":1580,"Sport":1560,"Bragantino":1620,"Athletico PR":1660,
     "Chapecoense":1480,"Londrina":1470,"Remo":1460,"CRB":1450,
-    # Premier League
     "Manchester City":1810,"Arsenal":1750,"Liverpool":1790,"Chelsea":1730,
     "Manchester United":1700,"Tottenham":1690,"Aston Villa":1720,
     "Crystal Palace":1680,"Everton":1620,"Newcastle":1700,
@@ -153,28 +151,22 @@ def classificar(probs, odd_1=None, liga="_default"):
     ordem = sorted([("1",p1),("X",px),("2",p2)], key=lambda x: x[1], reverse=True)
     top_c, top_v = ordem[0]
     seg_c, _     = ordem[1]
-
-    # Limiar dinâmico: em Copa com favorito muito curto → força DUPLO
     lim = 0.52
     if liga == "copa" and odd_1:
         if odd_1 < 1.50:   lim = 0.82
         elif odd_1 < 1.80: lim = 0.62
-
     if top_v >= lim:
         tipo, cols = "SECO",   [top_c]
     elif top_v >= 0.40:
         tipo, cols = "DUPLO",  [top_c, seg_c]
     else:
         tipo, cols = "TRIPLO", ["1","X","2"]
-
     classe = "A" if top_v>=0.80 else "B" if top_v>=0.65 else \
              "C" if top_v>=0.50 else "D" if top_v>=0.40 else "E"
     return {
-        "tipo": tipo,
-        "colunas": cols,
+        "tipo": tipo, "colunas": cols,
         "coluna_display": "/".join(sorted(cols)),
-        "confianca": round(top_v*100, 1),
-        "classe": classe,
+        "confianca": round(top_v*100, 1), "classe": classe,
     }
 
 # ─── Kelly Criterion ─────────────────────────────────────────
@@ -185,31 +177,25 @@ def kelly(prob, odd, banca=100.0, fracao=0.25):
     ok = kp > 0.01 and ev > 0.02
     return {
         "stake":   round(banca*max(0,kp*fracao), 2) if ok else 0.0,
-        "ev":      round(ev, 4),
-        "apostar": ok,
+        "ev":      round(ev, 4), "apostar": ok,
     }
 
-# ─── Score 0-100 ─────────────────────────────────────────────
 def score(classif, mot=0.70):
     return round(min(100.0, classif["confianca"]*(0.85+0.15*mot)), 1)
 
-# ─── Painel de custos ────────────────────────────────────────
 def painel(jogos):
     nd = sum(1 for j in jogos if j["classificacao"]["tipo"]=="DUPLO")
     nt = sum(1 for j in jogos if j["classificacao"]["tipo"]=="TRIPLO")
     def c(d,t): return round((2**d)*(3**t)*3.0, 2)
     return {
-        "secos":  sum(1 for j in jogos if j["classificacao"]["tipo"]=="SECO"),
+        "secos": sum(1 for j in jogos if j["classificacao"]["tipo"]=="SECO"),
         "duplos": nd, "triplos": nt,
         "custo_minimo":      c(nd, 0),
         "custo_recomendado": c(nd, min(nt,1)),
         "custo_completo":    c(nd, nt),
     }
 
-# ─── API-Football: busca jogos ao vivo ───────────────────────
-APIF_HOST = "free-api-live-football-data.p.rapidapi.com"
-APIF_BASE = f"https://{APIF_HOST}"
-
+# ─── API-Football ────────────────────────────────────────────
 def apif_get(endpoint, params=None):
     if not RAPIDAPI_KEY:
         return None
@@ -222,7 +208,7 @@ def apif_get(endpoint, params=None):
         )
         if r.status_code == 200:
             return r.json()
-        log.warning("API-Football status %s: %s", r.status_code, r.text[:200])
+        log.warning("API-Football status %s", r.status_code)
     except Exception as e:
         log.warning("API-Football erro: %s", e)
     return None
@@ -236,12 +222,10 @@ def buscar_proximos_jogos(league_id, season=2026):
     for fix in data.get("response", []):
         f, t = fix["fixture"], fix["teams"]
         jogos.append({
-            "id":        f["id"],
-            "mandante":  t["home"]["name"],
+            "id": f["id"], "mandante": t["home"]["name"],
             "visitante": t["away"]["name"],
-            "data":      f["date"][:10],
-            "hora":      f["date"][11:16],
-            "status":    f["status"]["short"],
+            "data": f["date"][:10], "hora": f["date"][11:16],
+            "status": f["status"]["short"],
         })
     return jogos
 
@@ -281,7 +265,7 @@ def buscar_odds(sport="soccer_brazil_campeonato"):
         log.warning("Odds API erro: %s", e)
         return {}
 
-# ─── Dados dos concursos ─────────────────────────────────────
+# ─── Concursos ───────────────────────────────────────────────
 CONCURSOS = {
     1255: {
         "nome":"Copa Loteca — 1ª Rodada","periodo":"11-15 jun 2026","liga":"copa",
@@ -302,18 +286,14 @@ CONCURSOS = {
             {"id":14,"mandante":"Arábia Saudita", "visitante":"Uruguai",      "data":"15/06","hora":"19h","odds":{"1":3.80,"X":3.20,"2":1.90}},
         ]
     },
-    1256: {"nome":"Copa Loteca — 2ª Rodada","periodo":"jun 2026","liga":"copa","jogos":[]},
-    1257: {"nome":"Copa Loteca — 3ª Rodada","periodo":"jun 2026","liga":"copa","jogos":[]},
-    1258: {"nome":"Copa Loteca — 4ª Rodada","periodo":"jun 2026","liga":"copa","jogos":[]},
 }
 
-# ─── Analisar um jogo ────────────────────────────────────────
+# ─── Analisar jogo ───────────────────────────────────────────
 def analisar_jogo(mandante, visitante, liga="_default", odds=None, banca=100.0):
     pm  = poisson_probs(mandante, visitante, liga)
     pf  = blending(pm, odds)
     cl  = classificar(pf, odd_1=odds["1"] if odds else None, liga=liga)
     sc  = score(cl)
-    # Kelly
     kelly_res, melhor = {}, None
     if odds:
         for res in ["1","X","2"]:
@@ -331,10 +311,8 @@ def analisar_jogo(mandante, visitante, liga="_default", odds=None, banca=100.0):
         "overround": pf.get("overround"),
         "elo_casa":  pm["elo_casa"], "elo_fora": pm["elo_fora"],
         "lam_casa":  pm["lam_casa"], "lam_fora": pm["lam_fora"],
-        "classificacao": cl,
-        "score": sc,
-        "kelly": kelly_res or None,
-        "melhor_aposta": melhor,
+        "classificacao": cl, "score": sc,
+        "kelly": kelly_res or None, "melhor_aposta": melhor,
     }
 
 # ════════════════════════════════════════════════════════════
@@ -349,7 +327,6 @@ def health():
         "api_football": {"configurada": bool(RAPIDAPI_KEY), "status": "não configurada"},
         "banco":        {"tipo": "postgresql" if USE_PG else "sqlite", "status": "ok"},
     }
-    # Testa Odds API
     if ODDS_KEY:
         try:
             r = requests.get("https://api.the-odds-api.com/v4/sports",
@@ -362,7 +339,6 @@ def health():
                 apis["odds_api"]["status"] = f"erro {r.status_code}"
         except:
             apis["odds_api"]["status"] = "timeout"
-    # Testa Free API Live Football Data
     if RAPIDAPI_KEY:
         try:
             r = requests.get(
@@ -378,20 +354,21 @@ def health():
                 apis["api_football"]["status"] = f"erro {r.status_code}"
         except:
             apis["api_football"]["status"] = "timeout"
-
     return jsonify({
         "status":  "ok",
-        "versao":  "Loteca Elite Pro v9.0",
+        "versao":  "Loteca Elite Pro v9.1",
         "modelo":  "poisson_elo + blending_fase1 + kelly",
         "banco":   "postgresql" if USE_PG else "sqlite",
         "apis":    apis,
         "rotas": {
-            "grade":      "/api/grade-automatica",
-            "concurso":   "/api/concurso/{num}",
-            "analisar":   "/api/analisar?mandante=X&visitante=Y&liga=copa",
+            "grade":       "/api/grade-automatica",
+            "concurso":    "/api/concurso/{num}",
+            "analisar":    "/api/analisar?mandante=X&visitante=Y&liga=copa",
             "liga_ao_vivo":"/api/liga/{league_id}",
-            "resultado":  "POST /api/resultado",
-            "historico":  "/api/historico",
+            "resultado":   "POST /api/resultado",
+            "historico":   "/api/historico",
+            "db_info":     "/api/db-info",
+            "tabelas":     "/api/tabelas",
         }
     })
 
@@ -406,8 +383,7 @@ def concurso(num):
     if not dados:
         return jsonify({"status":"erro","mensagem":f"Concurso {num} não encontrado"}), 404
     if not dados["jogos"]:
-        return jsonify({"status":"aviso","mensagem":f"Concurso {num} ainda sem jogos cadastrados","nome":dados["nome"]}), 200
-
+        return jsonify({"status":"aviso","mensagem":f"Concurso {num} sem jogos","nome":dados["nome"]}), 200
     banca = float(request.args.get("banca", 100))
     liga  = dados["liga"]
     jogos = []
@@ -415,7 +391,6 @@ def concurso(num):
         analise = analisar_jogo(j["mandante"], j["visitante"], liga,
                                 odds=j.get("odds"), banca=banca)
         jogos.append({**j, **analise})
-
     return jsonify({
         "status":"sucesso","concurso":num,
         "nome":dados["nome"],"periodo":dados["periodo"],
@@ -433,24 +408,19 @@ def analisar():
     ox   = request.args.get("odd_x", type=float)
     o2   = request.args.get("odd_2", type=float)
     banca= float(request.args.get("banca", 100))
-
     if not m or not v:
         return jsonify({"status":"erro","mensagem":"mandante e visitante obrigatórios"}), 400
-
     odds = {"1":o1,"X":ox,"2":o2} if all([o1,ox,o2]) else None
     analise = analisar_jogo(m, v, liga, odds=odds, banca=banca)
     return jsonify({"status":"sucesso","mandante":m,"visitante":v,"liga":liga,**analise})
 
 @app.route("/api/liga/<int:league_id>")
 def liga_ao_vivo(league_id):
-    """Busca próximos jogos de uma liga via API-Football e analisa."""
     if not RAPIDAPI_KEY:
         return jsonify({"status":"erro","mensagem":"RAPIDAPI_KEY não configurada"}), 400
     jogos_raw = buscar_proximos_jogos(league_id)
     if not jogos_raw:
         return jsonify({"status":"aviso","mensagem":"Nenhum jogo encontrado","league_id":league_id})
-
-    # Mapa league_id → liga
     liga_map = {71:"serie_a",72:"serie_b",75:"serie_c",13:"libertadores",
                 39:"premier",140:"la_liga",78:"bundesliga",135:"serie_a_ita"}
     liga = liga_map.get(league_id,"_default")
@@ -458,7 +428,6 @@ def liga_ao_vivo(league_id):
     for j in jogos_raw:
         analise = analisar_jogo(j["mandante"], j["visitante"], liga)
         jogos.append({**j, **analise})
-
     return jsonify({
         "status":"sucesso","league_id":league_id,"liga":liga,
         "total":len(jogos),"jogos":jogos,"painel":painel(jogos),
@@ -467,25 +436,18 @@ def liga_ao_vivo(league_id):
 @app.route("/api/resultado", methods=["POST"])
 def resultado():
     d = request.get_json() or {}
-    concurso_n = d.get("concurso")
-    mandante   = d.get("mandante","")
-    visitante  = d.get("visitante","")
-    res        = d.get("resultado","")
-    gols_c     = d.get("gols_casa", 0)
-    gols_f     = d.get("gols_fora", 0)
-
+    res = d.get("resultado","")
     if res not in ["H","D","A"]:
-        return jsonify({"status":"erro","mensagem":"resultado deve ser H (casa), D (empate) ou A (visitante)"}), 400
-
+        return jsonify({"status":"erro","mensagem":"resultado deve ser H, D ou A"}), 400
     try:
         conn = get_conn()
         ph   = "%s" if USE_PG else "?"
         conn.cursor().execute(
             f"INSERT INTO historico(concurso,mandante,visitante,resultado) VALUES({ph},{ph},{ph},{ph})",
-            (concurso_n, mandante, visitante, res)
+            (d.get("concurso"), d.get("mandante",""), d.get("visitante",""), res)
         )
         conn.commit(); conn.close()
-        return jsonify({"status":"sucesso","mensagem":"Resultado registrado","concurso":concurso_n})
+        return jsonify({"status":"sucesso","mensagem":"Resultado registrado"})
     except Exception as e:
         return jsonify({"status":"erro","mensagem":str(e)}), 500
 
@@ -506,13 +468,61 @@ def db_info():
     try:
         conn = get_conn()
         cur  = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM historico")
-        total = cur.fetchone()[0]
+        if USE_PG:
+            cur.execute("""
+                SELECT table_name FROM information_schema.tables
+                WHERE table_schema = 'public' ORDER BY table_name
+            """)
+            tabelas = [r[0] for r in cur.fetchall()]
+            resultado = {}
+            total_geral = 0
+            for nome in tabelas:
+                try:
+                    cur.execute(f'SELECT COUNT(*) FROM "{nome}"')
+                    qtd = cur.fetchone()[0]
+                    resultado[nome] = qtd
+                    total_geral += qtd
+                except:
+                    resultado[nome] = "erro"
+        else:
+            cur.execute("SELECT COUNT(*) FROM historico")
+            total_geral = cur.fetchone()[0]
+            resultado = {"historico": total_geral}
         conn.close()
         return jsonify({
-            "status":"sucesso","banco":"postgresql" if USE_PG else "sqlite",
-            "total_registros":total,
+            "status":      "sucesso",
+            "banco":       "postgresql" if USE_PG else "sqlite",
+            "total_geral": total_geral,
+            "tabelas":     resultado,
         })
+    except Exception as e:
+        return jsonify({"status":"erro","mensagem":str(e)}), 500
+
+@app.route("/api/tabelas")
+def tabelas():
+    return db_info()
+
+@app.route("/api/jogos-historicos")
+def jogos_historicos():
+    """Retorna amostra dos jogos históricos migrados."""
+    try:
+        conn = get_conn()
+        cur  = conn.cursor()
+        liga  = request.args.get("liga", "")
+        limit = int(request.args.get("limit", 20))
+        if USE_PG:
+            if liga:
+                cur.execute(
+                    'SELECT * FROM jogos_loteca WHERE "campeonato" ILIKE %s LIMIT %s',
+                    (f"%{liga}%", limit)
+                )
+            else:
+                cur.execute(f'SELECT * FROM jogos_loteca LIMIT {limit}')
+        else:
+            cur.execute(f"SELECT * FROM jogos_loteca LIMIT {limit}")
+        rows = [dict(zip([d[0] for d in cur.description], r)) for r in cur.fetchall()]
+        conn.close()
+        return jsonify({"status":"sucesso","total_amostra":len(rows),"jogos":rows})
     except Exception as e:
         return jsonify({"status":"erro","mensagem":str(e)}), 500
 
