@@ -1,45 +1,19 @@
 """
-Loteca Elite Pro — app.py v10.2
-Correção CRÍTICA sobre a v10.1, feita em produção hoje (02/09/2026):
+Loteca Elite Pro — app.py v10.3
+Correção sobre a v10.2, feita hoje (03/09/2026):
 
-8) BUG GRAVE: detectar_schema_jogos() nunca detectava o nome real das
-   colunas de mandante/visitante -- estava fixo como "mandante"/"visitante"
-   em TRÊS funções (buscar_h2h_real, buscar_medias_gols_real, elo_time,
-   e também db_info). A tabela real de produção (jogos_historico) usa
-   "time_casa_normalizado"/"time_fora_normalizado" (ou "time_casa"/
-   "time_fora"), não "mandante"/"visitante" -- então toda consulta ao
-   banco real falhava silenciosamente (capturada pelo except), e a
-   produção estava rodando 100% no dicionário ELO_FALLBACK fixo, cega
-   aos 17 mil jogos reais, mesmo depois da tabela fabricada (jogos_loteca)
-   ter sido corrigida. Corrigido: detecção automática de col_m/col_v,
-   com prioridade pras versões normalizadas.
+10) grade_automatica() buscava sempre o ÚLTIMO concurso, que na API da
+    Caixa (sem número específico) é o mais recente já FECHADO/disputado
+    (com resultado), não o próximo aberto pra aposta. Descoberto ao
+    testar com o concurso real: API devolvia #1268 (já com gols
+    preenchidos), quando o aberto de verdade era #1269. Corrigido: agora
+    busca o campo "numeroConcursoProximo" da resposta e faz uma segunda
+    chamada específica pra esse número, priorizando ele sempre que tiver
+    jogos publicados.
 
-9) Preço por combinação corrigido: R$3,00 -> R$2,00 (confirmado nas
-   regras oficiais da Caixa em 01/09/2026 -- o valor antigo inflava o
-   custo estimado do cartão em 50%).
-
-Herda todas as correções da v10.1:
-
-6) H2H_MIN: 3 -> 20. Teste monotônico mostrou que H2H com poucos jogos
-   (3-10 confrontos) é ruído estatístico tratado como sinal -- "2 vitórias
-   em 3" virando "67% de chance" não é informação confiável. Com n>=20 o
-   H2H passa a bater o baseline "sempre mandante" e o "H2H desligado".
-
-7) Âncora de shrinkage bayesiano nas médias de gols (buscar_medias_gols_real):
-   antes a média de gols do time era usada crua, sem levar em conta o
-   tamanho da amostra nem a média real da liga. Agora a média do time é
-   puxada (shrink) em direção à média real da liga (calculada do banco,
-   com fallback pro dicionário MEDIA_GOLS só quando não há dado de liga),
-   com peso proporcional a n. SHRINKAGE_K=15 foi calibrado pra que em
-   n=15 jogos o time e a liga tenham peso igual.
-
-   IMPORTANTE: essas correções (6 e 7) foram validadas num script de
-   backtest separado (walk-forward offline), não neste exato caminho de
-   código -- e o walk-forward de hoje à noite mostrou que um motor Elo
-   iterativo bate esse H2H+Poisson+shrinkage (48,9% vs 47,4% de acurácia,
-   e principalmente 31,7% vs 1,9% de acerto em vitórias do visitante).
-   Portar o Elo pro app.py como motor principal é o próximo passo
-   recomendado, ainda pendente.
+Herda todas as correções da v10.2 (bug de detecção de coluna mandante/
+visitante, preço R$2,00/combinação) e da v10.1 (H2H_MIN=20, shrinkage
+bayesiano) -- ver changelog completo nessas versões.
 
 Variáveis de ambiente no Render:
   RAPIDAPI_KEY  → API-Football (fixtures, lesões, escalação) -- opcional
@@ -621,7 +595,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v10.2",
+        "status": "ok", "versao": "Loteca Elite Pro v10.3",
         "modelo": f"h2h_real(min{H2H_MIN}) > medias_gols_shrink(k{SHRINKAGE_K}) > elo_dinamico > fallback_fixo",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
@@ -630,10 +604,24 @@ def health():
 @app.route("/")
 @app.route("/api/grade-automatica")
 def grade_automatica():
-    """Tenta buscar concurso AO VIVO real da Caixa primeiro. Só usa o
-    exemplo fixo se a API da Caixa estiver mesmo indisponivel -- e avisa
-    claramente que e exemplo, nunca finge ser dado ao vivo."""
-    dados = buscar_cef("")
+    """Tenta buscar o concurso AO VIVO real da Caixa -- e busca
+    especificamente o PRÓXIMO concurso ainda aberto pra aposta (achado
+    de 03/09/2026: a API sem número devolve o último concurso já
+    FECHADO/disputado, não o aberto -- o campo "numeroConcursoProximo"
+    da resposta indica qual buscar de verdade). Só usa o exemplo fixo
+    se a API da Caixa estiver mesmo indisponivel -- e avisa claramente
+    que é exemplo, nunca finge ser dado ao vivo."""
+    dados_ultimo = buscar_cef("")
+    dados_aberto = None
+    numero_proximo = dados_ultimo.get("numeroConcursoProximo") if dados_ultimo else None
+    if numero_proximo:
+        dados_aberto = buscar_cef(str(numero_proximo))
+
+    # prioriza o concurso aberto (jogos ainda não realizados, pra apostar
+    # de verdade); só cai pro último fechado se o aberto não tiver jogos
+    # publicados ainda
+    dados = dados_aberto if (dados_aberto and dados_aberto.get("listaResultadoEquipeEsportiva")) else dados_ultimo
+
     if dados:
         numero, jogos_cef = parsear_cef(dados.get("numero"), dados)
         if jogos_cef:
@@ -644,6 +632,7 @@ def grade_automatica():
                 jogos.append({**j, **analise})
             return jsonify({
                 "status":"sucesso","concurso":numero,"fonte":"caixa_ao_vivo",
+                "concurso_ainda_aberto": dados is dados_aberto,
                 "total_jogos":len(jogos),"jogos":jogos,"painel":painel(jogos),
             })
     # fallback explicito
