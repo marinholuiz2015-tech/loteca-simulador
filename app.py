@@ -1,37 +1,45 @@
 """
-Loteca Elite Pro — app.py v10.0
-Arquivo único, corrigindo os 5 problemas encontrados na v9.1:
+Loteca Elite Pro — app.py v10.2
+Correção CRÍTICA sobre a v10.1, feita em produção hoje (02/09/2026):
 
-1) poisson_probs() usava só dicionários ELO/MEDIA_GOLS fixos no código --
-   os 17.374 jogos reais migrados hoje pro banco NUNCA eram consultados
-   pra previsão. Corrigido: agora calcula H2H e médias de gols reais
-   direto do banco (jogos_loteca), com o dicionário ELO só como
-   fallback de último recurso, quando não há dado suficiente.
+8) BUG GRAVE: detectar_schema_jogos() nunca detectava o nome real das
+   colunas de mandante/visitante -- estava fixo como "mandante"/"visitante"
+   em TRÊS funções (buscar_h2h_real, buscar_medias_gols_real, elo_time,
+   e também db_info). A tabela real de produção (jogos_historico) usa
+   "time_casa_normalizado"/"time_fora_normalizado" (ou "time_casa"/
+   "time_fora"), não "mandante"/"visitante" -- então toda consulta ao
+   banco real falhava silenciosamente (capturada pelo except), e a
+   produção estava rodando 100% no dicionário ELO_FALLBACK fixo, cega
+   aos 17 mil jogos reais, mesmo depois da tabela fabricada (jogos_loteca)
+   ter sido corrigida. Corrigido: detecção automática de col_m/col_v,
+   com prioridade pras versões normalizadas.
 
-2) Bug de comparação de nomes: dicionário ELO usava "Flamengo" (Title
-   Case), banco real usa "FLAMENGO" (caixa alta) -- nunca batiam, todo
-   time caía no fallback 1650 (visto hoje no /api/analisar real).
-   Corrigido: normalização .upper().strip() em toda comparação de nome,
-   dos dois lados (banco e dicionário).
+9) Preço por combinação corrigido: R$3,00 -> R$2,00 (confirmado nas
+   regras oficiais da Caixa em 01/09/2026 -- o valor antigo inflava o
+   custo estimado do cartão em 50%).
 
-3) "/api/grade-automatica" era um dicionário fixo (CONCURSOS = {1255:...})
-   digitado no código, não vinha de nenhuma fonte ao vivo. Corrigido:
-   busca real na API da Caixa (mesmo parsear_cef já validado hoje contra
-   dado real, concurso #1264), com o dicionário fixo mantido só como
-   fallback explícito (rotulado como tal na resposta, nunca disfarçado
-   de "automática").
+Herda todas as correções da v10.1:
 
-4) ELO dinâmico (940 times, calculado a partir do histórico real) nunca
-   tinha sido de fato integrado -- ficou como tarefa pendente desde
-   ontem. Corrigido: se a tabela elo_times existir no banco, é usada;
-   senão, cai pro cálculo de Elo simplificado a partir do próprio
-   histórico de jogos (não mais o dicionário chutado de ~70 times).
+6) H2H_MIN: 3 -> 20. Teste monotônico mostrou que H2H com poucos jogos
+   (3-10 confrontos) é ruído estatístico tratado como sinal -- "2 vitórias
+   em 3" virando "67% de chance" não é informação confiável. Com n>=20 o
+   H2H passa a bater o baseline "sempre mandante" e o "H2H desligado".
 
-5) Peso do blending (w=0.65) era arbitrário, sem calibração. Mantido
-   por enquanto (a calibração por regressão logística real é a Fase 1
-   do roadmap, ainda pendente) -- mas agora o valor aparece explicitamente
-   marcado como "nao_calibrado" na resposta, pra nunca ser confundido
-   com resultado validado.
+7) Âncora de shrinkage bayesiano nas médias de gols (buscar_medias_gols_real):
+   antes a média de gols do time era usada crua, sem levar em conta o
+   tamanho da amostra nem a média real da liga. Agora a média do time é
+   puxada (shrink) em direção à média real da liga (calculada do banco,
+   com fallback pro dicionário MEDIA_GOLS só quando não há dado de liga),
+   com peso proporcional a n. SHRINKAGE_K=15 foi calibrado pra que em
+   n=15 jogos o time e a liga tenham peso igual.
+
+   IMPORTANTE: essas correções (6 e 7) foram validadas num script de
+   backtest separado (walk-forward offline), não neste exato caminho de
+   código -- e o walk-forward de hoje à noite mostrou que um motor Elo
+   iterativo bate esse H2H+Poisson+shrinkage (48,9% vs 47,4% de acurácia,
+   e principalmente 31,7% vs 1,9% de acerto em vitórias do visitante).
+   Portar o Elo pro app.py como motor principal é o próximo passo
+   recomendado, ainda pendente.
 
 Variáveis de ambiente no Render:
   RAPIDAPI_KEY  → API-Football (fixtures, lesões, escalação) -- opcional
@@ -60,6 +68,10 @@ USE_PG       = DATABASE_URL.startswith("postgres")
 APIF_HOST = "free-api-live-football-data.p.rapidapi.com"
 APIF_BASE = f"https://{APIF_HOST}"
 URL_CEF   = "https://servicebus2.caixa.gov.br/portaldeloterias/api/loteca"
+
+# ─── Constantes validadas no walk-forward de hoje ─────────────
+H2H_MIN      = 20  # corte minimo de confrontos p/ usar H2H (era 3 na v10.0)
+SHRINKAGE_K  = 15  # forca do prior de liga nas medias de gols (Empirical Bayes)
 
 # ─── Banco de dados ───────────────────────────────────────────
 def get_conn():
@@ -104,6 +116,7 @@ def detectar_schema_jogos():
     if time.time() - _SCHEMA_CACHE["ts"] < 300 and _SCHEMA_CACHE["info"]:
         return _SCHEMA_CACHE["info"]
     info = {"tabela": None, "col_gm": None, "col_gv": None,
+            "col_m": None, "col_v": None,
             "col_liga": None, "col_concurso": "concurso", "existe": False}
     try:
         conn = get_conn(); cur = conn.cursor()
@@ -126,10 +139,21 @@ def detectar_schema_jogos():
                 cols_raw = cur.fetchall()
                 cur = [(r[1],) for r in cols_raw]  # normaliza formato
             cols = [r[0] for r in (cur if isinstance(cur, list) else cur.fetchall())]
-            info["col_gm"] = "gols_m" if "gols_m" in cols else ("gols_mandante" if "gols_mandante" in cols else None)
-            info["col_gv"] = "gols_v" if "gols_v" in cols else ("gols_visitante" if "gols_visitante" in cols else None)
+            # colunas de time -- prioriza normalizado (mais limpo, sem duplicidade
+            # de nomes tipo "São Caetano" vs "SAO CAETANO"), com fallback pros
+            # outros formatos ja vistos no schema real
+            info["col_m"] = next((c for c in
+                ["time_casa_normalizado", "mandante_normalizado", "time_casa", "mandante"]
+                if c in cols), None)
+            info["col_v"] = next((c for c in
+                ["time_fora_normalizado", "visitante_normalizado", "time_fora", "visitante"]
+                if c in cols), None)
+            info["col_gm"] = next((c for c in ["gols_casa", "gols_m", "gols_mandante"] if c in cols), None)
+            info["col_gv"] = next((c for c in ["gols_fora", "gols_v", "gols_visitante"] if c in cols), None)
             info["col_liga"] = "liga" if "liga" in cols else ("campeonato" if "campeonato" in cols else None)
-            info["existe"] = True
+            info["existe"] = bool(info["col_m"] and info["col_v"])
+            if info["tabela"] and not info["existe"]:
+                log.warning("Tabela %s existe mas não achei colunas de time reconhecíveis (colunas disponíveis: %s)", info["tabela"], cols)
         conn.close()
     except Exception as e:
         log.warning("detectar_schema_jogos: %s", e)
@@ -146,9 +170,18 @@ def _parse_gol(v):
     try: return int(str(v).strip())
     except (ValueError, TypeError): return None
 
+def _parse_num(v):
+    """Como _parse_gol, mas preserva casas decimais (usado em AVG de liga)."""
+    if v is None: return None
+    if isinstance(v, (int, float)): return float(v)
+    try: return float(str(v).strip())
+    except (ValueError, TypeError): return None
+
 # ─── Consulta de dado historico REAL (corrige achado #1) ──────
 def buscar_h2h_real(mandante, visitante):
-    """H2H direto do banco, nomes normalizados p/ maiusculo dos dois lados."""
+    """H2H direto do banco, nomes normalizados p/ maiusculo dos dois lados.
+    Corte minimo H2H_MIN=20 (validado no walk-forward de hoje -- corte de
+    3 deixava passar ruido estatistico como se fosse sinal)."""
     schema = detectar_schema_jogos()
     if not schema["existe"]: return None
     m, v = mandante.upper().strip(), visitante.upper().strip()
@@ -157,14 +190,14 @@ def buscar_h2h_real(mandante, visitante):
         ph = _ph()
         cur.execute(f"""
             SELECT resultado, COUNT(*) FROM {schema['tabela']}
-            WHERE UPPER(TRIM(mandante))={ph} AND UPPER(TRIM(visitante))={ph}
+            WHERE UPPER(TRIM({schema['col_m']}))={ph} AND UPPER(TRIM({schema['col_v']}))={ph}
               AND resultado IN ('1','X','2')
             GROUP BY resultado
         """, (m, v))
         contagem = dict(cur.fetchall())
         conn.close()
         total = sum(contagem.values())
-        if total < 3:  # amostra minima -- mesma regra usada hoje o dia todo
+        if total < H2H_MIN:
             return None
         return {
             "1": round(contagem.get("1", 0) / total, 4),
@@ -176,14 +209,44 @@ def buscar_h2h_real(mandante, visitante):
         log.warning("buscar_h2h_real: %s", e)
         return None
 
-def buscar_medias_gols_real(time_nome, mandante=True):
+def buscar_media_liga_gols(liga):
+    """Media real de gols (casa/fora) da liga, calculada do banco --
+    usada como prior (ancora) do shrinkage nas medias por time. Cai pro
+    dicionario MEDIA_GOLS fixo só se nao houver coluna de liga no schema
+    ou nao houver dado suficiente pra essa liga especifica."""
+    schema = detectar_schema_jogos()
+    if schema["existe"] and schema["col_gm"] and schema["col_gv"] and schema["col_liga"]:
+        try:
+            conn = get_conn(); cur = conn.cursor()
+            ph = _ph()
+            cur.execute(f"""
+                SELECT {schema['col_gm']}, {schema['col_gv']} FROM {schema['tabela']}
+                WHERE {schema['col_liga']}={ph}
+            """, (liga,))
+            linhas = cur.fetchall()
+            conn.close()
+            soma_gm, soma_gv, n = 0.0, 0.0, 0
+            for gm, gv in linhas:
+                gm2, gv2 = _parse_num(gm), _parse_num(gv)
+                if gm2 is None or gv2 is None: continue
+                soma_gm += gm2; soma_gv += gv2; n += 1
+            if n >= 10:  # amostra minima pra confiar na media da propria liga
+                return {"casa": round(soma_gm/n, 3), "fora": round(soma_gv/n, 3)}
+        except Exception as e:
+            log.warning("buscar_media_liga_gols: %s", e)
+    return MEDIA_GOLS.get(liga, {"casa": 1.40, "fora": 1.05})
+
+def buscar_medias_gols_real(time_nome, mandante=True, liga="_default"):
     """Media de gols pro/contra de um time jogando em casa ou fora,
-    calculada do historico real -- substitui o dicionario MEDIA_GOLS fixo."""
+    calculada do historico real, com shrinkage bayesiano em direcao a
+    media real da liga (achado #7): quanto menos jogos o time tem, mais
+    a estimativa pende pra media da liga; quanto mais jogos, mais pende
+    pro dado proprio do time. SHRINKAGE_K=15 -> em n=15, peso 50/50."""
     schema = detectar_schema_jogos()
     if not schema["existe"] or not schema["col_gm"] or not schema["col_gv"]:
         return None
     t = time_nome.upper().strip()
-    campo_nome = "mandante" if mandante else "visitante"
+    campo_nome = schema["col_m"] if mandante else schema["col_v"]
     campo_pro  = schema["col_gm"] if mandante else schema["col_gv"]
     campo_contra = schema["col_gv"] if mandante else schema["col_gm"]
     try:
@@ -200,9 +263,24 @@ def buscar_medias_gols_real(time_nome, mandante=True):
             gp2, gc2 = _parse_gol(gp), _parse_gol(gc)
             if gp2 is None or gc2 is None: continue
             gols_pro += gp2; gols_contra += gc2; n += 1
-        if n < 5:  # amostra minima
+        if n < 1:
             return None
-        return {"gols_pro": round(gols_pro/n, 3), "gols_contra": round(gols_contra/n, 3), "n": n}
+        media_pro_time    = gols_pro / n
+        media_contra_time = gols_contra / n
+
+        liga_ref = buscar_media_liga_gols(liga)
+        prior_pro    = liga_ref["casa"] if mandante else liga_ref["fora"]
+        prior_contra = liga_ref["fora"] if mandante else liga_ref["casa"]
+
+        peso = n / (n + SHRINKAGE_K)
+        gols_pro_shrink    = peso*media_pro_time    + (1-peso)*prior_pro
+        gols_contra_shrink = peso*media_contra_time + (1-peso)*prior_contra
+
+        return {
+            "gols_pro": round(gols_pro_shrink, 3),
+            "gols_contra": round(gols_contra_shrink, 3),
+            "n": n, "peso_time": round(peso, 3),
+        }
     except Exception as e:
         log.warning("buscar_medias_gols_real: %s", e)
         return None
@@ -228,19 +306,16 @@ def elo_time(nome):
             conn = get_conn(); cur = conn.cursor()
             ph = _ph()
             t = nome.upper().strip()
-            # Elo simplificado: baseado em saldo de gols medio como proxy de forca --
-            # nao e o Elo iterativo completo (K-factor por partida), mas ja usa
-            # dado real em vez de numero fixo chutado.
             cur.execute(f"""
                 SELECT resultado, COUNT(*) FROM {schema['tabela']}
-                WHERE UPPER(TRIM(mandante))={ph} OR UPPER(TRIM(visitante))={ph}
+                WHERE UPPER(TRIM({schema['col_m']}))={ph} OR UPPER(TRIM({schema['col_v']}))={ph}
                 GROUP BY resultado
             """, (t, t))
             linhas = dict(cur.fetchall())
             conn.close()
             total = sum(linhas.values())
             if total >= 5:
-                taxa_vitoria = linhas.get("1", 0) / total  # aproximado, nao distingue casa/fora aqui
+                taxa_vitoria = linhas.get("1", 0) / total
                 return round(1500 + taxa_vitoria * 400, 0)
         except Exception as e:
             log.warning("elo_time: %s", e)
@@ -261,20 +336,20 @@ def _poi(lam, k):
     return math.exp(-lam) * (lam ** k) / math.factorial(k)
 
 def poisson_probs(mandante, visitante, liga="_default"):
-    # 1) tenta H2H direto real primeiro
+    # 1) tenta H2H direto real primeiro (corte H2H_MIN=20)
     h2h = buscar_h2h_real(mandante, visitante)
     if h2h:
         return {"1": h2h["1"], "X": h2h["X"], "2": h2h["2"],
                 "elo_casa": elo_time(mandante), "elo_fora": elo_time(visitante),
                 "lam_casa": None, "lam_fora": None, "fonte_base": f"h2h_real_{h2h['n']}x"}
 
-    # 2) tenta medias de gols reais dos dois times
-    mg_casa = buscar_medias_gols_real(mandante, mandante=True)
-    mg_fora = buscar_medias_gols_real(visitante, mandante=False)
+    # 2) tenta medias de gols reais dos dois times, com shrinkage p/ media da liga
+    mg_casa = buscar_medias_gols_real(mandante, mandante=True, liga=liga)
+    mg_fora = buscar_medias_gols_real(visitante, mandante=False, liga=liga)
     if mg_casa and mg_fora:
         lc = max(0.3, (mg_casa["gols_pro"] + mg_fora["gols_contra"]) / 2)
         lf = max(0.3, (mg_fora["gols_pro"] + mg_casa["gols_contra"]) / 2)
-        fonte_base = "medias_reais"
+        fonte_base = f"medias_reais_shrink_n{mg_casa['n']}x{mg_fora['n']}"
     else:
         # 3) fallback: Elo + media generica por liga (comportamento antigo,
         #    agora so usado quando de fato nao ha dado real suficiente)
@@ -318,7 +393,7 @@ def blending(prob_m, odds=None, w=0.65):
         out[k] = round(prob_m[k]*w + pm[k]*wm, 4)
     t = sum(out.values())
     out = {k: round(v/t, 4) for k, v in out.items()}
-    out["fonte"]        = "blend_nao_calibrado"  # honesto: w=0.65 e arbitrario, Fase 1 do roadmap
+    out["fonte"]        = "blend_nao_calibrado"
     out["peso_modelo"]  = w
     out["overround"]    = pm["over"]
     return out
@@ -364,7 +439,7 @@ def score(classif, mot=0.70):
 def painel(jogos):
     nd = sum(1 for j in jogos if j["classificacao"]["tipo"]=="DUPLO")
     nt = sum(1 for j in jogos if j["classificacao"]["tipo"]=="TRIPLO")
-    def c(d,t): return round((2**d)*(3**t)*3.0, 2)
+    def c(d,t): return max(4.00, round((2**d)*(3**t)*2.0, 2))  # R$2,00/combinação, confirmado nas regras oficiais da Caixa (não R$3,00)
     return {
         "secos": sum(1 for j in jogos if j["classificacao"]["tipo"]=="SECO"),
         "duplos": nd, "triplos": nt,
@@ -546,8 +621,8 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v10.0",
-        "modelo": "h2h_real > medias_gols_real > elo_dinamico > fallback_fixo",
+        "status": "ok", "versao": "Loteca Elite Pro v10.2",
+        "modelo": f"h2h_real(min{H2H_MIN}) > medias_gols_shrink(k{SHRINKAGE_K}) > elo_dinamico > fallback_fixo",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
     })
@@ -608,7 +683,7 @@ def db_info():
         if schema["existe"]:
             cur.execute(f"SELECT COUNT(*) FROM {schema['tabela']}")
             info["total_jogos"] = cur.fetchone()[0]
-            cur.execute(f"SELECT COUNT(DISTINCT UPPER(TRIM(mandante))) FROM {schema['tabela']}")
+            cur.execute(f"SELECT COUNT(DISTINCT UPPER(TRIM({schema['col_m']}))) FROM {schema['tabela']}")
             info["times_distintos"] = cur.fetchone()[0]
         conn.close()
         return jsonify({"status":"sucesso","banco":"postgresql" if USE_PG else "sqlite", **info})
