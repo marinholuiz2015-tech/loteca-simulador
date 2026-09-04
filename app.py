@@ -502,9 +502,13 @@ def buscar_cef(numero=""):
     try:
         url = f"{URL_CEF}/{numero}" if numero else URL_CEF
         r = requests.get(url, timeout=12, headers={"User-Agent":"Mozilla/5.0"})
-        return r.json() if r.status_code == 200 else None
+        if r.status_code == 200:
+            return r.json()
+        log.warning("buscar_cef: status HTTP %s pra url %s -- corpo (primeiros 300 chars): %s",
+                    r.status_code, url, r.text[:300])
+        return None
     except Exception as e:
-        log.warning("buscar_cef: %s", e)
+        log.warning("buscar_cef: excecao ao buscar %s -- %s", numero or "(ultimo)", e)
         return None
 
 def parsear_cef(numero, d):
