@@ -1,6 +1,32 @@
 """
-Loteca Elite Pro — app.py v10.3
-Correção sobre a v10.2, feita hoje (03/09/2026):
+Loteca Elite Pro — app.py v11.0
+Mudança principal desta sessão (04/09/2026):
+
+12) MOTOR TROCADO PRA ELO ITERATIVO (K=30, HOME_ADV=75), substituindo
+    H2H+Poisson+shrinkage como fonte principal de previsão -- decisão já
+    registrada no resumo da sessão anterior, baseada no walk-forward sem
+    vazamento (comparativo_h2h_poisson_vs_elo.py, 17.742 jogos):
+      Acuracia:   48,9% (Elo) vs 47,4% (H2H+Poisson)
+      Brier:      0,6213 (Elo, melhor) vs 0,6279 (H2H+Poisson)
+      Acerto "2": 31,7% (Elo) vs 1,9% (H2H+Poisson)
+    Implementado: calcular_elo_ratings() faz replay cronológico completo
+    da tabela histórica real (detecta coluna de data/concurso pra ordenar;
+    se não achar nenhuma, usa ordem de inserção com AVISO explícito no
+    /api/db-info -- nunca falha silenciosamente). elo_probs() converte
+    Elo em P(1/X/2) via expected-score logístico + modelo de largura de
+    empate -- é uma APROXIMAÇÃO documentada, não a bucket empírica exata
+    do walk-forward original (essa vive em comparativo_h2h_poisson_vs_elo.py,
+    ainda não portada). buscar_h2h_real()/buscar_medias_gols_real() ficam
+    no arquivo, sem uso por padrão -- fallback total (sem banco) ainda usa
+    Elo fixo genérico + Poisson por liga, como antes.
+    Testado localmente com dados sintéticos (times fortes/fracos/parelhos)
+    antes do commit -- comportamento validado, mas ainda NÃO testado
+    contra os dados reais de produção. Próximo passo: rodar
+    /api/analisar num confronto conhecido e conferir /api/db-info →
+    elo_iterativo pra ver se o aviso de ordem aparece ou não.
+
+Herda a correção da v10.4 (RAPIDAPI_KEY vs APIFOOTBALL_KEY) e da v10.3
+(headers de navegador em buscar_cef() pro bloqueio 403 da Caixa):
 
 10) grade_automatica() buscava sempre o ÚLTIMO concurso, que na API da
     Caixa (sem número específico) é o mais recente já FECHADO/disputado
@@ -34,7 +60,12 @@ app = Flask(__name__)
 CORS(app)
 
 # ─── Variáveis de ambiente ────────────────────────────────────
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
+# Achado pendente (resumo 01-02/09/2026): no Render a variável foi
+# criada como APIFOOTBALL_KEY, mas o código sempre leu RAPIDAPI_KEY --
+# ou seja, a API-Football nunca tinha a chave de verdade em produção.
+# Corrigido aceitando os dois nomes (RAPIDAPI_KEY tem prioridade se
+# alguém também criar esse, senão cai pro nome que já existe no Render).
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "") or os.getenv("APIFOOTBALL_KEY", "")
 ODDS_KEY     = os.getenv("ODDS_API_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 USE_PG       = DATABASE_URL.startswith("postgres")
@@ -259,41 +290,154 @@ def buscar_medias_gols_real(time_nome, mandante=True, liga="_default"):
         log.warning("buscar_medias_gols_real: %s", e)
         return None
 
-# ─── ELO — fallback só quando não há dado histórico suficiente ─
-# (achado #2 corrigido: comparação sempre normalizada p/ maiusculo)
-ELO_FALLBACK = {
-    "ARGENTINA":2140,"FRANÇA":2100,"INGLATERRA":2080,"ESPANHA":2070,
-    "ALEMANHA":2060,"PORTUGAL":2040,"HOLANDA":2030,"BRASIL":2050,
-    "PALMEIRAS":1820,"FLAMENGO":1810,"BOTAFOGO":1780,"FLUMINENSE":1750,
-    "ATLETICO MG":1760,"SÃO PAULO":1740,"CORINTHIANS":1720,"GRÊMIO":1700,
-    "INTERNACIONAL":1710,"CRUZEIRO":1690,"VASCO DA GAMA":1660,"SANTOS":1650,
-    "FORTALEZA":1670,"BAHIA":1640,"MIRASSOL":1610,"JUVENTUDE":1590,
-    "VITÓRIA":1580,"SPORT":1560,"BRAGANTINO":1620,"ATHLETICO PR":1660,
-}
+# ─── ELO ITERATIVO (K=30, HOME_ADV=75) — MOTOR PRINCIPAL ──────
+# Decisão de 02/09/2026 (comparativo_h2h_poisson_vs_elo.py, walk-forward
+# sem vazamento, 17.742 jogos): Elo bateu H2H+Poisson+shrinkage com folga
+#   Acuracia:    48,9% (Elo) vs 47,4% (H2H+Poisson)
+#   Brier Score: 0,6213 (Elo, melhor) vs 0,6279 (H2H+Poisson)
+#   Acerto qdo real=2 (visitante): 31,7% (Elo) vs 1,9% (H2H+Poisson)
+# O H2H+Poisson+shrinkage, mesmo corrigido, virava "aposte no mandante"
+# disfarcado porque a maioria dos jogos cai no prior da liga sem H2H
+# suficiente pra corrigir. Por isso o Elo substitui H2H+Poisson como
+# fonte principal aqui -- buscar_h2h_real()/buscar_medias_gols_real()
+# continuam no arquivo (podem virar blend depois), mas nao sao mais
+# chamadas por padrao.
+#
+# RESSALVA (herdada do resumo da sessao): a formula de probabilidade
+# 1/X/2 abaixo (expected-score logistico padrao de Elo + modelo de
+# largura de empate) é uma APROXIMACAO -- nao é a bucket empirica exata
+# que gerou os 48,9% no walk-forward original (essa bucket vive em
+# comparativo_h2h_poisson_vs_elo.py, ainda nao portada pra ca). Testar
+# em producao (/api/analisar) e comparar contra o comportamento esperado
+# antes de confiar de olhos fechados.
+
+ELO_K        = 30
+ELO_HOME_ADV = 75
+ELO_CACHE_TTL = 6 * 3600  # recalcular do zero em toda requisicao seria caro (17k+ jogos)
+_ELO_CACHE = {"ts": 0, "ratings": None, "aviso": None, "n_jogos": 0}
+
+def _listar_colunas(cur, tabela):
+    if USE_PG:
+        cur.execute("""SELECT column_name FROM information_schema.columns
+                       WHERE table_name=%s""", (tabela,))
+        return [r[0] for r in cur.fetchall()]
+    cur.execute(f"PRAGMA table_info({tabela})")
+    return [r[1] for r in cur.fetchall()]
+
+def _detectar_coluna_ordem(cols):
+    """Ordem cronologica é essencial pro Elo iterativo -- sem ela, os
+    ratings ficam errados de um jeito que NAO aparece em nenhum erro,
+    a mesma familia de bug silencioso ja vista neste projeto (schema
+    cego). Tenta achar coluna de data primeiro, depois numero do
+    concurso; se nao achar nenhuma, usa a ordem de insercao (id/rowid)
+    como ultimo recurso, mas marca aviso explicito -- isso NAO é garantia
+    de ordem cronologica real e precisa ser conferido manualmente."""
+    col_data = next((c for c in
+        ["data_jogo", "data", "dt_jogo", "data_partida", "dt_partida"]
+        if c in cols), None)
+    if col_data:
+        return col_data, "data"
+    col_concurso = next((c for c in ["concurso", "numero_concurso", "rodada"]
+                          if c in cols), None)
+    if col_concurso:
+        return col_concurso, "concurso"
+    return None, "SEM_COLUNA_DE_ORDEM"
+
+def calcular_elo_ratings():
+    """Replay cronologico completo da tabela historica real, calculando
+    Elo de todos os times do zero (K=30, HOME_ADV=75). Cacheado por
+    ELO_CACHE_TTL. Retorna (ratings_dict, aviso_ou_None)."""
+    if (time.time() - _ELO_CACHE["ts"] < ELO_CACHE_TTL
+            and _ELO_CACHE["ratings"] is not None):
+        return _ELO_CACHE["ratings"], _ELO_CACHE["aviso"]
+
+    schema = detectar_schema_jogos()
+    ratings = defaultdict(lambda: 1500.0)
+    aviso = None
+    n_processados = 0
+    if not (schema["existe"] and schema["col_gm"] and schema["col_gv"]):
+        aviso = "sem_schema_valido_p_elo"
+        _ELO_CACHE.update(ts=time.time(), ratings={}, aviso=aviso, n_jogos=0)
+        return {}, aviso
+
+    try:
+        conn = get_conn(); cur = conn.cursor()
+        cols = _listar_colunas(cur, schema["tabela"])
+        col_ordem, tipo_ordem = _detectar_coluna_ordem(cols)
+        if tipo_ordem == "SEM_COLUNA_DE_ORDEM":
+            aviso = ("Nenhuma coluna de data/concurso encontrada na tabela "
+                      f"{schema['tabela']} -- Elo calculado na ordem de "
+                      "insercao (id/rowid), que pode NAO refletir a ordem "
+                      "cronologica real dos jogos. Ratings finais podem "
+                      "estar incorretos ate isso ser confirmado/corrigido.")
+            log.warning("calcular_elo_ratings: %s", aviso)
+
+        order_clause = f"ORDER BY {col_ordem} ASC" if col_ordem else ""
+        cur.execute(f"""
+            SELECT {schema['col_m']}, {schema['col_v']},
+                   {schema['col_gm']}, {schema['col_gv']}
+            FROM {schema['tabela']} {order_clause}
+        """)
+        linhas = cur.fetchall()
+        conn.close()
+
+        for m, v, gm, gv in linhas:
+            gm2, gv2 = _parse_gol(gm), _parse_gol(gv)
+            if not m or not v or gm2 is None or gv2 is None:
+                continue
+            m, v = str(m).upper().strip(), str(v).upper().strip()
+            if gm2 > gv2:   resultado_m = 1.0
+            elif gm2 < gv2: resultado_m = 0.0
+            else:           resultado_m = 0.5
+            elo_m, elo_v = ratings[m], ratings[v]
+            esperado_m = 1 / (1 + 10 ** (-((elo_m + ELO_HOME_ADV) - elo_v) / 400))
+            delta = ELO_K * (resultado_m - esperado_m)
+            ratings[m] = elo_m + delta
+            ratings[v] = elo_v - delta
+            n_processados += 1
+        log.info("calcular_elo_ratings: %d jogos processados, %d times, ordem=%s",
+                  n_processados, len(ratings), tipo_ordem)
+    except Exception as e:
+        log.warning("calcular_elo_ratings: %s", e)
+        aviso = f"erro_calculo_elo: {e}"
+
+    resultado = dict(ratings)
+    _ELO_CACHE.update(ts=time.time(), ratings=resultado, aviso=aviso,
+                       n_jogos=n_processados)
+    return resultado, aviso
 
 def elo_time(nome):
-    """Elo dinamico calculado do banco (achado #4), com fallback pro
-    dicionario fixo só quando não há historico suficiente."""
-    schema = detectar_schema_jogos()
-    if schema["existe"]:
-        try:
-            conn = get_conn(); cur = conn.cursor()
-            ph = _ph()
-            t = nome.upper().strip()
-            cur.execute(f"""
-                SELECT resultado, COUNT(*) FROM {schema['tabela']}
-                WHERE UPPER(TRIM({schema['col_m']}))={ph} OR UPPER(TRIM({schema['col_v']}))={ph}
-                GROUP BY resultado
-            """, (t, t))
-            linhas = dict(cur.fetchall())
-            conn.close()
-            total = sum(linhas.values())
-            if total >= 5:
-                taxa_vitoria = linhas.get("1", 0) / total
-                return round(1500 + taxa_vitoria * 400, 0)
-        except Exception as e:
-            log.warning("elo_time: %s", e)
-    return ELO_FALLBACK.get(nome.upper().strip(), 1650)
+    """Elo iterativo real de um time (le do cache calculado por
+    calcular_elo_ratings()). Se o time nao apareceu em nenhum jogo do
+    historico, comeca em 1500 (rating inicial padrao)."""
+    ratings, _ = calcular_elo_ratings()
+    return round(ratings.get(nome.upper().strip(), 1500.0), 1)
+
+def elo_probs(mandante, visitante):
+    """Converte Elo (com vantagem de mandante) em P(1)/P(X)/P(2).
+    APROXIMACAO -- ver ressalva no cabecalho da secao. Usa expected-score
+    logistico padrao de Elo pro par 1x2 combinado, e uma largura de
+    empate que encolhe conforme a diferenca de forca cresce (heuristica
+    comum em elo de futebol -- times parelhos empatam mais)."""
+    ratings, aviso = calcular_elo_ratings()
+    ec = ratings.get(mandante.upper().strip(), 1500.0)
+    ef = ratings.get(visitante.upper().strip(), 1500.0)
+    diff = (ec + ELO_HOME_ADV) - ef
+    we = 1 / (1 + 10 ** (-diff / 400))  # expected score do mandante (empate=0,5pt)
+    largura_empate = max(0.12, 0.24 * math.exp(-abs(diff) / 600))
+    p1 = max(0.02, we - largura_empate / 2)
+    p2 = max(0.02, (1 - we) - largura_empate / 2)
+    px = largura_empate
+    t = p1 + px + p2
+    fonte = "elo_iterativo_K30_HA75"
+    if aviso:
+        fonte += "_AVISO_ORDEM"
+    return {
+        "1": round(p1 / t, 4), "X": round(px / t, 4), "2": round(p2 / t, 4),
+        "elo_casa": round(ec, 1), "elo_fora": round(ef, 1),
+        "lam_casa": None, "lam_fora": None,
+        "fonte_base": fonte, "aviso_elo": aviso,
+    }
 
 MEDIA_GOLS = {
     "copa":    {"casa":1.35,"fora":1.05},
@@ -305,36 +449,39 @@ MEDIA_GOLS = {
     "libertadores":{"casa":1.38,"fora":0.95},
 }
 
-# ─── Poisson bivariado — AGORA alimentado por dado real (achado #1) ──
+# ─── ELO fixo — só usado se o banco estiver mesmo indisponível ─
+ELO_FALLBACK = {
+    "ARGENTINA":2140,"FRANÇA":2100,"INGLATERRA":2080,"ESPANHA":2070,
+    "ALEMANHA":2060,"PORTUGAL":2040,"HOLANDA":2030,"BRASIL":2050,
+    "PALMEIRAS":1820,"FLAMENGO":1810,"BOTAFOGO":1780,"FLUMINENSE":1750,
+    "ATLETICO MG":1760,"SÃO PAULO":1740,"CORINTHIANS":1720,"GRÊMIO":1700,
+    "INTERNACIONAL":1710,"CRUZEIRO":1690,"VASCO DA GAMA":1660,"SANTOS":1650,
+    "FORTALEZA":1670,"BAHIA":1640,"MIRASSOL":1610,"JUVENTUDE":1590,
+    "VITÓRIA":1580,"SPORT":1560,"BRAGANTINO":1620,"ATHLETICO PR":1660,
+}
+
+# ─── Poisson bivariado — usado só no fallback total (banco indisponível) ──
 def _poi(lam, k):
     return math.exp(-lam) * (lam ** k) / math.factorial(k)
 
 def poisson_probs(mandante, visitante, liga="_default"):
-    # 1) tenta H2H direto real primeiro (corte H2H_MIN=20)
-    h2h = buscar_h2h_real(mandante, visitante)
-    if h2h:
-        return {"1": h2h["1"], "X": h2h["X"], "2": h2h["2"],
-                "elo_casa": elo_time(mandante), "elo_fora": elo_time(visitante),
-                "lam_casa": None, "lam_fora": None, "fonte_base": f"h2h_real_{h2h['n']}x"}
+    # 1) motor principal: Elo iterativo (decisao de 02/09/2026)
+    schema = detectar_schema_jogos()
+    if schema["existe"] and schema["col_gm"] and schema["col_gv"]:
+        ep = elo_probs(mandante, visitante)
+        if ep and ep.get("fonte_base") not in (None,):
+            return ep
 
-    # 2) tenta medias de gols reais dos dois times, com shrinkage p/ media da liga
-    mg_casa = buscar_medias_gols_real(mandante, mandante=True, liga=liga)
-    mg_fora = buscar_medias_gols_real(visitante, mandante=False, liga=liga)
-    if mg_casa and mg_fora:
-        lc = max(0.3, (mg_casa["gols_pro"] + mg_fora["gols_contra"]) / 2)
-        lf = max(0.3, (mg_fora["gols_pro"] + mg_casa["gols_contra"]) / 2)
-        fonte_base = f"medias_reais_shrink_n{mg_casa['n']}x{mg_fora['n']}"
-    else:
-        # 3) fallback: Elo + media generica por liga (comportamento antigo,
-        #    agora so usado quando de fato nao ha dado real suficiente)
-        ec, ef = elo_time(mandante), elo_time(visitante)
-        med = MEDIA_GOLS.get(liga, {"casa":1.40,"fora":1.05})
-        ajuste = (ec - ef) / 200 * 0.25
-        lc = max(0.3, med["casa"] + ajuste + 0.06)
-        lf = max(0.3, med["fora"] - ajuste)
-        fonte_base = "fallback_elo_generico"
-
-    ec, ef = elo_time(mandante), elo_time(visitante)
+    # 2) fallback total: banco indisponivel/schema nao detectado --
+    #    Elo fixo generico + media de gols generica por liga (comportamento
+    #    antigo, agora so usado quando de fato nao ha banco pra consultar)
+    def elo_fallback_fixo(nome):
+        return ELO_FALLBACK.get(nome.upper().strip(), 1650)
+    ec, ef = elo_fallback_fixo(mandante), elo_fallback_fixo(visitante)
+    med = MEDIA_GOLS.get(liga, {"casa":1.40,"fora":1.05})
+    ajuste = (ec - ef) / 200 * 0.25
+    lc = max(0.3, med["casa"] + ajuste + 0.06)
+    lf = max(0.3, med["fora"] - ajuste)
     p1 = px = p2 = 0.0
     for i in range(9):
         for j in range(9):
@@ -347,7 +494,7 @@ def poisson_probs(mandante, visitante, liga="_default"):
         "1": round(p1/t, 4), "X": round(px/t, 4), "2": round(p2/t, 4),
         "elo_casa": ec, "elo_fora": ef,
         "lam_casa": round(lc, 3), "lam_fora": round(lf, 3),
-        "fonte_base": fonte_base,
+        "fonte_base": "fallback_elo_generico_SEM_BANCO",
     }
 
 # ─── Remoção de margem ────────────────────────────────────────
@@ -498,10 +645,19 @@ def _parse_float(v):
     try: return float(str(v).replace("R$","").replace(".","").replace(",",".").strip())
     except: return 0.0
 
+HEADERS_NAVEGADOR = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+    "Referer": "https://loterias.caixa.gov.br/Paginas/Programacao-Loteca.aspx",
+    "Origin": "https://loterias.caixa.gov.br",
+}
+
 def buscar_cef(numero=""):
     try:
         url = f"{URL_CEF}/{numero}" if numero else URL_CEF
-        r = requests.get(url, timeout=12, headers={"User-Agent":"Mozilla/5.0"})
+        r = requests.get(url, timeout=12, headers=HEADERS_NAVEGADOR)
         if r.status_code == 200:
             return r.json()
         log.warning("buscar_cef: status HTTP %s pra url %s -- corpo (primeiros 300 chars): %s",
@@ -582,7 +738,10 @@ def health():
     schema = detectar_schema_jogos()
     apis = {
         "odds_api":     {"configurada": bool(ODDS_KEY),     "status": "não configurada"},
-        "api_football": {"configurada": bool(RAPIDAPI_KEY), "status": "não configurada"},
+        "api_football": {"configurada": bool(RAPIDAPI_KEY), "status": "não configurada",
+                          "env_var_usada": ("RAPIDAPI_KEY" if os.getenv("RAPIDAPI_KEY")
+                                             else "APIFOOTBALL_KEY" if os.getenv("APIFOOTBALL_KEY")
+                                             else None)},
         "banco":        {"tipo": "postgresql" if USE_PG else "sqlite",
                           "tabela_jogos_historicos": schema["tabela"] or "NENHUMA (previsao cai no fallback ELO fixo)"},
     }
@@ -599,7 +758,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v10.3",
+        "status": "ok", "versao": "Loteca Elite Pro v11.0",
         "modelo": f"h2h_real(min{H2H_MIN}) > medias_gols_shrink(k{SHRINKAGE_K}) > elo_dinamico > fallback_fixo",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
@@ -679,6 +838,18 @@ def db_info():
             cur.execute(f"SELECT COUNT(DISTINCT UPPER(TRIM({schema['col_m']}))) FROM {schema['tabela']}")
             info["times_distintos"] = cur.fetchone()[0]
         conn.close()
+        # diagnostico do Elo iterativo (motor principal, v11) -- expõe se
+        # tem aviso de ordem cronologica, quantos jogos processou e a
+        # idade do cache, no mesmo espirito de nunca falhar silenciosamente
+        ratings, aviso_elo = calcular_elo_ratings()
+        info["elo_iterativo"] = {
+            "times_com_rating": len(ratings),
+            "aviso": aviso_elo,
+            "cache_idade_segundos": round(time.time() - _ELO_CACHE["ts"], 1),
+            "cache_ttl_segundos": ELO_CACHE_TTL,
+            "n_jogos_processados_no_ultimo_calculo": _ELO_CACHE["n_jogos"],
+            "parametros": {"K": ELO_K, "HOME_ADV": ELO_HOME_ADV},
+        }
         return jsonify({"status":"sucesso","banco":"postgresql" if USE_PG else "sqlite", **info})
     except Exception as e:
         return jsonify({"status":"erro","mensagem":str(e)}), 500
