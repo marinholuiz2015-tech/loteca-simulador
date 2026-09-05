@@ -1,6 +1,37 @@
 """
-Loteca Elite Pro — app.py v11.0
-Mudança principal desta sessão (04/09/2026):
+Loteca Elite Pro — app.py v11.1
+Mudança principal desta sessão (05/09/2026):
+
+13) BLOQUEIO 403 DA CAIXA CONFIRMADO EM PRODUÇÃO (logs do Render, mesmo
+    já com os headers de navegador do v10.3): é bloqueio por IP/ASN de
+    datacenter, não por cabeçalho -- header não resolve isso.
+    Solução implementada: cache desacoplado via GitHub Actions.
+    - .github/workflows/fetch_loteca.yml roda a cada 30 min (e sob
+      demanda), busca o concurso na Caixa a partir da rede do GitHub
+      Actions (ASN diferente do Render), grava em data/cef_cache.json e
+      commita no repo.
+    - buscar_cef_cache_github() lê esse arquivo via
+      raw.githubusercontent.com (domínio público comum, sem relação com
+      o WAF da Caixa) quando a chamada direta falha.
+    - grade_automatica() agora tenta em cascata: direto na Caixa → cache
+      do GitHub Actions → exemplo fixo (só como último recurso, sempre
+      identificado como exemplo). Resposta inclui "fonte" explícito
+      (caixa_ao_vivo_direto / caixa_ao_vivo_cache_github /
+      EXEMPLO_FIXO_NAO_AO_VIVO) e "cache_idade_minutos" quando vier do
+      cache, pra nunca esconder de onde veio o dado nem sua idade.
+    Ainda não testado ponta a ponta em produção -- depende do workflow
+    ser adicionado ao repo e rodar ao menos uma vez. Se o runner do
+    GitHub Actions TAMBÉM tomar 403, o bloqueio da Caixa é mais amplo
+    que só o ASN do Render, e aí o próximo recurso é um proxy de
+    scraping pago (ScraperAPI/ScrapingBee/Bright Data) -- solução padrão
+    da indústria pra esse tipo de bloqueio, não gambiarra.
+
+Herda a integração do Elo iterativo (K=30, HOME_ADV=75) como motor
+principal, já validada em produção (v11.0), e as correções da v10.4
+(RAPIDAPI_KEY vs APIFOOTBALL_KEY) e v10.3 (headers de navegador em
+buscar_cef(), mantidos mesmo não resolvendo o bloqueio sozinhos --
+não fazem mal e talvez ajudem se o bloqueio um dia for por assinatura
+de header também):
 
 12) MOTOR TROCADO PRA ELO ITERATIVO (K=30, HOME_ADV=75), substituindo
     H2H+Poisson+shrinkage como fonte principal de previsão -- decisão já
@@ -48,7 +79,7 @@ Variáveis de ambiente no Render:
 """
 
 import os, math, sqlite3, logging, requests, re, time
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import defaultdict
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -69,6 +100,13 @@ RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "") or os.getenv("APIFOOTBALL_KEY", "")
 ODDS_KEY     = os.getenv("ODDS_API_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 USE_PG       = DATABASE_URL.startswith("postgres")
+
+# Cache publicado pelo GitHub Actions (fetch_loteca.yml) -- usado quando
+# a Caixa bloqueia o IP do Render direto (403 confirmado em produção,
+# 04-05/09/2026). Configuravel via env var pra não ficar hardcoded caso
+# o repo mude de nome/dono.
+GITHUB_REPO_CACHE   = os.getenv("GITHUB_REPO_CACHE", "marinholuiz2015-tech/simulador-de-loteca")
+GITHUB_BRANCH_CACHE = os.getenv("GITHUB_BRANCH_CACHE", "main")
 
 APIF_HOST = "free-api-live-football-data.p.rapidapi.com"
 APIF_BASE = f"https://{APIF_HOST}"
@@ -667,6 +705,32 @@ def buscar_cef(numero=""):
         log.warning("buscar_cef: excecao ao buscar %s -- %s", numero or "(ultimo)", e)
         return None
 
+def buscar_cef_cache_github():
+    """Fallback pro bloqueio 403 confirmado em produção (04-05/09/2026):
+    lê o cache publicado por um job agendado do GitHub Actions, que
+    busca a Caixa a partir de outra rede (não o IP do Render). Servido
+    via raw.githubusercontent.com -- domínio público comum, sem nenhuma
+    relação com o WAF da Caixa. Nunca finge que é dado direto ao vivo --
+    quem chama isso precisa checar o campo "fetched_em_utc" pra saber a
+    idade do cache."""
+    url = (f"https://raw.githubusercontent.com/{GITHUB_REPO_CACHE}/"
+           f"{GITHUB_BRANCH_CACHE}/data/cef_cache.json")
+    try:
+        r = requests.get(url, timeout=10)
+        if r.status_code != 200:
+            log.warning("buscar_cef_cache_github: status %s pra %s", r.status_code, url)
+            return None
+        cache = r.json()
+        if cache.get("status_ultimo") != 200:
+            log.warning("buscar_cef_cache_github: cache existe mas a ultima busca do "
+                        "Action tambem falhou (%s) -- se isso persistir, o bloqueio da "
+                        "Caixa pode nao ser só por IP do Render, e sim mais amplo",
+                        cache.get("erro"))
+        return cache
+    except Exception as e:
+        log.warning("buscar_cef_cache_github: %s", e)
+        return None
+
 def parsear_cef(numero, d):
     """Validado hoje contra dado real da Caixa (concurso #1264) --
     resultado sempre vem null da API, calcula a partir dos gols."""
@@ -744,6 +808,8 @@ def health():
                                              else None)},
         "banco":        {"tipo": "postgresql" if USE_PG else "sqlite",
                           "tabela_jogos_historicos": schema["tabela"] or "NENHUMA (previsao cai no fallback ELO fixo)"},
+        "caixa_loteca":  {"direto": "desconhecido (só testado no /api/grade-automatica)",
+                           "cache_github": {"repo": GITHUB_REPO_CACHE, "branch": GITHUB_BRANCH_CACHE}},
     }
     if ODDS_KEY:
         try:
@@ -758,7 +824,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v11.0",
+        "status": "ok", "versao": "Loteca Elite Pro v11.1",
         "modelo": f"h2h_real(min{H2H_MIN}) > medias_gols_shrink(k{SHRINKAGE_K}) > elo_dinamico > fallback_fixo",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
@@ -767,18 +833,41 @@ def health():
 @app.route("/")
 @app.route("/api/grade-automatica")
 def grade_automatica():
-    """Tenta buscar o concurso AO VIVO real da Caixa -- e busca
-    especificamente o PRÓXIMO concurso ainda aberto pra aposta (achado
-    de 03/09/2026: a API sem número devolve o último concurso já
-    FECHADO/disputado, não o aberto -- o campo "numeroConcursoProximo"
-    da resposta indica qual buscar de verdade). Só usa o exemplo fixo
-    se a API da Caixa estiver mesmo indisponivel -- e avisa claramente
-    que é exemplo, nunca finge ser dado ao vivo."""
+    """Tenta buscar o concurso AO VIVO real da Caixa, em cascata:
+      1) direto na Caixa (funciona se o IP do Render não estiver bloqueado
+         -- vale sempre tentar primeiro, sem custo, caso o bloqueio suma)
+      2) cache publicado pelo GitHub Actions (fetch_loteca.yml) -- criado
+         pra contornar o 403 confirmado em produção em 04-05/09/2026
+      3) exemplo fixo, só como último recurso, sempre avisando que é
+         exemplo e nunca fingindo ser dado ao vivo
+    Busca especificamente o PRÓXIMO concurso ainda aberto pra aposta
+    (achado de 03/09/2026: a API sem número devolve o último concurso já
+    FECHADO/disputado -- o campo "numeroConcursoProximo" indica qual
+    concurso buscar de verdade)."""
+    fonte_dado = None
+    cache_idade_min = None
+
     dados_ultimo = buscar_cef("")
     dados_aberto = None
-    numero_proximo = dados_ultimo.get("numeroConcursoProximo") if dados_ultimo else None
-    if numero_proximo:
-        dados_aberto = buscar_cef(str(numero_proximo))
+    if dados_ultimo:
+        fonte_dado = "caixa_ao_vivo_direto"
+        numero_proximo = dados_ultimo.get("numeroConcursoProximo")
+        if numero_proximo:
+            dados_aberto = buscar_cef(str(numero_proximo))
+
+    if not dados_ultimo:
+        cache = buscar_cef_cache_github()
+        if cache and cache.get("dados_ultimo"):
+            dados_ultimo = cache["dados_ultimo"]
+            dados_aberto = cache.get("dados_aberto")
+            fonte_dado = "caixa_ao_vivo_cache_github"
+            try:
+                fetched = datetime.fromisoformat(
+                    cache["fetched_em_utc"].replace("Z", "+00:00"))
+                cache_idade_min = round(
+                    (datetime.now(timezone.utc) - fetched).total_seconds() / 60, 1)
+            except Exception:
+                cache_idade_min = None
 
     # prioriza o concurso aberto (jogos ainda não realizados, pra apostar
     # de verdade); só cai pro último fechado se o aberto não tiver jogos
@@ -794,11 +883,13 @@ def grade_automatica():
                 analise = analisar_jogo(j["mandante"], j["visitante"], "_default", banca=banca)
                 jogos.append({**j, **analise})
             return jsonify({
-                "status":"sucesso","concurso":numero,"fonte":"caixa_ao_vivo",
+                "status":"sucesso","concurso":numero,"fonte":fonte_dado,
                 "concurso_ainda_aberto": dados is dados_aberto,
+                "cache_idade_minutos": cache_idade_min,
                 "total_jogos":len(jogos),"jogos":jogos,"painel":painel(jogos),
             })
-    # fallback explicito
+    # fallback explicito -- só chega aqui se nem o direto nem o cache do
+    # GitHub Actions deram certo
     exemplo = CONCURSO_FALLBACK_EXEMPLO[1255]
     banca = float(request.args.get("banca", 100))
     jogos = []
@@ -807,7 +898,7 @@ def grade_automatica():
         jogos.append({**j, **analise})
     return jsonify({
         "status":"aviso","fonte":"EXEMPLO_FIXO_NAO_AO_VIVO",
-        "mensagem":"API da Caixa indisponivel no momento -- mostrando dado de exemplo, nao concurso real",
+        "mensagem":"API da Caixa indisponivel no momento (direto e via cache do GitHub Actions) -- mostrando dado de exemplo, nao concurso real",
         "nome":exemplo["nome"],"total_jogos":len(jogos),"jogos":jogos,"painel":painel(jogos),
     })
 
