@@ -1,5 +1,5 @@
 {
-  "fetched_em_utc": "2026-09-05T13:34:20.445516+00:00",
+  "fetched_em_utc": "2026-09-05T14:05:06.319180+00:00",
   "status_ultimo": 200,
   "status_aberto": 500,
   "dados_ultimo": {
@@ -303,5 +303,5 @@
     "valorTotalPremioFaixaUm": 0.0
   },
   "dados_aberto": null,
-  "erro": "busca do concurso aberto (1269) falhou: status 500 -- {\r\n  \"exceptionMessage\": \"{\\\"Version\\\":{\\\"Major\\\":1,\\\"Minor\\\":1,\\\"Build\\\":-1,\\\"Revision\\\":-1,\\\"MajorRevision\\\":-1,\\\"MinorRevision\\\":-1},\\\"Content\\\":{\\\"Headers\\\":[{\\\"Key\\\":\\\"Content-Length\\\",\\\"Value\\\":"
+  "erro": "busca do concurso aberto (1269) falhou apos 5 tentativa(s): status 500 -- {\r\n  \"exceptionMessage\": \"{\\\"Version\\\":{\\\"Major\\\":1,\\\"Minor\\\":1,\\\"Build\\\":-1,\\\"Revision\\\":-1,\\\"MajorRevision\\\":-1,\\\"MinorRevision\\\":-1},\\\"Content\\\":{\\\"Headers\\\":[{\\\"Key\\\":\\\"Content-Length\\\",\\\"Value\\\":"
 }
