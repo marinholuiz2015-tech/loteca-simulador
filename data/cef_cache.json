@@ -1,0 +1,8 @@
+{
+  "fetched_em_utc": null,
+  "status_ultimo": null,
+  "status_aberto": null,
+  "dados_ultimo": null,
+  "dados_aberto": null,
+  "erro": "cache ainda nao gerado -- aguardando primeira execucao do workflow fetch_loteca.yml"
+}
