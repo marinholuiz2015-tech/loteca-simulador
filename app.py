@@ -105,7 +105,7 @@ USE_PG       = DATABASE_URL.startswith("postgres")
 # a Caixa bloqueia o IP do Render direto (403 confirmado em produção,
 # 04-05/09/2026). Configuravel via env var pra não ficar hardcoded caso
 # o repo mude de nome/dono.
-GITHUB_REPO_CACHE   = os.getenv("GITHUB_REPO_CACHE", "marinholuiz2015-tech/simulador-de-loteca")
+GITHUB_REPO_CACHE   = os.getenv("GITHUB_REPO_CACHE", "marinholuiz2015-tech/loteca-simulador")
 GITHUB_BRANCH_CACHE = os.getenv("GITHUB_BRANCH_CACHE", "main")
 
 APIF_HOST = "free-api-live-football-data.p.rapidapi.com"
