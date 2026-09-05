@@ -1,6 +1,22 @@
 """
-Loteca Elite Pro — app.py v11.1
-Mudança principal desta sessão (05/09/2026):
+Loteca Elite Pro — app.py v11.2
+Mudança desta sessão (05/09/2026), depois da v11.1:
+
+14) PLACAR AO VIVO (informativo, nunca entra no cálculo de probabilidade
+    ou confiança -- decisão explícita do usuário). Usa a API-Football já
+    configurada (RAPIDAPI_KEY, endpoint football-current-live,
+    confirmado via RapidAPI Playground). buscar_placar_ao_vivo() faz uma
+    chamada só por requisição (todos os jogos ao vivo do mundo no
+    momento), reaproveitada pros 14 jogos da grade.
+    casar_placar_ao_vivo() casa cada jogo da Loteca com o jogo ao vivo
+    correspondente por nome normalizado (maiusculo, sem acento -- testado
+    até com Fenerbahçe/Beşiktaş). Best-effort: nomes muito diferentes
+    entre as duas fontes podem não casar, retorna null nesse caso sem
+    quebrar o resto da resposta. Cada jogo em /api/grade-automatica ganha
+    o campo "placar_ao_vivo": {"placar","minuto","em_andamento","encerrado"}
+    ou null.
+
+Herda tudo da v11.1 abaixo:
 
 13) BLOQUEIO 403 DA CAIXA CONFIRMADO EM PRODUÇÃO (logs do Render, mesmo
     já com os headers de navegador do v10.3): é bloqueio por IP/ASN de
@@ -78,7 +94,7 @@ Variáveis de ambiente no Render:
   DATABASE_URL  → PostgreSQL (se ausente usa SQLite local) -- recomendado
 """
 
-import os, math, sqlite3, logging, requests, re, time
+import os, math, sqlite3, logging, requests, re, time, unicodedata
 from datetime import datetime, timezone
 from collections import defaultdict
 from flask import Flask, jsonify, request
@@ -625,6 +641,53 @@ def apif_get(endpoint, params=None):
         log.warning("API-Football erro: %s", e)
     return None
 
+# ─── Placar ao vivo (informativo, 05/09/2026) ──────────────────
+# Endpoint confirmado via RapidAPI Playground: football-current-live,
+# retorna response.live[] com todos os jogos em andamento no mundo no
+# momento da chamada. Usado só pra mostrar o placar junto de cada jogo
+# da grade -- NUNCA entra no cálculo de probabilidade/confiança (decisão
+# explícita: só informativo). Best-effort: se a API falhar ou não achar
+# o jogo (nomes de time não batem entre as duas fontes), retorna None
+# silenciosamente, sem quebrar o resto da resposta.
+def buscar_placar_ao_vivo():
+    data = apif_get("football-current-live")
+    if not data:
+        return []
+    return (data.get("response", {}) or {}).get("live", []) or []
+
+def _normalizar_nome_time(nome):
+    if not nome:
+        return ""
+    nome = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode("ascii")
+    return nome.upper().strip()
+
+def casar_placar_ao_vivo(mandante, visitante, jogos_ao_vivo):
+    """Tenta achar, entre os jogos ao vivo do momento (API-Football), um
+    que bata com o confronto mandante x visitante da Loteca. Comparação
+    por nome normalizado (maiusculo, sem acento) contra "name" e
+    "longName" dos dois lados -- best-effort, times com nomes muito
+    diferentes entre as duas fontes (ex: abreviações tipo "ATLETICO MG"
+    vs "Atletico Mineiro") podem não casar. Retorna None se não achar."""
+    m_norm = _normalizar_nome_time(mandante)
+    v_norm = _normalizar_nome_time(visitante)
+    for jogo in jogos_ao_vivo:
+        home = jogo.get("home", {}) or {}
+        away = jogo.get("away", {}) or {}
+        home_nomes = {_normalizar_nome_time(home.get("name")),
+                      _normalizar_nome_time(home.get("longName"))}
+        away_nomes = {_normalizar_nome_time(away.get("name")),
+                      _normalizar_nome_time(away.get("longName"))}
+        if m_norm in home_nomes and v_norm in away_nomes:
+            status = jogo.get("status", {}) or {}
+            live_time = status.get("liveTime", {}) or {}
+            return {
+                "placar": status.get("scoreStr"),
+                "minuto": live_time.get("short"),
+                "em_andamento": bool(status.get("ongoing")),
+                "encerrado": bool(status.get("finished")),
+            }
+    return None
+
 def buscar_proximos_jogos(league_id, season=2026):
     data = apif_get("football-get-all-fixtures-by-league-by-season",
                     {"leagueId": league_id, "season": season})
@@ -824,8 +887,8 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v11.1",
-        "modelo": f"h2h_real(min{H2H_MIN}) > medias_gols_shrink(k{SHRINKAGE_K}) > elo_dinamico > fallback_fixo",
+        "status": "ok", "versao": "Loteca Elite Pro v11.2",
+        "modelo": "elo_iterativo(K30,HA75) > fallback_elo_fixo+poisson_liga",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
     })
@@ -878,10 +941,12 @@ def grade_automatica():
         numero, jogos_cef = parsear_cef(dados.get("numero"), dados)
         if jogos_cef:
             banca = float(request.args.get("banca", 100))
+            jogos_ao_vivo = buscar_placar_ao_vivo()  # 1 chamada só, reusada pros 14 jogos
             jogos = []
             for j in jogos_cef:
                 analise = analisar_jogo(j["mandante"], j["visitante"], "_default", banca=banca)
-                jogos.append({**j, **analise})
+                placar = casar_placar_ao_vivo(j["mandante"], j["visitante"], jogos_ao_vivo)
+                jogos.append({**j, **analise, "placar_ao_vivo": placar})
             return jsonify({
                 "status":"sucesso","concurso":numero,"fonte":fonte_dado,
                 "concurso_ainda_aberto": dados is dados_aberto,
