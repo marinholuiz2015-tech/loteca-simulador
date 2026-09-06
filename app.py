@@ -1,6 +1,19 @@
 """
-Loteca Elite Pro — app.py v11.6
-Mudança desta sessão (05/09/2026), depois da v11.5:
+Loteca Elite Pro — app.py v11.7
+Mudança desta sessão (05/09/2026), depois da v11.6:
+
+19) Endpoint /api/verificar-desambiguacao -- confirma com dado real do
+    banco se a desambiguação de nomes de time (ATLETICO-MG/ATLETICO-GO,
+    AMERICA-MG/AMERICA-RN) foi de fato aplicada nas colunas que o app usa
+    (time_casa_normalizado/time_fora_normalizado), em vez de supor.
+    Motivado por resultado real de produção discrepante do esperado:
+    /api/backtest-p1314 rodou contra o banco real (1.261 concursos) e
+    deu P(13+) real de 0,08% -- muito abaixo do 2,60%/4,18% reportado
+    por outra sessão. Antes de investigar mais a fundo, precisa
+    confirmar se as duas sessões estão de fato olhando pro mesmo dado
+    (mesma desambiguação aplicada) ou se são bases diferentes.
+
+Herda tudo da v11.6 abaixo:
 
 18) SUAVIZAÇÃO BAYESIANA no bucket empírico, substituindo o corte
     binário (n>=30 usa bucket / n<30 descarta tudo e cai pro fallback
@@ -1162,8 +1175,6 @@ def apif_get(endpoint, params=None):
             headers={"X-RapidAPI-Key":  RAPIDAPI_KEY,
                      "X-RapidAPI-Host": APIF_HOST},
             params=params or {}, timeout=8
-
-            
         )
         if r.status_code == 200:
             return r.json()
@@ -1418,7 +1429,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v11.6",
+        "status": "ok", "versao": "Loteca Elite Pro v11.7",
         "modelo": "elo_iterativo(K30,HA75) > fallback_elo_fixo+poisson_liga",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
@@ -1559,6 +1570,65 @@ def backtest_elo_route():
         limite = int(limite) if limite else None
         resultado = backtest_elo_walkforward(limite)
         return jsonify({"status": "sucesso", **resultado})
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+
+@app.route("/api/verificar-desambiguacao")
+def verificar_desambiguacao():
+    """Confirma, com dado real do banco, se a desambiguação de nomes de
+    time (sessão de 31/08-05/09/2026: ATLETICO-MG/ATLETICO-GO,
+    AMERICA-MG/AMERICA-RN separados, resto -INDEFINIDO) foi de fato
+    aplicada nas colunas que o app usa (time_casa_normalizado/
+    time_fora_normalizado) -- em vez de supor, verifica direto."""
+    try:
+        schema = detectar_schema_jogos()
+        if not schema["existe"]:
+            return jsonify({"status": "erro", "mensagem": "schema_invalido"}), 500
+        conn = get_conn(); cur = conn.cursor()
+        ph = _ph()
+        variantes_esperadas = ["ATLETICO-MG", "ATLETICO-GO", "AMERICA-MG",
+                                "AMERICA-RN", "ATLETICO", "AMERICA"]
+        encontrados = {}
+        for nome in variantes_esperadas:
+            cur.execute(f"""
+                SELECT COUNT(*) FROM {schema['tabela']}
+                WHERE UPPER(TRIM({schema['col_m']}))={ph}
+                   OR UPPER(TRIM({schema['col_v']}))={ph}
+            """, (nome, nome))
+            encontrados[nome] = cur.fetchone()[0]
+
+        cur.execute(f"""
+            SELECT COUNT(*) FROM {schema['tabela']}
+            WHERE UPPER(TRIM({schema['col_m']})) LIKE '%INDEFINIDO%'
+               OR UPPER(TRIM({schema['col_v']})) LIKE '%INDEFINIDO%'
+        """)
+        n_indefinido = cur.fetchone()[0]
+
+        cur.execute(f"""
+            SELECT COUNT(DISTINCT UPPER(TRIM({schema['col_m']})))
+            FROM {schema['tabela']}
+        """)
+        n_times_distintos = cur.fetchone()[0]
+        conn.close()
+
+        desambiguado = (encontrados["ATLETICO-MG"] > 0 or encontrados["ATLETICO-GO"] > 0
+                         or encontrados["AMERICA-MG"] > 0 or encontrados["AMERICA-RN"] > 0)
+
+        return jsonify({
+            "status": "sucesso",
+            "coluna_usada_pelo_app": {"mandante": schema["col_m"], "visitante": schema["col_v"]},
+            "contagem_por_variante": encontrados,
+            "jogos_marcados_indefinido": n_indefinido,
+            "times_distintos_no_banco": n_times_distintos,
+            "desambiguacao_aplicada": desambiguado,
+            "interpretacao": (
+                "Se ATLETICO-MG/ATLETICO-GO/AMERICA-MG/AMERICA-RN aparecerem com "
+                "contagem > 0 E o genérico ATLETICO/AMERICA tiver contagem 0 (ou "
+                "bem menor), a desambiguação foi aplicada nas colunas que o app usa. "
+                "Se ATLETICO/AMERICA genérico ainda tiver contagem alta e as versões "
+                "desambiguadas forem 0, a desambiguação NÃO chegou nessa coluna/banco."
+            ),
+        })
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": str(e)}), 500
 
