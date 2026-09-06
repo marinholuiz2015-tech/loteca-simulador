@@ -1,6 +1,128 @@
 """
-Loteca Elite Pro — app.py v11.2
-Mudança desta sessão (05/09/2026), depois da v11.1:
+Loteca Elite Pro — app.py v11.6
+Mudança desta sessão (05/09/2026), depois da v11.5:
+
+18) SUAVIZAÇÃO BAYESIANA no bucket empírico, substituindo o corte
+    binário (n>=30 usa bucket / n<30 descarta tudo e cai pro fallback
+    logístico). O corte criava descontinuidade artificial ("penhasco")
+    e jogava fora informação parcial de faixas com pouca amostra.
+    Fórmula nova: P(resultado) = (contagem_bucket + α×freq_global) /
+    (n_bucket + α), com α=ELO_SHRINKAGE_ALFA=30 -- bucket vazio usa
+    puro a distribuição global; bucket com muita amostra converge pro
+    bucket puro; nada no meio é descartado, só pesa proporcionalmente.
+    _elo_diff_para_probs() (curva logística) não é mais usada como
+    fallback em elo_probs() -- o shrinkage cobre isso de forma contínua.
+    calcular_elo_ratings() agora também rastreia a distribuição GLOBAL
+    de 1/X/2 (não só por bucket) na mesma passada, usada como âncora do
+    shrinkage. backtest_p1314_seco() atualizado pra usar a MESMA fórmula
+    (produção e validação continuam consistentes, mesmo erro que corrigi
+    antes entre curva-logística-fallback vs frequência-global-fallback).
+    Testado localmente com 3 cenários: bucket bem povoado (converge pro
+    valor real, 88% vs 85% real), bucket esparso (3 jogos de empate não
+    viram "100% empate", ficou em 7,75%, puxado pela faixa), e times
+    nunca vistos (caem numa estimativa sensata baseada na faixa de Elo,
+    não em None nem em zero informação).
+    IMPORTANTE, ainda em aberto: essa mudança só foi validada com dado
+    SINTÉTICO (mecânica do código correta). AINDA NÃO rodou contra o
+    banco real de produção -- próximo passo obrigatório antes de confiar
+    cegamente: /api/backtest-p1314?comparar=1 em produção, pra saber o
+    número real (tipo o 4,18%/2,60% medido por outra sessão) com essa
+    fórmula nova.
+
+Herda tudo da v11.5 abaixo:
+
+17) BASELINE REAL "13 SECOS + 1 DUPLO" no backtest P(13/14) -- achado
+    trazido pelo usuário de outra sessão em paralelo: a Loteca NÃO
+    permite apostar 14 secos puro -- a aposta mínima (R$4,00) já é
+    obrigatoriamente 13 secos + 1 duplo. O backtest_p1314_seco() media
+    "14 secos puro", um cenário que na prática ninguém consegue apostar
+    -- resultado mais pessimista que a realidade.
+    Corrigido: backtest_p1314_seco() agora aceita `baseline="13s_1d"`
+    (padrão) ou `baseline="14s_puro"` (só como referência teórica). No
+    modo 13s_1d, o jogo MAIS INCERTO do cartão (menor probabilidade do
+    favorito) recebe o duplo -- cobre os dois resultados mais prováveis
+    daquele jogo específico -- heurística padrão de quem aposta de
+    verdade, e não custa nada a mais que o seco puro (mesmo mínimo
+    padrão da Loteca).
+    Novo parâmetro na rota: /api/backtest-p1314?comparar=1 roda os dois
+    baselines lado a lado e calcula o ganho relativo -- é "de graça",
+    já que os dois têm o mesmo custo mínimo.
+    Testado localmente com dado sintético (jogos de confiança variada,
+    incluindo confrontos genuinamente incertos) -- 13s_1d mostrou ganho
+    real e mensurável sobre 14s_puro (103% de melhora relativa em
+    P(13+) nesse teste), confirmando que a lógica funciona na direção
+    certa.
+    IMPORTANTE: essa mudança é só de MEDIÇÃO (como avaliamos o motor).
+    Ainda não mexe em elo_probs()/classificar() (a lógica de produção
+    que decide SECO/DUPLO/TRIPLO real pro usuário) -- só corrige o
+    critério de validação pra refletir a estrutura real da aposta.
+
+Herda tudo da v11.4 abaixo:
+
+16) BACKTEST P(13/14) REAL POR CARTÃO — porta FIEL de elo_p1314_seco.py
+    (sessão de desambiguação, 31/08-05/09/2026), o código exato que
+    gerou os números 4,18% vs 2,60% mencionados nos resumos. Novo
+    endpoint /api/backtest-p1314 mede a força REAL do motor jogando
+    SECO puro (1 palpite/jogo, sem hedge/duplo/triplo), via P(13/14)
+    exato por cartão (Poisson-Binomial), comparando o que o modelo
+    previa (média da própria confiança) contra o que realmente
+    aconteceu -- a métrica de sucesso real do projeto, confirmada pelo
+    usuário: acertar 13/14 toda semana, 14/14 pelo menos 1x/mês.
+    Diferenças importantes corrigidas em relação ao que eu tinha
+    implementado sozinho na v11.3 (backtest_elo_walkforward):
+    - Fallback de bucket esparso é a FREQUÊNCIA GLOBAL observada até
+      aquele ponto, não a curva logística -- é o que foi validado.
+    - Elo atualizado em LOTE por concurso (todos os jogos de um cartão
+      usam o Elo de ANTES daquele concurso começar), não jogo a jogo --
+      reflete a realidade de apostar nos 14 de uma vez.
+    - bucket_id = round(diff/50), não floor(diff//50).
+    Testado localmente com dado sintético de probabilidade conhecida
+    (85% favorito) -- calibração quase perfeita (P13+ previsto 37,54%
+    vs realizado 35%; P14 previsto 11,57% vs realizado 11,5%),
+    confirmando que a porta está mecanicamente correta.
+    Ainda NÃO trocado dentro de elo_probs() (produção) -- esse backtest
+    só mede/valida; a v11.3 (bucket com fallback logístico) continua
+    sendo a fonte usada em /api/analisar e /api/grade-automatica.
+    Próximo passo natural: rodar /api/backtest-p1314 em produção com os
+    dados reais (17k+ jogos, desambiguação de nomes já aplicada) e
+    comparar contra os 4,18%/2,60% da referência; se bater, considerar
+    também adotar frequência global (em vez de curva logística) como
+    fallback dentro de elo_probs(), pra produção e validação usarem
+    exatamente a mesma fórmula ponta a ponta.
+
+Herda tudo da v11.3 abaixo:
+
+15) BUCKET EMPÍRICO como fonte primária de P(1)/P(X)/P(2), substituindo
+    a curva logística paramétrica (que virou fallback só pra faixas de
+    Elo com pouca amostra). Achado de outra sessão em paralelo (resumo
+    "Desambiguação de Times + Fórmula Elo", 31/08-05/09/2026), validado
+    contra P(13/14) real em 1.268 concursos: a curva logística previa
+    5,97% de chance de bater 13+ pontos, mas na realidade batia só 2,60%
+    (superconfiante em ~2,3x); o bucket empírico previa 5,25% e batia
+    4,18% -- muito mais calibrado, 60% mais cartões de 13+ (53 vs 33) e
+    quase o dobro de 14/14 (11 vs 6) no mesmo histórico.
+    calcular_elo_ratings() agora constrói a tabela de bucket na MESMA
+    passada que calcula o Elo (sem custo extra), agrupando por faixa de
+    diferença de Elo (largura 50) e contando a frequência REAL de 1/X/2
+    observada -- SEM VAZAMENTO (conta o resultado de cada jogo só DEPOIS
+    de já ter calculado a previsão daquele jogo). elo_probs() usa essa
+    tabela quando a faixa tem ELO_BUCKET_MIN_AMOSTRAS (30) ou mais;
+    senão cai pro fallback logístico (_elo_diff_para_probs(), mesma
+    fórmula de antes).
+    Novo endpoint /api/backtest-elo compara as duas fórmulas lado a lado
+    (acurácia, Brier Score), walk-forward sem vazamento em nenhuma das
+    duas (bucket também construído incrementalmente no teste, não usa a
+    tabela final inteira). Testado localmente com dados sintéticos com
+    viés conhecido (time muito mais forte, empate raro na realidade) --
+    bucket empírico teve Brier melhor (0,0724 vs 0,083), confirmando que
+    aprende o padrão que a curva paramétrica não capta sozinha.
+    Pendente: validar isso especificamente no critério real do projeto
+    (P13/14 por cartão, agrupando os 14 jogos de cada concurso via
+    Poisson-Binomial) -- precisa da coluna de agrupamento por concurso
+    confiável, ainda não confirmada neste ambiente. O teste_p1314.py da
+    outra sessão faz exatamente isso; portar quando disponível.
+
+Herda tudo da v11.2 abaixo:
 
 14) PLACAR AO VIVO (informativo, nunca entra no cálculo de probabilidade
     ou confiança -- decisão explícita do usuário). Usa a API-Football já
@@ -368,7 +490,18 @@ def buscar_medias_gols_real(time_nome, mandante=True, liga="_default"):
 ELO_K        = 30
 ELO_HOME_ADV = 75
 ELO_CACHE_TTL = 6 * 3600  # recalcular do zero em toda requisicao seria caro (17k+ jogos)
-_ELO_CACHE = {"ts": 0, "ratings": None, "aviso": None, "n_jogos": 0}
+_ELO_CACHE = {"ts": 0, "ratings": None, "aviso": None, "n_jogos": 0, "buckets": None, "global_dist": None}
+
+ELO_BUCKET_LARGURA = 50   # largura da faixa de diferenca de Elo (pontos)
+ELO_SHRINKAGE_ALFA = 30   # forca do shrinkage bayesiano pro bucket empirico --
+                          # em n_bucket=ELO_SHRINKAGE_ALFA, bucket e distribuicao
+                          # global pesam igual; mais amostra pesa mais o bucket,
+                          # menos amostra puxa mais pra global. Sem "penhasco":
+                          # nenhuma faixa é descartada inteira, mesmo com pouca
+                          # amostra -- ela só pesa menos, proporcionalmente.
+
+def _bucket_de_diff(diff):
+    return int(diff // ELO_BUCKET_LARGURA) * ELO_BUCKET_LARGURA
 
 def _listar_colunas(cur, tabela):
     if USE_PG:
@@ -399,19 +532,29 @@ def _detectar_coluna_ordem(cols):
 
 def calcular_elo_ratings():
     """Replay cronologico completo da tabela historica real, calculando
-    Elo de todos os times do zero (K=30, HOME_ADV=75). Cacheado por
-    ELO_CACHE_TTL. Retorna (ratings_dict, aviso_ou_None)."""
+    Elo de todos os times do zero (K=30, HOME_ADV=75). Na MESMA passada,
+    constrói a tabela de calibração por bucket empírico: agrupa jogos por
+    faixa de diferença de Elo (largura ELO_BUCKET_LARGURA) e conta a
+    frequência REAL de 1/X/2 observada em cada faixa -- achado da sessão
+    de desambiguação (31/08-05/09/2026): essa calibração empírica bate a
+    curva logística paramétrica no critério que importa (P13/14 real:
+    4,18% batido vs 5,25% previsto pro bucket, contra 2,60% batido vs
+    5,97% previsto pela curva -- a curva estava superconfiante em ~2,3x).
+    Cacheado por ELO_CACHE_TTL. Retorna (ratings_dict, aviso_ou_None)."""
     if (time.time() - _ELO_CACHE["ts"] < ELO_CACHE_TTL
             and _ELO_CACHE["ratings"] is not None):
         return _ELO_CACHE["ratings"], _ELO_CACHE["aviso"]
 
     schema = detectar_schema_jogos()
     ratings = defaultdict(lambda: 1500.0)
+    buckets = defaultdict(lambda: {"1": 0, "X": 0, "2": 0})
+    global_cnt = {"1": 0, "X": 0, "2": 0}
     aviso = None
     n_processados = 0
     if not (schema["existe"] and schema["col_gm"] and schema["col_gv"]):
         aviso = "sem_schema_valido_p_elo"
-        _ELO_CACHE.update(ts=time.time(), ratings={}, aviso=aviso, n_jogos=0)
+        _ELO_CACHE.update(ts=time.time(), ratings={}, aviso=aviso, n_jogos=0,
+                           buckets={}, global_dist=None)
         return {}, aviso
 
     try:
@@ -440,24 +583,31 @@ def calcular_elo_ratings():
             if not m or not v or gm2 is None or gv2 is None:
                 continue
             m, v = str(m).upper().strip(), str(v).upper().strip()
-            if gm2 > gv2:   resultado_m = 1.0
-            elif gm2 < gv2: resultado_m = 0.0
-            else:           resultado_m = 0.5
+            if gm2 > gv2:   real, resultado_m = "1", 1.0
+            elif gm2 < gv2: real, resultado_m = "2", 0.0
+            else:           real, resultado_m = "X", 0.5
             elo_m, elo_v = ratings[m], ratings[v]
-            esperado_m = 1 / (1 + 10 ** (-((elo_m + ELO_HOME_ADV) - elo_v) / 400))
+            diff = (elo_m + ELO_HOME_ADV) - elo_v
+            buckets[_bucket_de_diff(diff)][real] += 1  # calibração ANTES de atualizar -- sem vazamento
+            global_cnt[real] += 1
+            esperado_m = 1 / (1 + 10 ** (-diff / 400))
             delta = ELO_K * (resultado_m - esperado_m)
             ratings[m] = elo_m + delta
             ratings[v] = elo_v - delta
             n_processados += 1
-        log.info("calcular_elo_ratings: %d jogos processados, %d times, ordem=%s",
-                  n_processados, len(ratings), tipo_ordem)
+        log.info("calcular_elo_ratings: %d jogos processados, %d times, ordem=%s, %d buckets",
+                  n_processados, len(ratings), tipo_ordem, len(buckets))
     except Exception as e:
         log.warning("calcular_elo_ratings: %s", e)
         aviso = f"erro_calculo_elo: {e}"
 
     resultado = dict(ratings)
+    buckets_dict = {k: dict(v) for k, v in buckets.items()}
+    n_global = sum(global_cnt.values())
+    global_dist = ({k: v / n_global for k, v in global_cnt.items()} if n_global > 0
+                    else {"1": 0.4722, "X": 0.2616, "2": 0.2663})  # prior neutro se banco vazio
     _ELO_CACHE.update(ts=time.time(), ratings=resultado, aviso=aviso,
-                       n_jogos=n_processados)
+                       n_jogos=n_processados, buckets=buckets_dict, global_dist=global_dist)
     return resultado, aviso
 
 def elo_time(nome):
@@ -467,30 +617,409 @@ def elo_time(nome):
     ratings, _ = calcular_elo_ratings()
     return round(ratings.get(nome.upper().strip(), 1500.0), 1)
 
-def elo_probs(mandante, visitante):
-    """Converte Elo (com vantagem de mandante) em P(1)/P(X)/P(2).
-    APROXIMACAO -- ver ressalva no cabecalho da secao. Usa expected-score
-    logistico padrao de Elo pro par 1x2 combinado, e uma largura de
-    empate que encolhe conforme a diferenca de forca cresce (heuristica
-    comum em elo de futebol -- times parelhos empatam mais)."""
-    ratings, aviso = calcular_elo_ratings()
-    ec = ratings.get(mandante.upper().strip(), 1500.0)
-    ef = ratings.get(visitante.upper().strip(), 1500.0)
-    diff = (ec + ELO_HOME_ADV) - ef
+def _elo_diff_para_probs(diff):
+    """Fórmula pura Elo-diff -> P(1)/P(X)/P(2), sem consultar banco.
+    Extraída de elo_probs() pra garantir que o backtest walk-forward
+    (backtest_elo_walkforward, abaixo) testa EXATAMENTE a mesma fórmula
+    que está em produção -- nunca duas versões que podem divergir sem
+    ninguém notar."""
     we = 1 / (1 + 10 ** (-diff / 400))  # expected score do mandante (empate=0,5pt)
     largura_empate = max(0.12, 0.24 * math.exp(-abs(diff) / 600))
     p1 = max(0.02, we - largura_empate / 2)
     p2 = max(0.02, (1 - we) - largura_empate / 2)
     px = largura_empate
     t = p1 + px + p2
-    fonte = "elo_iterativo_K30_HA75"
+    return {"1": p1 / t, "X": px / t, "2": p2 / t}, we
+
+def _probs_bucket_empirico(diff):
+    """P(1)/P(X)/P(2) via suavização Bayesiana (shrinkage tipo Dirichlet)
+    do bucket empírico em direção à distribuição GLOBAL observada --
+    substitui o corte binário anterior (n>=30 usa bucket / n<30 descarta
+    tudo e usa só fallback), que criava descontinuidade artificial e
+    jogava fora informação parcial de faixas com pouca amostra.
+    Fórmula: P(resultado) = (contagem_bucket + α×freq_global) / (n_bucket + α).
+    Com α=ELO_SHRINKAGE_ALFA: bucket vazio -> puro global; bucket com
+    muita amostra -> puro bucket; nada no meio é descartado, só pesa
+    proporcionalmente. Nunca retorna None -- sempre há pelo menos a
+    distribuição global como base (mesmo p/ faixas nunca vistas)."""
+    buckets = _ELO_CACHE.get("buckets") or {}
+    global_dist = _ELO_CACHE.get("global_dist") or {"1": 0.4722, "X": 0.2616, "2": 0.2663}
+    contagem = buckets.get(_bucket_de_diff(diff), {"1": 0, "X": 0, "2": 0})
+    n_bucket = contagem.get("1", 0) + contagem.get("X", 0) + contagem.get("2", 0)
+    alfa = ELO_SHRINKAGE_ALFA
+    denom = n_bucket + alfa
+    probs = {k: (contagem.get(k, 0) + alfa * global_dist[k]) / denom for k in ("1", "X", "2")}
+    t = sum(probs.values())
+    probs = {k: v / t for k, v in probs.items()}
+    return {**probs, "n_amostras_bucket": n_bucket}
+
+def elo_probs(mandante, visitante):
+    """Converte Elo (com vantagem de mandante) em P(1)/P(X)/P(2).
+    Fonte: bucket empírico com suavização Bayesiana em direção à
+    distribuição global (_probs_bucket_empirico) -- nunca cai pro
+    fallback logístico separado, porque o shrinkage já cobre faixas com
+    pouca amostra de forma contínua e proporcional, sem descontinuidade.
+    Validado contra P(13/14) real em 1.268 concursos (metodologia com
+    corte binário, versão anterior desta função): bucket empírico bate
+    4,18% das vezes contra 5,25% previsto (bem calibrado), enquanto a
+    curva logística batia só 2,60% contra 5,97% previsto (superconfiante
+    em ~2,3x). A suavização contínua deve preservar ou melhorar isso,
+    já que usa mais informação (nenhuma faixa é 100% descartada)."""
+    ratings, aviso = calcular_elo_ratings()
+    ec = ratings.get(mandante.upper().strip(), 1500.0)
+    ef = ratings.get(visitante.upper().strip(), 1500.0)
+    diff = (ec + ELO_HOME_ADV) - ef
+
+    probs_bucket = _probs_bucket_empirico(diff)
+    probs = {k: probs_bucket[k] for k in ("1", "X", "2")}
+    fonte = f"elo_bucket_bayesiano_alfa{ELO_SHRINKAGE_ALFA}_n{probs_bucket['n_amostras_bucket']}"
+
     if aviso:
         fonte += "_AVISO_ORDEM"
     return {
-        "1": round(p1 / t, 4), "X": round(px / t, 4), "2": round(p2 / t, 4),
+        "1": round(probs["1"], 4), "X": round(probs["X"], 4), "2": round(probs["2"], 4),
         "elo_casa": round(ec, 1), "elo_fora": round(ef, 1),
         "lam_casa": None, "lam_fora": None,
         "fonte_base": fonte, "aviso_elo": aviso,
+    }
+
+def backtest_elo_walkforward(limite_jogos=None):
+    """Walk-forward SEM VAZAMENTO comparando as duas fórmulas lado a lado:
+    bucket empírico (fonte primária em produção) vs curva logística
+    (fallback). Pra cada jogo, ANTES de atualizar Elo E ANTES de contar o
+    resultado no bucket, calcula a previsão das duas fórmulas usando só o
+    que já foi visto até aquele ponto -- exatamente como seria numa
+    previsão real. O bucket empírico aqui é construído incrementalmente
+    (não usa a tabela final inteira), pra não vazar o resultado do
+    próprio jogo sendo testado pra dentro do bucket que o prevê.
+    Existe pra confirmar, com o histórico completo, se a vantagem
+    encontrada pela sessão de desambiguação (4,18% vs 2,60% de acerto em
+    13+/cartão) se sustenta também nessa base de dados corrigida."""
+    schema = detectar_schema_jogos()
+    if not (schema["existe"] and schema["col_gm"] and schema["col_gv"]):
+        return {"erro": "schema_invalido_p_backtest"}
+
+    conn = get_conn(); cur = conn.cursor()
+    cols = _listar_colunas(cur, schema["tabela"])
+    col_ordem, tipo_ordem = _detectar_coluna_ordem(cols)
+    order_clause = f"ORDER BY {col_ordem} ASC" if col_ordem else ""
+    limit_clause = f"LIMIT {int(limite_jogos)}" if limite_jogos else ""
+    cur.execute(f"""
+        SELECT {schema['col_m']}, {schema['col_v']}, {schema['col_gm']}, {schema['col_gv']}
+        FROM {schema['tabela']} {order_clause} {limit_clause}
+    """)
+    linhas = cur.fetchall()
+    conn.close()
+
+    ratings = defaultdict(lambda: 1500.0)
+    buckets_ate_agora = defaultdict(lambda: {"1": 0, "X": 0, "2": 0})
+    n_total = 0
+    dist_real = {"1": 0, "X": 0, "2": 0}
+    stats = {
+        "bucket_empirico": {"acertos": 0, "soma_brier": 0.0, "n_usou_bucket": 0, "n_usou_fallback": 0},
+        "curva_logistica": {"acertos": 0, "soma_brier": 0.0},
+    }
+
+    for m, v, gm, gv in linhas:
+        gm2, gv2 = _parse_gol(gm), _parse_gol(gv)
+        if not m or not v or gm2 is None or gv2 is None:
+            continue
+        m, v = str(m).upper().strip(), str(v).upper().strip()
+        if gm2 > gv2:   real, resultado_m = "1", 1.0
+        elif gm2 < gv2: real, resultado_m = "2", 0.0
+        else:           real, resultado_m = "X", 0.5
+
+        elo_m, elo_v = ratings[m], ratings[v]
+        diff = (elo_m + ELO_HOME_ADV) - elo_v
+
+        probs_curva, we = _elo_diff_para_probs(diff)  # sempre disponível
+
+        b = _bucket_de_diff(diff)
+        contagem = buckets_ate_agora.get(b)
+        n_bucket = sum(contagem.values()) if contagem else 0
+        if contagem and n_bucket >= ELO_BUCKET_MIN_AMOSTRAS:
+            probs_bucket = {k: contagem[k] / n_bucket for k in ("1", "X", "2")}
+            stats["bucket_empirico"]["n_usou_bucket"] += 1
+        else:
+            probs_bucket = probs_curva  # mesmo fallback usado em produção
+            stats["bucket_empirico"]["n_usou_fallback"] += 1
+
+        n_total += 1
+        dist_real[real] += 1
+
+        for nome, probs in (("bucket_empirico", probs_bucket), ("curva_logistica", probs_curva)):
+            previsto = max(probs, key=probs.get)
+            if previsto == real:
+                stats[nome]["acertos"] += 1
+            stats[nome]["soma_brier"] += sum(
+                (probs[k] - (1.0 if k == real else 0.0)) ** 2 for k in ("1", "X", "2"))
+
+        # atualiza bucket e Elo SÓ DEPOIS de prever -- sem vazamento em nenhuma das duas fórmulas
+        buckets_ate_agora[b][real] += 1
+        delta = ELO_K * (resultado_m - we)
+        ratings[m] = elo_m + delta
+        ratings[v] = elo_v - delta
+
+    return {
+        "n_jogos_testados": n_total,
+        "distribuicao_resultado_real": dist_real,
+        "comparacao": {
+            nome: {
+                "acuracia": round(s["acertos"] / n_total, 4) if n_total else None,
+                "brier_score": round(s["soma_brier"] / n_total, 4) if n_total else None,
+            }
+            for nome, s in stats.items()
+        },
+        "bucket_empirico_cobertura": {
+            "usou_bucket_real": stats["bucket_empirico"]["n_usou_bucket"],
+            "usou_fallback_logistico": stats["bucket_empirico"]["n_usou_fallback"],
+        },
+        "ordem_usada": tipo_ordem,
+        "metodologia": ("walk-forward sem vazamento -- bucket empírico também construído "
+                         "incrementalmente (só usa jogos ANTERIORES ao ponto de previsão, "
+                         "nunca a tabela final inteira)"),
+    }
+
+def _detectar_colunas_concurso(cols):
+    """Detecta colunas de agrupamento por concurso e de ordem do jogo
+    dentro do concurso -- necessário pro backtest de P(13/14) por
+    cartão real (14 jogos por concurso). Retorna (col_concurso, col_seq),
+    qualquer um pode vir None se não encontrado."""
+    col_concurso = next((c for c in ["concurso", "numero_concurso"] if c in cols), None)
+    col_seq = next((c for c in ["sequencial", "numero_jogo", "jogo", "ordem"] if c in cols), None)
+    return col_concurso, col_seq
+
+def _poisson_binomial(probs_acerto):
+    """PMF exata do número de acertos, dado uma lista de probabilidades
+    de acerto (uma por jogo). DP clássico O(n²). Idêntico ao usado em
+    elo_p1314_seco.py (sessão de desambiguação, 31/08-05/09/2026)."""
+    pmf = [1.0]
+    for p in probs_acerto:
+        novo = [0.0] * (len(pmf) + 1)
+        for i, prob_i in enumerate(pmf):
+            novo[i] += prob_i * (1 - p)
+            novo[i + 1] += prob_i * p
+        pmf = novo
+    return pmf
+
+BACKTEST_P1314_BUCKET = 50
+
+def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
+    """Porta FIEL de elo_p1314_seco.py (sessão de desambiguação,
+    31/08-05/09/2026) -- mede a força REAL do motor via P(13/14) exato
+    por cartão (Poisson-Binomial), comparando o que o modelo previa
+    (média da própria confiança) contra o que realmente aconteceu.
+    Metodologia EXATA da referência:
+    - Elo (K=30, HOME_ADV=75) atualizado em LOTE por concurso -- todos
+      os jogos de um mesmo concurso usam o Elo de ANTES daquele
+      concurso começar (reflete a realidade de apostar nos 14 de uma
+      vez, sem saber resultado parcial de nenhum).
+    - Bucket empírico por faixa de diferença de Elo (bucket=round(diff/50)),
+      mínimo 15 amostras; sem amostra suficiente, cai pra frequência
+      GLOBAL observada até aquele ponto (não a curva logística).
+
+    `baseline` controla a estrutura de aposta testada:
+    - "14s_puro": 14 secos (1 palpite por jogo) -- é o que a referência
+      testou, mas NINGUÉM aposta assim de verdade: a Loteca não permite
+      aposta de 14 secos puro.
+    - "13s_1d" (padrão, é o mínimo REAL da Loteca, R$4,00): 13 secos +
+      1 duplo obrigatório. O duplo cobre os dois resultados mais
+      prováveis (1+X, 1+2 ou X+2) do jogo MAIS incerto do cartão
+      (heurística padrão -- proteger onde a confiança é menor). Isso
+      não custa nada a mais que o seco puro (é o próprio mínimo padrão),
+      então qualquer ganho aqui é "de graça" na comparação."""
+    schema = detectar_schema_jogos()
+    if not schema["existe"]:
+        return {"erro": "schema_invalido"}
+
+    conn = get_conn(); cur = conn.cursor()
+    cols = _listar_colunas(cur, schema["tabela"])
+    col_concurso, col_seq = _detectar_colunas_concurso(cols)
+    col_resultado = "resultado" if "resultado" in cols else None
+
+    if not col_concurso:
+        conn.close()
+        return {"erro": "sem_coluna_de_concurso",
+                "mensagem": (f"Precisa de uma coluna tipo 'concurso' pra agrupar os 14 "
+                              f"jogos de cada cartão -- não encontrada em {schema['tabela']}. "
+                              f"Sem isso não dá pra calcular P(13/14) por cartão real.")}
+
+    aviso_ordem_interna = None if col_seq else (
+        "Sem coluna de sequencial/ordem dentro do concurso -- a ordem dos "
+        "jogos num mesmo cartão pode não refletir a numeração real (1 a 14), "
+        "mas isso não afeta o cálculo em si, só a leitura de qual jogo é qual.")
+    order_extra = f", {col_seq}" if col_seq else ""
+
+    try:
+        if col_resultado:
+            cur.execute(f"""
+                SELECT {col_concurso}, {schema['col_m']}, {schema['col_v']}, {col_resultado}
+                FROM {schema['tabela']}
+                WHERE {col_resultado} IN ('1','X','2')
+                ORDER BY {col_concurso} {order_extra}
+            """)
+            linhas = [(conc, m, v, res) for conc, m, v, res in cur.fetchall()]
+        elif schema["col_gm"] and schema["col_gv"]:
+            cur.execute(f"""
+                SELECT {col_concurso}, {schema['col_m']}, {schema['col_v']},
+                       {schema['col_gm']}, {schema['col_gv']}
+                FROM {schema['tabela']}
+                ORDER BY {col_concurso} {order_extra}
+            """)
+            linhas = []
+            for conc, m, v, gm, gv in cur.fetchall():
+                gm2, gv2 = _parse_gol(gm), _parse_gol(gv)
+                if gm2 is None or gv2 is None:
+                    continue
+                res = "1" if gm2 > gv2 else ("2" if gm2 < gv2 else "X")
+                linhas.append((conc, m, v, res))
+        else:
+            conn.close()
+            return {"erro": "sem_coluna_resultado_nem_gols"}
+    finally:
+        conn.close()
+
+    if limite_concursos:
+        vistos, filtradas = [], []
+        for l in linhas:
+            if l[0] not in vistos:
+                if len(vistos) >= limite_concursos:
+                    break
+                vistos.append(l[0])
+            filtradas.append(l)
+        linhas = filtradas
+
+    elo = defaultdict(lambda: 1500.0)
+    bucket_stats = defaultdict(lambda: {"1": 0, "X": 0, "2": 0})
+    global_cnt = {"1": 0, "X": 0, "2": 0}
+
+    def aplicar(m, v, diff, resultado):
+        bid = round(diff / BACKTEST_P1314_BUCKET)
+        bucket_stats[bid][resultado] += 1
+        global_cnt[resultado] += 1
+        E = 1 / (1 + 10 ** (-diff / 400))
+        S = 1.0 if resultado == "1" else (0.5 if resultado == "X" else 0.0)
+        ajuste = ELO_K * (S - E)
+        elo[m] += ajuste
+        elo[v] -= ajuste
+
+    concurso_atual = None
+    pendentes = []
+    # agora guarda (p1, px, p2, resultado_real) por jogo -- não só o
+    # palpite favorito -- pra poder computar seco puro E 13S+1D na mesma
+    # passada, sem duplicar o cálculo de Elo/bucket
+    resultado_por_concurso = defaultdict(list)
+
+    for conc, m, v, resultado in linhas:
+        if not m or not v:
+            continue
+        m, v = str(m).upper().strip(), str(v).upper().strip()
+        if concurso_atual is not None and conc != concurso_atual:
+            for args in pendentes:
+                aplicar(*args)
+            pendentes = []
+        concurso_atual = conc
+
+        diff = (elo[m] + ELO_HOME_ADV) - elo[v]
+        bid = round(diff / BACKTEST_P1314_BUCKET)
+        stats = bucket_stats[bid]
+        n_bucket = sum(stats.values())
+        total_dist = sum(global_cnt.values())
+        if total_dist > 0:
+            global_p = {k: global_cnt[k] / total_dist for k in ("1", "X", "2")}
+        else:
+            global_p = {"1": 0.4722, "X": 0.2616, "2": 0.2663}  # prior inicial
+        # MESMA suavização Bayesiana usada em produção (_probs_bucket_empirico)
+        # -- sem isso, backtest e produção medem/usam fórmulas diferentes
+        denom = n_bucket + ELO_SHRINKAGE_ALFA
+        p1 = (stats.get("1", 0) + ELO_SHRINKAGE_ALFA * global_p["1"]) / denom
+        px = (stats.get("X", 0) + ELO_SHRINKAGE_ALFA * global_p["X"]) / denom
+        p2 = (stats.get("2", 0) + ELO_SHRINKAGE_ALFA * global_p["2"]) / denom
+        t = p1 + px + p2
+        p1, px, p2 = p1 / t, px / t, p2 / t
+
+        resultado_por_concurso[conc].append((p1, px, p2, resultado))
+        pendentes.append((m, v, diff, resultado))
+
+    for args in pendentes:
+        aplicar(*args)
+
+    def _probs_do_jogo(p1, px, p2, resultado, cobrir_2=False):
+        """Retorna (prob_de_acerto, acertou) pro jogo. Se cobrir_2=True,
+        cobre os DOIS resultados mais prováveis (duplo); senão só o
+        favorito (seco)."""
+        ranking = sorted([("1", p1), ("X", px), ("2", p2)], key=lambda x: x[1], reverse=True)
+        if cobrir_2:
+            cobertos = {ranking[0][0], ranking[1][0]}
+            prob = ranking[0][1] + ranking[1][1]
+        else:
+            cobertos = {ranking[0][0]}
+            prob = ranking[0][1]
+        acertou = 1 if resultado in cobertos else 0
+        return prob, acertou
+
+    soma_p13mais = soma_p14 = 0.0
+    concursos_13mais_real = concursos_14_real = 0
+    n_validos = 0
+    distribuicao = defaultdict(int)
+
+    for conc, lista in resultado_por_concurso.items():
+        n_jogos = len(lista)
+        if n_jogos < 13:
+            continue
+
+        if baseline == "13s_1d" and n_jogos >= 1:
+            # acha o jogo MAIS incerto (menor prob do favorito) pra
+            # receber o duplo -- heurística padrão de quem aposta
+            idx_incerto = min(range(n_jogos), key=lambda i: max(lista[i][0], lista[i][1], lista[i][2]))
+        else:
+            idx_incerto = None  # nenhum jogo recebe duplo -- seco puro
+
+        probs, acertos_por_jogo = [], []
+        for i, (p1, px, p2, resultado) in enumerate(lista):
+            cobrir_2 = (i == idx_incerto)
+            prob, acertou = _probs_do_jogo(p1, px, p2, resultado, cobrir_2)
+            probs.append(prob)
+            acertos_por_jogo.append(acertou)
+
+        acertos_reais = sum(acertos_por_jogo)
+        pmf = _poisson_binomial(probs)
+        p13mais = sum(pmf[13:])
+        p14 = pmf[14] if n_jogos >= 14 else (pmf[n_jogos] if n_jogos == 13 else 0.0)
+        soma_p13mais += p13mais
+        soma_p14 += p14
+        distribuicao[acertos_reais] += 1
+        if acertos_reais >= 13:
+            concursos_13mais_real += 1
+        if acertos_reais == n_jogos and n_jogos == 14:
+            concursos_14_real += 1
+        n_validos += 1
+
+    if n_validos == 0:
+        return {"erro": "nenhum_concurso_valido_encontrado"}
+
+    return {
+        "baseline_testado": baseline,
+        "concursos_avaliados": n_validos,
+        "aviso_ordem_interna": aviso_ordem_interna,
+        "modelo_media_prevista": {
+            "p_13_mais": round(soma_p13mais / n_validos, 4),
+            "p_14": round(soma_p14 / n_validos, 5),
+        },
+        "realidade_historica": {
+            "concursos_com_13_mais": concursos_13mais_real,
+            "concursos_com_14": concursos_14_real,
+            "freq_13_mais": round(concursos_13mais_real / n_validos, 4),
+            "freq_14": round(concursos_14_real / n_validos, 5),
+        },
+        "distribuicao_acertos_por_concurso": dict(sorted(distribuicao.items())),
+        "projecao_52_concursos": {
+            "concursos_13_mais_esperados": round(concursos_13mais_real / n_validos * 52, 1),
+            "concursos_14_esperados": round(concursos_14_real / n_validos * 52, 2),
+        },
+        "metodologia": (f"baseline={baseline} -- bucket empírico, Elo em lote por concurso, "
+                         f"Poisson-Binomial exato. 13s_1d cobre o jogo mais incerto do cartão "
+                         f"com duplo (2 resultados), igual à aposta mínima real da Loteca."),
     }
 
 MEDIA_GOLS = {
@@ -887,7 +1416,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v11.2",
+        "status": "ok", "versao": "Loteca Elite Pro v11.6",
         "modelo": "elo_iterativo(K30,HA75) > fallback_elo_fixo+poisson_liga",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
@@ -981,6 +1510,55 @@ def analisar():
     odds = {"1":o1,"X":ox,"2":o2} if all([o1,ox,o2]) else None
     analise = analisar_jogo(m, v, liga, odds=odds, banca=banca)
     return jsonify({"status":"sucesso","mandante":m,"visitante":v,"liga":liga,**analise})
+
+@app.route("/api/backtest-p1314")
+def backtest_p1314_route():
+    """P(13/14) real por cartão -- a métrica de verdade do projeto (não
+    acurácia média por jogo isolado). ?baseline=13s_1d (padrão, é a
+    aposta mínima REAL da Loteca) ou ?baseline=14s_puro (referência
+    teórica, ninguém aposta assim -- a Caixa não permite 14 secos puro).
+    ?comparar=1 roda os dois baselines e retorna o ganho relativo."""
+    try:
+        limite = request.args.get("limite_concursos")
+        limite = int(limite) if limite else None
+        if request.args.get("comparar"):
+            r_seco = backtest_p1314_seco(limite, baseline="14s_puro")
+            r_real = backtest_p1314_seco(limite, baseline="13s_1d")
+            if "erro" in r_seco or "erro" in r_real:
+                return jsonify({"status": "erro", "14s_puro": r_seco, "13s_1d": r_real}), 500
+            f13_seco = r_seco["realidade_historica"]["freq_13_mais"]
+            f13_real = r_real["realidade_historica"]["freq_13_mais"]
+            f14_seco = r_seco["realidade_historica"]["freq_14"]
+            f14_real = r_real["realidade_historica"]["freq_14"]
+            ganho_13 = round((f13_real / f13_seco - 1) * 100, 1) if f13_seco else None
+            ganho_14 = round((f14_real / f14_seco - 1) * 100, 1) if f14_seco else None
+            return jsonify({
+                "status": "sucesso",
+                "14s_puro": r_seco, "13s_1d": r_real,
+                "ganho_relativo_13s_1d_vs_14s_puro": {
+                    "p_13_mais_pct": ganho_13, "p_14_pct": ganho_14,
+                    "nota": ("13s_1d é o mínimo REAL da Loteca (mesmo custo do seco puro, "
+                              "que a Caixa nem permite apostar) -- esse ganho é 'de graça'."),
+                },
+            })
+        baseline = request.args.get("baseline", "13s_1d")
+        resultado = backtest_p1314_seco(limite, baseline=baseline)
+        return jsonify({"status": "sucesso", **resultado})
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+
+@app.route("/api/backtest-elo")
+def backtest_elo_route():
+    """Compara bucket empírico vs curva logística no histórico real,
+    walk-forward sem vazamento. Parâmetro opcional ?limite=N pra rodar
+    com uma amostra menor (mais rápido, útil pra teste rápido)."""
+    try:
+        limite = request.args.get("limite")
+        limite = int(limite) if limite else None
+        resultado = backtest_elo_walkforward(limite)
+        return jsonify({"status": "sucesso", **resultado})
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
 
 @app.route("/api/db-info")
 def db_info():
