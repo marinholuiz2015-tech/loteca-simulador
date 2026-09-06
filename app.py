@@ -1162,6 +1162,8 @@ def apif_get(endpoint, params=None):
             headers={"X-RapidAPI-Key":  RAPIDAPI_KEY,
                      "X-RapidAPI-Host": APIF_HOST},
             params=params or {}, timeout=8
+
+            
         )
         if r.status_code == 200:
             return r.json()
