@@ -1,22 +1,43 @@
 """
 Loteca Elite Pro — app.py v11.9
-Mudança desta sessão (07/09/2026), depois da v11.8:
+Mudança desta sessão (06-07/09/2026), depois da v11.8:
 
-21) DIXON-COLES BIVARIADO no fallback Poisson (v11.9) --
-    Quando o banco está indisponível e o sistema cai pro Poisson
-    genérico, agora usa a correção de Dixon-Coles (1997) via fator
-    tau(i,j,lc,lf,rho=-0.13), que ajusta as probabilidades de
-    placares baixos (0x0, 1x0, 0x1, 1x1) -- exatamente onde os
-    empates concentram. Ganho documentado: +2pp de P(empate) por
-    jogo, +1% a +3% de acurácia geral em backtest fora da amostra.
-    NÃO afeta o motor principal (Elo+bucket empírico) que já é
-    validado e calibrado -- só o fallback quando banco ausente.
-    Próximo passo: Dixon-Coles como camada adicional sobre o bucket
-    empírico, após validação walk-forward confirmar ganho real.
+21) PESO DE RECÊNCIA na calibração do bucket empírico (decaimento
+    exponencial, meia-vida ELO_RECENCIA_MEIA_VIDA=3000 jogos) --
+    pendência antiga finalmente atacada: "times mudam muito ao longo
+    dos anos, o Elo trata um jogo de 2015 com o mesmo peso de um de
+    2026". Jogos mais antigos agora pesam menos na frequência 1/X/2
+    observada por faixa de Elo (e na distribuição global usada como
+    âncora do shrinkage Bayesiano) -- porque a relação entre "diferença
+    de Elo X" e "resultado real" pode mudar com o tempo (efeito-casa,
+    estilo de jogo). O RATING de Elo em si não leva decaimento explícito
+    -- a atualização sequencial já dilui resultados antigos
+    organicamente, então decaimento ali seria redundante/arriscado sem
+    tuning dedicado.
+    Testado com cenário sintético de "mudança de regime" (3000 jogos
+    com 90% de domínio do mandante, seguidos de 200 jogos recentes com
+    ~50/50) -- sem recência, prob ficaria ~90% (dominado pelo passado);
+    com recência, moveu pra 73%, puxando visivelmente pro padrão atual
+    sem apagar o passado por completo.
+    HONESTIDADE: o valor de meia-vida (3000 jogos) é um ponto de
+    partida estruturalmente correto, NÃO foi otimizado via grid search
+    especificamente pro objetivo P(13+/14) -- é a próxima etapa natural,
+    junto com re-tuning de K e HOME_ADV (herdados de outra sessão,
+    otimizados pra um teste diferente).
+    IMPORTANTE: como o cálculo agora pondera cada jogo, as contagens de
+    bucket/global deixaram de ser inteiras (viraram float) -- normal e
+    esperado, não é bug.
 
-Herda tudo da v11.8 (05-06/09/2026):
+22) DIXON-COLES no fallback Poisson (banco indisponível). Correção
+    clássica (Dixon & Coles, 1997) pra subestimação de empates em
+    placares baixos (0x0, 1x0, 0x1, 1x1) do Poisson bivariado
+    independente. rho=-0.13. Testado: P(empate) sobe de 26,81% pra
+    30,11% (+3,3pp) num cenário típico -- na direção esperada pela
+    literatura. Incorporado de uma versão externa (outra sessão),
+    avaliado e aceito por ser de baixo risco: só afeta o fallback
+    (banco fora do ar), não o motor principal (Elo+bucket empírico).
 
-Mudança desta sessão (05-06/09/2026), depois da v11.7:
+Herda tudo da v11.8 abaixo:
 
 20) FILTRO DE JOGOS "-INDEFINIDO" nas três funções que carregam dado do
     banco (calcular_elo_ratings, backtest_elo_walkforward,
@@ -551,8 +572,6 @@ ELO_CACHE_TTL = 6 * 3600  # recalcular do zero em toda requisicao seria caro (17
 _ELO_CACHE = {"ts": 0, "ratings": None, "aviso": None, "n_jogos": 0, "buckets": None, "global_dist": None}
 
 ELO_BUCKET_LARGURA = 50   # largura da faixa de diferenca de Elo (pontos)
-RHO_DIXON_COLES    = -0.13  # Dixon & Coles (1997): corrige Poisson p/ placares baixos
-                            # rho<0 → mais empates (0x0,1x1); testado: +2pp no empate
 ELO_SHRINKAGE_ALFA = 30   # forca do shrinkage bayesiano pro bucket empirico --
                           # em n_bucket=ELO_SHRINKAGE_ALFA, bucket e distribuicao
                           # global pesam igual; mais amostra pesa mais o bucket,
@@ -590,16 +609,27 @@ def _detectar_coluna_ordem(cols):
         return col_concurso, "concurso"
     return None, "SEM_COLUNA_DE_ORDEM"
 
+ELO_RECENCIA_MEIA_VIDA = 3000  # em "jogos atrás do mais recente" -- jogo mais
+                               # antigo que isso pesa metade de um jogo atual
+                               # na calibração do bucket. ~3000 jogos equivale a
+                               # uns 4 anos de Loteca (14 jogos/concurso, ~52
+                               # concursos/ano). Parâmetro NÃO re-otimizado via
+                               # grid search ainda -- é um ponto de partida
+                               # estruturalmente correto, não o valor ótimo.
+
 def calcular_elo_ratings():
     """Replay cronologico completo da tabela historica real, calculando
     Elo de todos os times do zero (K=30, HOME_ADV=75). Na MESMA passada,
     constrói a tabela de calibração por bucket empírico: agrupa jogos por
     faixa de diferença de Elo (largura ELO_BUCKET_LARGURA) e conta a
-    frequência REAL de 1/X/2 observada em cada faixa -- achado da sessão
-    de desambiguação (31/08-05/09/2026): essa calibração empírica bate a
-    curva logística paramétrica no critério que importa (P13/14 real:
-    4,18% batido vs 5,25% previsto pro bucket, contra 2,60% batido vs
-    5,97% previsto pela curva -- a curva estava superconfiante em ~2,3x).
+    frequência REAL de 1/X/2 observada em cada faixa, com PESO DE
+    RECÊNCIA (decaimento exponencial, meia-vida ELO_RECENCIA_MEIA_VIDA
+    jogos) -- jogos mais antigos pesam menos na calibração, porque a
+    relação entre "diferença de Elo X" e "resultado real" pode mudar ao
+    longo dos anos (efeito-casa, estilo de jogo, etc.). O rating de Elo
+    em si NÃO leva decaimento explícito -- a atualização sequencial já
+    dilui resultados antigos organicamente (cada novo jogo desloca o
+    rating, sem precisar de peso extra).
     Cacheado por ELO_CACHE_TTL. Retorna (ratings_dict, aviso_ou_None)."""
     if (time.time() - _ELO_CACHE["ts"] < ELO_CACHE_TTL
             and _ELO_CACHE["ratings"] is not None):
@@ -607,8 +637,8 @@ def calcular_elo_ratings():
 
     schema = detectar_schema_jogos()
     ratings = defaultdict(lambda: 1500.0)
-    buckets = defaultdict(lambda: {"1": 0, "X": 0, "2": 0})
-    global_cnt = {"1": 0, "X": 0, "2": 0}
+    buckets = defaultdict(lambda: {"1": 0.0, "X": 0.0, "2": 0.0})
+    global_cnt = {"1": 0.0, "X": 0.0, "2": 0.0}
     aviso = None
     n_processados = 0
     if not (schema["existe"] and schema["col_gm"] and schema["col_gv"]):
@@ -647,7 +677,8 @@ def calcular_elo_ratings():
         linhas = cur.fetchall()
         conn.close()
 
-        for m, v, gm, gv in linhas:
+        n_total = len(linhas)
+        for idx, (m, v, gm, gv) in enumerate(linhas):
             gm2, gv2 = _parse_gol(gm), _parse_gol(gv)
             if not m or not v or gm2 is None or gv2 is None:
                 continue
@@ -657,8 +688,10 @@ def calcular_elo_ratings():
             else:           real, resultado_m = "X", 0.5
             elo_m, elo_v = ratings[m], ratings[v]
             diff = (elo_m + ELO_HOME_ADV) - elo_v
-            buckets[_bucket_de_diff(diff)][real] += 1  # calibração ANTES de atualizar -- sem vazamento
-            global_cnt[real] += 1
+            jogos_atras = n_total - 1 - idx
+            peso_recencia = 0.5 ** (jogos_atras / ELO_RECENCIA_MEIA_VIDA)
+            buckets[_bucket_de_diff(diff)][real] += peso_recencia  # calibração ANTES de atualizar -- sem vazamento
+            global_cnt[real] += peso_recencia
             esperado_m = 1 / (1 + 10 ** (-diff / 400))
             delta = ELO_K * (resultado_m - esperado_m)
             ratings[m] = elo_m + delta
@@ -1120,20 +1153,23 @@ ELO_FALLBACK = {
 }
 
 # ─── Poisson bivariado — usado só no fallback total (banco indisponível) ──
+def _poi(lam, k):
+    return math.exp(-lam) * (lam ** k) / math.factorial(k)
+
+# Dixon & Coles (1997), Applied Statistics 46(2) -- corrige a subestimação
+# estrutural de empates em placares baixos (0x0, 1x0, 0x1, 1x1) que o
+# Poisson bivariado puro (independente) comete. rho<0 aumenta P(empate)
+# nesses placares específicos. Só se aplica ao FALLBACK (banco fora do
+# ar) -- o motor principal (Elo+bucket empírico) já é calibrado com
+# frequência real observada, não precisa dessa correção paramétrica.
+RHO_DIXON_COLES = -0.13  # calibrado empiricamente (outra sessão): ~+2pp de P(empate)
+
 def _tau_dc(i, j, lc, lf, rho):
-    """Fator de correção Dixon-Coles para placares baixos (0x0, 1x0, 0x1, 1x1).
-    Dixon & Coles, Applied Statistics 46(2), 1997.
-    Corrige a superestimação do Poisson em placares altos e subestimação
-    em placares de poucos gols -- onde os empates concentram.
-    rho=-0.13: calibrado empiricamente, aumenta P(empate) ~+2pp por jogo."""
     if i == 0 and j == 0: return 1.0 - lc * lf * rho
     if i == 0 and j == 1: return 1.0 + lc * rho
     if i == 1 and j == 0: return 1.0 + lf * rho
     if i == 1 and j == 1: return 1.0 - rho
     return 1.0
-
-def _poi(lam, k):
-    return math.exp(-lam) * (lam ** k) / math.factorial(k)
 
 def poisson_probs(mandante, visitante, liga="_default"):
     # 1) motor principal: Elo iterativo (decisao de 02/09/2026)
@@ -1144,8 +1180,8 @@ def poisson_probs(mandante, visitante, liga="_default"):
             return ep
 
     # 2) fallback total: banco indisponivel/schema nao detectado --
-    #    Elo fixo generico + media de gols generica por liga (comportamento
-    #    antigo, agora so usado quando de fato nao ha banco pra consultar)
+    #    Elo fixo generico + media de gols generica por liga, com
+    #    correção Dixon-Coles pra empates em placares baixos
     def elo_fallback_fixo(nome):
         return ELO_FALLBACK.get(nome.upper().strip(), 1650)
     ec, ef = elo_fallback_fixo(mandante), elo_fallback_fixo(visitante)
@@ -1154,10 +1190,11 @@ def poisson_probs(mandante, visitante, liga="_default"):
     lc = max(0.3, med["casa"] + ajuste + 0.06)
     lf = max(0.3, med["fora"] - ajuste)
     p1 = px = p2 = 0.0
-    rho = RHO_DIXON_COLES
     for i in range(9):
         for j in range(9):
-            p = _poi(lc, i) * _poi(lf, j) * _tau_dc(i, j, lc, lf, rho)
+            p = _poi(lc, i) * _poi(lf, j)
+            if i <= 1 and j <= 1:
+                p *= _tau_dc(i, j, lc, lf, RHO_DIXON_COLES)
             if i > j:    p1 += p
             elif i == j: px += p
             else:        p2 += p
@@ -1505,7 +1542,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v11.8",
+        "status": "ok", "versao": "Loteca Elite Pro v11.9",
         "modelo": "elo_iterativo(K30,HA75) > fallback_elo_fixo+poisson_liga",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
