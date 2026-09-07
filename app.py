@@ -1,6 +1,35 @@
 """
-Loteca Elite Pro — app.py v11.7
-Mudança desta sessão (05/09/2026), depois da v11.6:
+Loteca Elite Pro — app.py v11.8
+Mudança desta sessão (05-06/09/2026), depois da v11.7:
+
+20) FILTRO DE JOGOS "-INDEFINIDO" nas três funções que carregam dado do
+    banco (calcular_elo_ratings, backtest_elo_walkforward,
+    backtest_p1314_seco) -- bug real encontrado via /api/verificar-
+    desambiguacao em produção: 866 jogos no banco real têm o rótulo
+    "-INDEFINIDO" (times que a desambiguação não conseguiu resolver),
+    mas NENHUMA das três funções filtrava isso -- estavam tratando
+    "-INDEFINIDO" como se fosse UM time de verdade, quando na real são
+    dezenas de times diferentes misturados sob um nome só. Isso corrompe
+    o Elo (resultados de times completamente diferentes atribuídos a uma
+    entidade fictícia) e polui a tabela de bucket/distribuição global com
+    ruído. Por design (sessão de desambiguação), esses jogos deveriam
+    ficar fora do treino -- agora ficam, nas três funções.
+    Testado localmente: banco sintético com 100 jogos limpos (FORTE
+    sempre vence FRACO) + 50 jogos "contaminados" (times aleatórios
+    contra "AMERICA-INDEFINIDO", resultado aleatório) -- confirmado que
+    só os 100 jogos limpos entram no cálculo, nenhum time contaminado
+    aparece nos ratings finais.
+    Motivado por: /api/backtest-p1314 rodou em produção e deu P(13+)
+    real de 0,08%, muito abaixo do 2,60%/4,18% de referência -- esse
+    filtro é uma correção real que pode explicar boa parte da
+    discrepância (866 jogos é ~5% do banco, mas concentrados nos times
+    com nome ambíguo, o que pode distorcer desproporcionalmente as
+    previsões justamente pra esses confrontos).
+    PRÓXIMO PASSO OBRIGATÓRIO: rodar /api/backtest-p1314?comparar=1 de
+    novo em produção depois de subir essa versão, pra ver se o número
+    mudou de forma significativa.
+
+Herda tudo da v11.7 abaixo:
 
 19) Endpoint /api/verificar-desambiguacao -- confirma com dado real do
     banco se a desambiguação de nomes de time (ATLETICO-MG/ATLETICO-GO,
@@ -583,10 +612,19 @@ def calcular_elo_ratings():
             log.warning("calcular_elo_ratings: %s", aviso)
 
         order_clause = f"ORDER BY {col_ordem} ASC" if col_ordem else ""
+        # Filtra jogos "-INDEFINIDO" (desambiguação de nomes não resolveu
+        # qual time era) -- achado em produção 05-06/09/2026: 866 jogos
+        # com esse rótulo estavam sendo tratados como se fosse UM time de
+        # verdade, misturando dezenas de times distintos sob um nome só e
+        # corrompendo o Elo/bucket. Por design (resumo da desambiguação),
+        # esses jogos deveriam ficar fora do treino -- agora ficam.
         cur.execute(f"""
             SELECT {schema['col_m']}, {schema['col_v']},
                    {schema['col_gm']}, {schema['col_gv']}
-            FROM {schema['tabela']} {order_clause}
+            FROM {schema['tabela']}
+            WHERE UPPER({schema['col_m']}) NOT LIKE '%INDEFINIDO%'
+              AND UPPER({schema['col_v']}) NOT LIKE '%INDEFINIDO%'
+            {order_clause}
         """)
         linhas = cur.fetchall()
         conn.close()
@@ -719,7 +757,10 @@ def backtest_elo_walkforward(limite_jogos=None):
     limit_clause = f"LIMIT {int(limite_jogos)}" if limite_jogos else ""
     cur.execute(f"""
         SELECT {schema['col_m']}, {schema['col_v']}, {schema['col_gm']}, {schema['col_gv']}
-        FROM {schema['tabela']} {order_clause} {limit_clause}
+        FROM {schema['tabela']}
+        WHERE UPPER({schema['col_m']}) NOT LIKE '%INDEFINIDO%'
+          AND UPPER({schema['col_v']}) NOT LIKE '%INDEFINIDO%'
+        {order_clause} {limit_clause}
     """)
     linhas = cur.fetchall()
     conn.close()
@@ -869,6 +910,8 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
                 SELECT {col_concurso}, {schema['col_m']}, {schema['col_v']}, {col_resultado}
                 FROM {schema['tabela']}
                 WHERE {col_resultado} IN ('1','X','2')
+                  AND UPPER({schema['col_m']}) NOT LIKE '%INDEFINIDO%'
+                  AND UPPER({schema['col_v']}) NOT LIKE '%INDEFINIDO%'
                 ORDER BY {col_concurso} {order_extra}
             """)
             linhas = [(conc, m, v, res) for conc, m, v, res in cur.fetchall()]
@@ -877,6 +920,8 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
                 SELECT {col_concurso}, {schema['col_m']}, {schema['col_v']},
                        {schema['col_gm']}, {schema['col_gv']}
                 FROM {schema['tabela']}
+                WHERE UPPER({schema['col_m']}) NOT LIKE '%INDEFINIDO%'
+                  AND UPPER({schema['col_v']}) NOT LIKE '%INDEFINIDO%'
                 ORDER BY {col_concurso} {order_extra}
             """)
             linhas = []
@@ -1429,7 +1474,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v11.7",
+        "status": "ok", "versao": "Loteca Elite Pro v11.8",
         "modelo": "elo_iterativo(K30,HA75) > fallback_elo_fixo+poisson_liga",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
