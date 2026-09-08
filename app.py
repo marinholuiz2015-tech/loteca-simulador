@@ -1,6 +1,20 @@
 """
-Loteca Elite Pro — app.py v11.10
-Mudança desta sessão (08/09/2026), depois da v11.9:
+Loteca Elite Pro — app.py v11.11
+Mudança desta sessão (08/09/2026), depois da v11.10:
+
+24) CORREÇÃO EM backtest_p1314_seco() -- achado da revisão linha a linha
+    da v11.10: quando o filtro -INDEFINIDO removia exatamente 1 jogo de
+    um concurso normalmente de 14, o concurso passava a ser avaliado
+    como se fosse genuinamente-13 (cenário real que existe, ex. jogo
+    cancelado), usando pmf[13] como proxy indevido de P(14) e inflando a
+    média prevista sem inflar a contagem real (que corretamente exige
+    n_jogos==14). Corrigido: concursos "14 disfarçados de 13" agora são
+    excluídos inteiros da métrica, não avaliados com regra errada.
+    Docstring de elo_probs() também corrigido -- citava os números de
+    validação de ANTES da correção do bug -INDEFINIDO (4,18%/5,25%) em
+    vez dos números limpos pós-correção (4,81%/6,24%).
+
+Mudança da sessão anterior (08/09/2026), v11.9->v11.10:
 
 23) ODDS DE MERCADO CONECTADAS NA PREVISÃO REAL -- achado da sessão de
     validação (07-08/09/2026): ODDS_API_KEY estava configurada e
@@ -806,11 +820,13 @@ def elo_probs(mandante, visitante):
     fallback logístico separado, porque o shrinkage já cobre faixas com
     pouca amostra de forma contínua e proporcional, sem descontinuidade.
     Validado contra P(13/14) real em 1.268 concursos (metodologia com
-    corte binário, versão anterior desta função): bucket empírico bate
-    4,18% das vezes contra 5,25% previsto (bem calibrado), enquanto a
-    curva logística batia só 2,60% contra 5,97% previsto (superconfiante
-    em ~2,3x). A suavização contínua deve preservar ou melhorar isso,
-    já que usa mais informação (nenhuma faixa é 100% descartada)."""
+    corte binário, versão anterior desta função, JÁ com o filtro
+    -INDEFINIDO aplicado -- teste_final_3formulas.py, 07/09/2026): bucket
+    empírico bate 4,81% das vezes contra 6,24% previsto (bem calibrado),
+    enquanto a curva logística batia só 3,86% contra 7,44% previsto
+    (superconfiante em ~1,93x). A suavização contínua deve preservar ou
+    melhorar isso, já que usa mais informação (nenhuma faixa é 100%
+    descartada)."""
     ratings, aviso = calcular_elo_ratings()
     ec = ratings.get(mandante.upper().strip(), 1500.0)
     ef = ratings.get(visitante.upper().strip(), 1500.0)
@@ -993,6 +1009,14 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
                               f"jogos de cada cartão -- não encontrada em {schema['tabela']}. "
                               f"Sem isso não dá pra calcular P(13/14) por cartão real.")}
 
+    # NOVO (v11.11): contagem ORIGINAL de jogos por concurso, SEM o filtro
+    # -INDEFINIDO -- necessário pra distinguir um concurso genuinamente-13
+    # (jogo cancelado, cenário real já documentado) de um concurso que ERA
+    # 14 mas perdeu 1+ jogo pro filtro de desambiguação (não deveria ser
+    # avaliado como se fosse 13 de verdade).
+    cur.execute(f"SELECT {col_concurso}, COUNT(*) FROM {schema['tabela']} GROUP BY {col_concurso}")
+    contagem_original_por_concurso = dict(cur.fetchall())
+
     aviso_ordem_interna = None if col_seq else (
         "Sem coluna de sequencial/ordem dentro do concurso -- a ordem dos "
         "jogos num mesmo cartão pode não refletir a numeração real (1 a 14), "
@@ -1119,6 +1143,16 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
     for conc, lista in resultado_por_concurso.items():
         n_jogos = len(lista)
         if n_jogos < 13:
+            continue
+
+        # NOVO (v11.11): exclui concurso que ERA 14 mas caiu pra 13 (ou
+        # menos) só por causa do filtro -INDEFINIDO -- tratar isso como um
+        # concurso genuinamente-13 infla artificialmente a média prevista
+        # de P(14), porque pmf[13] (chance de acertar os 13 restantes) não
+        # é a mesma coisa que P(14) real de um cartão de 14 jogos.
+        total_original = contagem_original_por_concurso.get(conc, n_jogos)
+        jogos_removidos_indefinido = total_original - n_jogos
+        if n_jogos == 13 and jogos_removidos_indefinido > 0:
             continue
 
         if baseline == "13s_1d" and n_jogos >= 1:
@@ -1667,7 +1701,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v11.10",
+        "status": "ok", "versao": "Loteca Elite Pro v11.11",
         "modelo": "elo_iterativo(K30,HA75) > fallback_elo_fixo+poisson_liga",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
@@ -1945,4 +1979,3 @@ init_db()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
-
