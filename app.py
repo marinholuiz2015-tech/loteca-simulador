@@ -1,6 +1,50 @@
 """
-Loteca Elite Pro — app.py v11.9
-Mudança desta sessão (06-07/09/2026), depois da v11.8:
+Loteca Elite Pro — app.py v11.10
+Mudança desta sessão (08/09/2026), depois da v11.9:
+
+23) ODDS DE MERCADO CONECTADAS NA PREVISÃO REAL -- achado da sessão de
+    validação (07-08/09/2026): ODDS_API_KEY estava configurada e
+    "conectada" (o health check de /v4/sports passava), mas
+    buscar_odds() nunca era chamada em NENHUMA rota de produção. A API
+    paga não influenciava nenhuma previsão real -- só entrava se alguém
+    passasse odd_1/odd_x/odd_2 manualmente via query string em
+    /api/analisar. Corrigido:
+    - buscar_odds_todas_ligas() busca em várias ligas (lista curada em
+      ODDS_SPORT_KEYS -- Brasileirão A/B, Libertadores, Sul-Americana,
+      Premier League, La Liga, Champions), mescla num dict só, cacheada
+      por ODDS_CACHE_TTL=6h (concurso fecha 1x/semana, buscar a cada
+      request estouraria cota da API à toa).
+    - casar_odds() casa mandante x visitante da Loteca com uma entrada
+      do dict de odds por nome normalizado -- mesma abordagem já usada
+      em casar_placar_ao_vivo(). Best-effort: nomes muito diferentes
+      entre as duas fontes podem não casar, retorna None (nunca inventa
+      odds; blending() já trata odds=None sem quebrar, cai pro modelo
+      puro).
+    - grade_automatica() agora busca odds 1x por concurso (cacheada,
+      reusada pros 14 jogos, mesmo padrão do placar ao vivo) e passa pra
+      analisar_jogo(). Resposta ganha "cobertura_odds" explícito
+      (quantos dos 14 jogos de fato receberam odds reais) e cada jogo
+      ganha "odds_aplicadas": true/false -- nunca esconde cobertura
+      parcial, mesmo espírito de transparência do resto do projeto.
+    - /api/status agora distingue "conectada" (API responde) de
+      "usada_em_producao" (odds de fato entrando nas previsões) --
+      o bug anterior (conectada mas órfã) não teria aparecido nesse
+      campo antes, porque "conectada" sempre foi verdade.
+    HONESTIDADE: (1) ODDS_SPORT_KEYS é uma lista curada, NÃO validada
+    contra /v4/sports da conta real -- confirme cobertura antes de
+    confiar cegamente; boa parte dos jogos da Loteca (ligas regionais,
+    Série C/D) provavelmente não tem mercado líquido o suficiente pra
+    aparecer no The Odds API, então cobertura parcial é esperada, não
+    bug. (2) O peso do blend (w=0.65 em blending()) CONTINUA não
+    calibrado -- essa mudança conecta o dado, mas não resolve a
+    calibração do peso; agora que odds influenciam previsão real de
+    verdade, calibrar esse peso via walk-forward vira prioridade maior
+    do que era antes (achado #5, ainda aberto). PRÓXIMO PASSO
+    OBRIGATÓRIO: rodar /api/backtest-elo antes e depois de habilitar o
+    blend em produção pra confirmar que o peso atual não está
+    piorando a calibração por estar errado na direção ou magnitude.
+
+Herda tudo da v11.9 abaixo:
 
 21) PESO DE RECÊNCIA na calibração do bucket empírico (decaimento
     exponencial, meia-vida ELO_RECENCIA_MEIA_VIDA=3000 jogos) --
@@ -1395,6 +1439,76 @@ def buscar_odds(sport="soccer_brazil_campeonato"):
         log.warning("Odds API erro: %s", e)
         return {}
 
+# ─── Conectar odds na previsão real (v11.10) ───────────────────
+# Achado da sessão de validação (07-08/09/2026): ODDS_API_KEY estava
+# configurada e "conectada" (health check de /v4/sports passava), mas
+# buscar_odds() nunca era chamada em nenhuma rota de produção -- a API
+# paga não influenciava NENHUMA previsão real, só entrava se alguém
+# passasse odd_1/odd_x/odd_2 manualmente via query string em
+# /api/analisar. Isso corrige isso.
+#
+# Lista curada de sport keys do The Odds API -- NÃO é exaustiva (não
+# cobre Série C/D nem a maioria das ligas regionais brasileiras, que
+# raramente têm mercado de apostas líquido o suficiente pra aparecer
+# aqui). Best-effort por design: blending() já trata odds=None sem
+# quebrar (cai pro modelo puro), então um jogo sem odds encontradas
+# simplesmente não é blendado -- nunca inventa dado.
+# HONESTIDADE: essa lista não foi validada contra /v4/sports da sua
+# conta -- confirme quais desses keys sua assinatura realmente cobre
+# antes de confiar cegamente na cobertura.
+ODDS_SPORT_KEYS = [
+    "soccer_brazil_campeonato",           # Brasileirão Série A
+    "soccer_brazil_serie_b",              # Brasileirão Série B
+    "soccer_conmebol_copa_libertadores",
+    "soccer_conmebol_sudamericana",
+    "soccer_epl",
+    "soccer_spain_la_liga",
+    "soccer_uefa_champs_league",
+]
+
+ODDS_CACHE_TTL = 6 * 3600  # 6h -- concurso fecha 1x/semana, buscar a
+                           # cada request estouraria cota da API à toa
+_ODDS_CACHE = {"ts": 0, "dados": {}}
+
+def buscar_odds_todas_ligas():
+    """Busca odds em todas as ligas da lista curada e mescla num dict só,
+    cacheado por ODDS_CACHE_TTL. UMA chamada por liga configurada (não
+    por jogo) -- reusada pros 14 jogos do concurso, mesmo padrão já usado
+    em buscar_placar_ao_vivo()."""
+    if time.time() - _ODDS_CACHE["ts"] < ODDS_CACHE_TTL and _ODDS_CACHE["dados"]:
+        return _ODDS_CACHE["dados"]
+    if not ODDS_KEY:
+        return {}
+    mesclado = {}
+    ligas_ok, ligas_erro = 0, 0
+    for sport in ODDS_SPORT_KEYS:
+        odds_liga = buscar_odds(sport)
+        if odds_liga:
+            ligas_ok += 1
+            mesclado.update(odds_liga)
+        else:
+            ligas_erro += 1
+    log.info("buscar_odds_todas_ligas: %d ligas com dado, %d sem dado/erro, %d jogos no total",
+              ligas_ok, ligas_erro, len(mesclado))
+    _ODDS_CACHE.update(ts=time.time(), dados=mesclado)
+    return mesclado
+
+def casar_odds(mandante, visitante, odds_todas):
+    """Casa mandante x visitante da Loteca com uma entrada do dict de
+    odds (chave 'home_team|away_team' do The Odds API), por nome
+    normalizado -- mesma abordagem já usada em casar_placar_ao_vivo().
+    Best-effort: nomes muito diferentes entre as duas fontes podem não
+    casar, retorna None nesse caso (nunca inventa odds)."""
+    m_norm = _normalizar_nome_time(mandante)
+    v_norm = _normalizar_nome_time(visitante)
+    for chave, odds in odds_todas.items():
+        partes = chave.split("|")
+        if len(partes) != 2:
+            continue
+        if _normalizar_nome_time(partes[0]) == m_norm and _normalizar_nome_time(partes[1]) == v_norm:
+            return odds
+    return None
+
 # ─── Caixa (CEF) — grade e resultado REAIS (corrige achado #3) ───
 def _parse_float(v):
     if isinstance(v,(int,float)): return float(v)
@@ -1519,7 +1633,18 @@ def analisar_jogo(mandante, visitante, liga="_default", odds=None, banca=100.0):
 def health():
     schema = detectar_schema_jogos()
     apis = {
-        "odds_api":     {"configurada": bool(ODDS_KEY),     "status": "não configurada"},
+        # "status" só confirma que a API responde -- NÃO significa que
+        # odds estão de fato entrando nas previsões. Isso é o que
+        # "usada_em_producao" e "cache_atual" mostram (achado da sessão
+        # de validação 07-08/09/2026: antes da v11.10, a chave estava
+        # conectada mas buscar_odds() nunca era chamada em produção).
+        "odds_api":     {"configurada": bool(ODDS_KEY), "status": "não configurada",
+                          "usada_em_producao": True,
+                          "ligas_configuradas": ODDS_SPORT_KEYS,
+                          "cache_atual": {
+                              "jogos_em_cache": len(_ODDS_CACHE["dados"]),
+                              "idade_segundos": round(time.time() - _ODDS_CACHE["ts"], 1) if _ODDS_CACHE["ts"] else None,
+                          }},
         "api_football": {"configurada": bool(RAPIDAPI_KEY), "status": "não configurada",
                           "env_var_usada": ("RAPIDAPI_KEY" if os.getenv("RAPIDAPI_KEY")
                                              else "APIFOOTBALL_KEY" if os.getenv("APIFOOTBALL_KEY")
@@ -1542,7 +1667,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v11.9",
+        "status": "ok", "versao": "Loteca Elite Pro v11.10",
         "modelo": "elo_iterativo(K30,HA75) > fallback_elo_fixo+poisson_liga",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
@@ -1597,15 +1722,29 @@ def grade_automatica():
         if jogos_cef:
             banca = float(request.args.get("banca", 100))
             jogos_ao_vivo = buscar_placar_ao_vivo()  # 1 chamada só, reusada pros 14 jogos
+            odds_todas = buscar_odds_todas_ligas()    # idem -- cacheada, reusada pros 14 jogos
             jogos = []
+            n_com_odds = 0
             for j in jogos_cef:
-                analise = analisar_jogo(j["mandante"], j["visitante"], "_default", banca=banca)
+                odds_jogo = casar_odds(j["mandante"], j["visitante"], odds_todas)
+                if odds_jogo:
+                    n_com_odds += 1
+                analise = analisar_jogo(j["mandante"], j["visitante"], "_default",
+                                         odds=odds_jogo, banca=banca)
                 placar = casar_placar_ao_vivo(j["mandante"], j["visitante"], jogos_ao_vivo)
-                jogos.append({**j, **analise, "placar_ao_vivo": placar})
+                jogos.append({**j, **analise, "placar_ao_vivo": placar,
+                              "odds_aplicadas": odds_jogo is not None})
             return jsonify({
                 "status":"sucesso","concurso":numero,"fonte":fonte_dado,
                 "concurso_ainda_aberto": dados is dados_aberto,
                 "cache_idade_minutos": cache_idade_min,
+                # transparência: quantos dos 14 jogos de fato receberam odds
+                # reais (blendados) vs quantos ficaram só no modelo puro --
+                # nunca esconder cobertura parcial, mesmo espírito do resto
+                # do projeto (fonte explícita, cache_idade_minutos, etc.)
+                "cobertura_odds": {"jogos_com_odds": n_com_odds, "total_jogos": len(jogos),
+                                    "peso_modelo_no_blend": 0.65,
+                                    "aviso": "peso_ainda_NAO_calibrado_via_walkforward"},
                 "total_jogos":len(jogos),"jogos":jogos,"painel":painel(jogos),
             })
     # fallback explicito -- só chega aqui se nem o direto nem o cache do
@@ -1806,3 +1945,4 @@ init_db()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
+
