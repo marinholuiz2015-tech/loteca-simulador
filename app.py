@@ -1,4 +1,25 @@
 """
+Loteca Elite Pro — app.py v11.13
+Mudança desta sessão, depois da v11.12:
+
+- Dois novos endpoints de diagnóstico, só-leitura, pra investigar a
+  discrepância encontrada em produção (16.778 jogos / 632 concursos =
+  26,5 jogos/concurso, muito acima dos 14 esperados):
+  /api/diagnostico-concursos: conta jogos por concurso, mostra quantos
+  têm exatamente 14 (válidos), menos de 13 (incompletos, descartados
+  pelo backtest) e mais de 14 (possível duplicação, mesmo padrão do
+  bug documentado no concurso 1266). Testado com dado sintético
+  reproduzindo os três cenários misturados.
+  /api/verificar-ambiguidade-residual: checa ATHLETICO/GUARANI (citados
+  como pendência de baixo risco na sessão de desambiguação) e qualquer
+  nome sem sufixo de UF com muita frequência -- candidato a ambiguidade
+  não resolvida. Testado, detecta corretamente nomes genéricos sem
+  sufixo e ignora os já desambiguados.
+  Motivação: evitar rodar scripts locais que exigem colar a senha do
+  banco no terminal/chat -- os dois fazem a mesma investigação direto
+  em produção, só acessando uma URL no navegador, com a conexão já
+  configurada com segurança via variável de ambiente do Render.
+
 Loteca Elite Pro — app.py v11.12
 Mudança desta sessão (12/09/2026), depois da v11.11:
 
@@ -1178,7 +1199,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v11.12",
+        "status": "ok", "versao": "Loteca Elite Pro v11.13",
         "modelo": "elo_iterativo(K30,HA75) > fallback_elo_fixo+poisson_liga",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
@@ -1308,6 +1329,69 @@ def backtest_elo_route():
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": str(e)}), 500
 
+@app.route("/api/verificar-ambiguidade-residual")
+def verificar_ambiguidade_residual():
+    """Procura por nomes de time que ainda podem estar ambíguos além dos
+    já tratados (ATLETICO/AMERICA) -- especificamente ATHLETICO (tem
+    Athletico Paranaense, mas também pode aparecer como forma alternativa
+    de escrita de Atlético) e GUARANI (tem Guarani-SP e Guarani-CE),
+    citados como pendência na sessão de desambiguação (baixo risco, mas
+    não zero). Também lista, de forma genérica, qualquer nome que
+    apareça em MUITOS jogos mas sem sufixo de UF -- candidato a ser um
+    nome genérico não resolvido, sem assumir que sabemos quais são."""
+    try:
+        schema = detectar_schema_jogos()
+        if not schema["existe"]:
+            return jsonify({"status": "erro", "mensagem": "schema_invalido"}), 500
+        conn = get_conn(); cur = conn.cursor()
+        ph = _ph()
+
+        candidatos = ["ATHLETICO", "GUARANI", "ATLETICO", "AMERICA",
+                      "SANTA CRUZ", "SAO RAIMUNDO", "BRASIL DE PELOTAS",
+                      "OPERARIO", "FLUMINENSE", "RIO BRANCO"]
+        resultado = {}
+        for nome in candidatos:
+            cur.execute(f"""
+                SELECT COUNT(*) FROM {schema['tabela']}
+                WHERE UPPER(TRIM({schema['col_m']}))={ph}
+                   OR UPPER(TRIM({schema['col_v']}))={ph}
+            """, (nome, nome))
+            n = cur.fetchone()[0]
+            if n > 0:
+                resultado[nome] = n
+
+        # nomes SEM sufixo de UF/desambiguação (sem hífen) que aparecem
+        # em muitos jogos -- candidatos a precisar de atenção, sem viés
+        # de lista fixa
+        cur.execute(f"""
+            SELECT UPPER(TRIM({schema['col_m']})) AS t, COUNT(*) AS n
+            FROM {schema['tabela']}
+            WHERE {schema['col_m']} NOT LIKE '%-%'
+              AND UPPER({schema['col_m']}) NOT LIKE '%INDEFINIDO%'
+            GROUP BY t
+            HAVING COUNT(*) > 100
+            ORDER BY n DESC
+            LIMIT 20
+        """)
+        nomes_sem_sufixo = [{"nome": r[0], "n_jogos": r[1]} for r in cur.fetchall()]
+        conn.close()
+
+        return jsonify({
+            "status": "sucesso",
+            "contagem_nomes_candidatos_conhecidos": resultado,
+            "nomes_sem_sufixo_uf_mais_frequentes": nomes_sem_sufixo,
+            "interpretacao": (
+                "Nomes na primeira lista com contagem > 0 SEM o correspondente "
+                "com sufixo (ex: ATHLETICO sem ATHLETICO-PR/ATHLETICO-*) podem "
+                "estar misturando times diferentes sob um nome genérico. A "
+                "segunda lista mostra os nomes mais frequentes sem hífen -- "
+                "vale checar manualmente se algum desses é time único de "
+                "verdade (não precisa desambiguar) ou nome genérico escondido."
+            ),
+        })
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+
 @app.route("/api/verificar-desambiguacao")
 def verificar_desambiguacao():
     try:
@@ -1358,6 +1442,76 @@ def verificar_desambiguacao():
                 "Se ATLETICO/AMERICA genérico ainda tiver contagem alta e as versões "
                 "desambiguadas forem 0, a desambiguação NÃO chegou nessa coluna/banco."
             ),
+        })
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+
+@app.route("/api/diagnostico-concursos")
+def diagnostico_concursos():
+    """Investiga a distribuição real de jogos por concurso -- motivado
+    pela discrepância encontrada em produção: 16.778 jogos / 632
+    concursos = 26,5 jogos/concurso em média, muito acima dos 14
+    esperados. Mostra quantos concursos têm exatamente 14 (válidos),
+    quantos têm menos de 13 (incompletos, descartados pelo backtest),
+    e quantos têm mais de 14 (possível duplicação de jogos -- já houve
+    um caso documentado de 28 jogos duplicados no concurso 1266)."""
+    try:
+        schema = detectar_schema_jogos()
+        if not schema["existe"]:
+            return jsonify({"status": "erro", "mensagem": "schema_invalido"}), 500
+        conn = get_conn(); cur = conn.cursor()
+        cols = _listar_colunas(cur, schema["tabela"])
+        col_concurso, col_seq = _detectar_colunas_concurso(cols)
+        if not col_concurso:
+            conn.close()
+            return jsonify({"status": "erro", "mensagem": "sem_coluna_de_concurso"}), 500
+
+        cur.execute(f"""
+            SELECT {col_concurso}, COUNT(*)
+            FROM {schema['tabela']}
+            GROUP BY {col_concurso}
+        """)
+        contagens = cur.fetchall()
+        conn.close()
+
+        total_concursos = len(contagens)
+        total_jogos = sum(n for _, n in contagens)
+        distribuicao = defaultdict(int)
+        concursos_14 = concursos_menos_13 = concursos_mais_14 = concursos_13 = 0
+        exemplos_duplicados, exemplos_incompletos = [], []
+
+        for conc, n in contagens:
+            distribuicao[n] += 1
+            if n == 14:
+                concursos_14 += 1
+            elif n == 13:
+                concursos_13 += 1
+            elif n < 13:
+                concursos_menos_13 += 1
+                if len(exemplos_incompletos) < 15:
+                    exemplos_incompletos.append({"concurso": conc, "n_jogos": n})
+            else:  # n > 14
+                concursos_mais_14 += 1
+                if len(exemplos_duplicados) < 15:
+                    exemplos_duplicados.append({"concurso": conc, "n_jogos": n})
+
+        return jsonify({
+            "status": "sucesso",
+            "total_concursos_distintos": total_concursos,
+            "total_jogos": total_jogos,
+            "media_jogos_por_concurso": round(total_jogos / total_concursos, 2) if total_concursos else None,
+            "concursos_com_exatamente_14": concursos_14,
+            "concursos_com_13_exatos": concursos_13,
+            "concursos_com_menos_de_13_incompletos": concursos_menos_13,
+            "concursos_com_mais_de_14_possivel_duplicacao": concursos_mais_14,
+            "distribuicao_n_jogos_por_concurso": dict(sorted(distribuicao.items())),
+            "exemplos_concursos_com_duplicacao": sorted(
+                exemplos_duplicados, key=lambda x: -x["n_jogos"]),
+            "exemplos_concursos_incompletos": exemplos_incompletos,
+            "nota": ("backtest_p1314_seco só considera concursos com >=13 jogos "
+                      "válidos -- concursos_com_menos_de_13 explica boa parte da "
+                      "diferença entre total_concursos_distintos e "
+                      "concursos_avaliados no backtest."),
         })
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": str(e)}), 500
