@@ -1,351 +1,45 @@
 """
-Loteca Elite Pro — app.py v11.11
-Mudança desta sessão (08/09/2026), depois da v11.10:
+Loteca Elite Pro — app.py v11.12
+Mudança desta sessão (12/09/2026), depois da v11.11:
 
-24) CORREÇÃO EM backtest_p1314_seco() -- achado da revisão linha a linha
-    da v11.10: quando o filtro -INDEFINIDO removia exatamente 1 jogo de
-    um concurso normalmente de 14, o concurso passava a ser avaliado
-    como se fosse genuinamente-13 (cenário real que existe, ex. jogo
-    cancelado), usando pmf[13] como proxy indevido de P(14) e inflando a
-    média prevista sem inflar a contagem real (que corretamente exige
-    n_jogos==14). Corrigido: concursos "14 disfarçados de 13" agora são
-    excluídos inteiros da métrica, não avaliados com regra errada.
-    Docstring de elo_probs() também corrigido -- citava os números de
-    validação de ANTES da correção do bug -INDEFINIDO (4,18%/5,25%) em
-    vez dos números limpos pós-correção (4,81%/6,24%).
-
-Mudança da sessão anterior (08/09/2026), v11.9->v11.10:
-
-23) ODDS DE MERCADO CONECTADAS NA PREVISÃO REAL -- achado da sessão de
-    validação (07-08/09/2026): ODDS_API_KEY estava configurada e
-    "conectada" (o health check de /v4/sports passava), mas
-    buscar_odds() nunca era chamada em NENHUMA rota de produção. A API
-    paga não influenciava nenhuma previsão real -- só entrava se alguém
-    passasse odd_1/odd_x/odd_2 manualmente via query string em
-    /api/analisar. Corrigido:
-    - buscar_odds_todas_ligas() busca em várias ligas (lista curada em
-      ODDS_SPORT_KEYS -- Brasileirão A/B, Libertadores, Sul-Americana,
-      Premier League, La Liga, Champions), mescla num dict só, cacheada
-      por ODDS_CACHE_TTL=6h (concurso fecha 1x/semana, buscar a cada
-      request estouraria cota da API à toa).
-    - casar_odds() casa mandante x visitante da Loteca com uma entrada
-      do dict de odds por nome normalizado -- mesma abordagem já usada
-      em casar_placar_ao_vivo(). Best-effort: nomes muito diferentes
-      entre as duas fontes podem não casar, retorna None (nunca inventa
-      odds; blending() já trata odds=None sem quebrar, cai pro modelo
-      puro).
-    - grade_automatica() agora busca odds 1x por concurso (cacheada,
-      reusada pros 14 jogos, mesmo padrão do placar ao vivo) e passa pra
-      analisar_jogo(). Resposta ganha "cobertura_odds" explícito
-      (quantos dos 14 jogos de fato receberam odds reais) e cada jogo
-      ganha "odds_aplicadas": true/false -- nunca esconde cobertura
-      parcial, mesmo espírito de transparência do resto do projeto.
-    - /api/status agora distingue "conectada" (API responde) de
-      "usada_em_producao" (odds de fato entrando nas previsões) --
-      o bug anterior (conectada mas órfã) não teria aparecido nesse
-      campo antes, porque "conectada" sempre foi verdade.
-    HONESTIDADE: (1) ODDS_SPORT_KEYS é uma lista curada, NÃO validada
-    contra /v4/sports da conta real -- confirme cobertura antes de
-    confiar cegamente; boa parte dos jogos da Loteca (ligas regionais,
-    Série C/D) provavelmente não tem mercado líquido o suficiente pra
-    aparecer no The Odds API, então cobertura parcial é esperada, não
-    bug. (2) O peso do blend (w=0.65 em blending()) CONTINUA não
-    calibrado -- essa mudança conecta o dado, mas não resolve a
-    calibração do peso; agora que odds influenciam previsão real de
-    verdade, calibrar esse peso via walk-forward vira prioridade maior
-    do que era antes (achado #5, ainda aberto). PRÓXIMO PASSO
-    OBRIGATÓRIO: rodar /api/backtest-elo antes e depois de habilitar o
-    blend em produção pra confirmar que o peso atual não está
-    piorando a calibração por estar errado na direção ou magnitude.
-
-Herda tudo da v11.9 abaixo:
-
-21) PESO DE RECÊNCIA na calibração do bucket empírico (decaimento
-    exponencial, meia-vida ELO_RECENCIA_MEIA_VIDA=3000 jogos) --
-    pendência antiga finalmente atacada: "times mudam muito ao longo
-    dos anos, o Elo trata um jogo de 2015 com o mesmo peso de um de
-    2026". Jogos mais antigos agora pesam menos na frequência 1/X/2
-    observada por faixa de Elo (e na distribuição global usada como
-    âncora do shrinkage Bayesiano) -- porque a relação entre "diferença
-    de Elo X" e "resultado real" pode mudar com o tempo (efeito-casa,
-    estilo de jogo). O RATING de Elo em si não leva decaimento explícito
-    -- a atualização sequencial já dilui resultados antigos
-    organicamente, então decaimento ali seria redundante/arriscado sem
-    tuning dedicado.
-    Testado com cenário sintético de "mudança de regime" (3000 jogos
-    com 90% de domínio do mandante, seguidos de 200 jogos recentes com
-    ~50/50) -- sem recência, prob ficaria ~90% (dominado pelo passado);
-    com recência, moveu pra 73%, puxando visivelmente pro padrão atual
-    sem apagar o passado por completo.
-    HONESTIDADE: o valor de meia-vida (3000 jogos) é um ponto de
-    partida estruturalmente correto, NÃO foi otimizado via grid search
-    especificamente pro objetivo P(13+/14) -- é a próxima etapa natural,
-    junto com re-tuning de K e HOME_ADV (herdados de outra sessão,
-    otimizados pra um teste diferente).
-    IMPORTANTE: como o cálculo agora pondera cada jogo, as contagens de
-    bucket/global deixaram de ser inteiras (viraram float) -- normal e
-    esperado, não é bug.
-
-22) DIXON-COLES no fallback Poisson (banco indisponível). Correção
-    clássica (Dixon & Coles, 1997) pra subestimação de empates em
-    placares baixos (0x0, 1x0, 0x1, 1x1) do Poisson bivariado
-    independente. rho=-0.13. Testado: P(empate) sobe de 26,81% pra
-    30,11% (+3,3pp) num cenário típico -- na direção esperada pela
-    literatura. Incorporado de uma versão externa (outra sessão),
-    avaliado e aceito por ser de baixo risco: só afeta o fallback
-    (banco fora do ar), não o motor principal (Elo+bucket empírico).
-
-Herda tudo da v11.8 abaixo:
-
-20) FILTRO DE JOGOS "-INDEFINIDO" nas três funções que carregam dado do
-    banco (calcular_elo_ratings, backtest_elo_walkforward,
-    backtest_p1314_seco) -- bug real encontrado via /api/verificar-
-    desambiguacao em produção: 866 jogos no banco real têm o rótulo
-    "-INDEFINIDO" (times que a desambiguação não conseguiu resolver),
-    mas NENHUMA das três funções filtrava isso -- estavam tratando
-    "-INDEFINIDO" como se fosse UM time de verdade, quando na real são
-    dezenas de times diferentes misturados sob um nome só. Isso corrompe
-    o Elo (resultados de times completamente diferentes atribuídos a uma
-    entidade fictícia) e polui a tabela de bucket/distribuição global com
-    ruído. Por design (sessão de desambiguação), esses jogos deveriam
-    ficar fora do treino -- agora ficam, nas três funções.
-    Testado localmente: banco sintético com 100 jogos limpos (FORTE
-    sempre vence FRACO) + 50 jogos "contaminados" (times aleatórios
-    contra "AMERICA-INDEFINIDO", resultado aleatório) -- confirmado que
-    só os 100 jogos limpos entram no cálculo, nenhum time contaminado
-    aparece nos ratings finais.
-    Motivado por: /api/backtest-p1314 rodou em produção e deu P(13+)
-    real de 0,08%, muito abaixo do 2,60%/4,18% de referência -- esse
-    filtro é uma correção real que pode explicar boa parte da
-    discrepância (866 jogos é ~5% do banco, mas concentrados nos times
-    com nome ambíguo, o que pode distorcer desproporcionalmente as
-    previsões justamente pra esses confrontos).
+25) CORREÇÃO EM backtest_p1314_seco() -- achado ao rodar /api/backtest-
+    p1314?comparar=1 em produção pós-v11.11: "concursos_avaliados": 632,
+    exatamente o número que já estava sinalizado como pendência não
+    investigada no checklist original ("confirmar por que só 632 de
+    ~1268 concursos são avaliados no backtest de produção").
+    Causa raiz encontrada: a query decidia UMA VEZ SÓ, pra tabela
+    inteira, qual fonte de resultado usar --
+        if col_resultado: WHERE resultado IN ('1','X','2')
+        elif tem_gols: (calcula via gols)
+    Como a coluna "resultado" EXISTE no schema, o primeiro branch sempre
+    era escolhido -- e o filtro "WHERE resultado IN (...)" descartava
+    SILENCIOSAMENTE toda linha com resultado NULL, mesmo quando
+    gols_casa/gols_fora dessa mesma linha estavam preenchidos e dariam
+    pra calcular o resultado do mesmo jeito. Ou seja: o fallback pra
+    gols só existia pra tabelas SEM a coluna resultado -- nunca era
+    usado linha a linha dentro de uma tabela que já tem a coluna, mesmo
+    quando ela está parcialmente vazia.
+    Corrigido: a decisão agora é POR LINHA, não pela tabela inteira.
+    Busca resultado E gols juntos (quando ambas as colunas existem),
+    usa "resultado" quando ele já vem válido ('1'/'X'/'2'), cai pro
+    cálculo via gols quando "resultado" vier NULL/vazio, e só descarta
+    a linha se nenhuma das duas fontes estiver disponível. Loga quantas
+    linhas vieram de cada fonte (n_via_resultado / n_via_gols /
+    n_descartadas) -- nunca mais silencioso sobre o tamanho do descarte.
     PRÓXIMO PASSO OBRIGATÓRIO: rodar /api/backtest-p1314?comparar=1 de
-    novo em produção depois de subir essa versão, pra ver se o número
-    mudou de forma significativa.
+    novo em produção depois de subir essa versão, conferir se
+    "concursos_avaliados" sobe de 632 pra perto do total real de
+    concursos (~1270), e tratar o novo freq_13_mais/freq_14 como o
+    baseline oficial (o anterior, medido sobre só metade do histórico,
+    não deve ser usado pra decisão nenhuma).
 
-Herda tudo da v11.7 abaixo:
-
-19) Endpoint /api/verificar-desambiguacao -- confirma com dado real do
-    banco se a desambiguação de nomes de time (ATLETICO-MG/ATLETICO-GO,
-    AMERICA-MG/AMERICA-RN) foi de fato aplicada nas colunas que o app usa
-    (time_casa_normalizado/time_fora_normalizado), em vez de supor.
-    Motivado por resultado real de produção discrepante do esperado:
-    /api/backtest-p1314 rodou contra o banco real (1.261 concursos) e
-    deu P(13+) real de 0,08% -- muito abaixo do 2,60%/4,18% reportado
-    por outra sessão. Antes de investigar mais a fundo, precisa
-    confirmar se as duas sessões estão de fato olhando pro mesmo dado
-    (mesma desambiguação aplicada) ou se são bases diferentes.
-
-Herda tudo da v11.6 abaixo:
-
-18) SUAVIZAÇÃO BAYESIANA no bucket empírico, substituindo o corte
-    binário (n>=30 usa bucket / n<30 descarta tudo e cai pro fallback
-    logístico). O corte criava descontinuidade artificial ("penhasco")
-    e jogava fora informação parcial de faixas com pouca amostra.
-    Fórmula nova: P(resultado) = (contagem_bucket + α×freq_global) /
-    (n_bucket + α), com α=ELO_SHRINKAGE_ALFA=30 -- bucket vazio usa
-    puro a distribuição global; bucket com muita amostra converge pro
-    bucket puro; nada no meio é descartado, só pesa proporcionalmente.
-    _elo_diff_para_probs() (curva logística) não é mais usada como
-    fallback em elo_probs() -- o shrinkage cobre isso de forma contínua.
-    calcular_elo_ratings() agora também rastreia a distribuição GLOBAL
-    de 1/X/2 (não só por bucket) na mesma passada, usada como âncora do
-    shrinkage. backtest_p1314_seco() atualizado pra usar a MESMA fórmula
-    (produção e validação continuam consistentes, mesmo erro que corrigi
-    antes entre curva-logística-fallback vs frequência-global-fallback).
-    Testado localmente com 3 cenários: bucket bem povoado (converge pro
-    valor real, 88% vs 85% real), bucket esparso (3 jogos de empate não
-    viram "100% empate", ficou em 7,75%, puxado pela faixa), e times
-    nunca vistos (caem numa estimativa sensata baseada na faixa de Elo,
-    não em None nem em zero informação).
-    IMPORTANTE, ainda em aberto: essa mudança só foi validada com dado
-    SINTÉTICO (mecânica do código correta). AINDA NÃO rodou contra o
-    banco real de produção -- próximo passo obrigatório antes de confiar
-    cegamente: /api/backtest-p1314?comparar=1 em produção, pra saber o
-    número real (tipo o 4,18%/2,60% medido por outra sessão) com essa
-    fórmula nova.
-
-Herda tudo da v11.5 abaixo:
-
-17) BASELINE REAL "13 SECOS + 1 DUPLO" no backtest P(13/14) -- achado
-    trazido pelo usuário de outra sessão em paralelo: a Loteca NÃO
-    permite apostar 14 secos puro -- a aposta mínima (R$4,00) já é
-    obrigatoriamente 13 secos + 1 duplo. O backtest_p1314_seco() media
-    "14 secos puro", um cenário que na prática ninguém consegue apostar
-    -- resultado mais pessimista que a realidade.
-    Corrigido: backtest_p1314_seco() agora aceita `baseline="13s_1d"`
-    (padrão) ou `baseline="14s_puro"` (só como referência teórica). No
-    modo 13s_1d, o jogo MAIS INCERTO do cartão (menor probabilidade do
-    favorito) recebe o duplo -- cobre os dois resultados mais prováveis
-    daquele jogo específico -- heurística padrão de quem aposta de
-    verdade, e não custa nada a mais que o seco puro (mesmo mínimo
-    padrão da Loteca).
-    Novo parâmetro na rota: /api/backtest-p1314?comparar=1 roda os dois
-    baselines lado a lado e calcula o ganho relativo -- é "de graça",
-    já que os dois têm o mesmo custo mínimo.
-    Testado localmente com dado sintético (jogos de confiança variada,
-    incluindo confrontos genuinamente incertos) -- 13s_1d mostrou ganho
-    real e mensurável sobre 14s_puro (103% de melhora relativa em
-    P(13+) nesse teste), confirmando que a lógica funciona na direção
-    certa.
-    IMPORTANTE: essa mudança é só de MEDIÇÃO (como avaliamos o motor).
-    Ainda não mexe em elo_probs()/classificar() (a lógica de produção
-    que decide SECO/DUPLO/TRIPLO real pro usuário) -- só corrige o
-    critério de validação pra refletir a estrutura real da aposta.
-
-Herda tudo da v11.4 abaixo:
-
-16) BACKTEST P(13/14) REAL POR CARTÃO — porta FIEL de elo_p1314_seco.py
-    (sessão de desambiguação, 31/08-05/09/2026), o código exato que
-    gerou os números 4,18% vs 2,60% mencionados nos resumos. Novo
-    endpoint /api/backtest-p1314 mede a força REAL do motor jogando
-    SECO puro (1 palpite/jogo, sem hedge/duplo/triplo), via P(13/14)
-    exato por cartão (Poisson-Binomial), comparando o que o modelo
-    previa (média da própria confiança) contra o que realmente
-    aconteceu -- a métrica de sucesso real do projeto, confirmada pelo
-    usuário: acertar 13/14 toda semana, 14/14 pelo menos 1x/mês.
-    Diferenças importantes corrigidas em relação ao que eu tinha
-    implementado sozinho na v11.3 (backtest_elo_walkforward):
-    - Fallback de bucket esparso é a FREQUÊNCIA GLOBAL observada até
-      aquele ponto, não a curva logística -- é o que foi validado.
-    - Elo atualizado em LOTE por concurso (todos os jogos de um cartão
-      usam o Elo de ANTES daquele concurso começar), não jogo a jogo --
-      reflete a realidade de apostar nos 14 de uma vez.
-    - bucket_id = round(diff/50), não floor(diff//50).
-    Testado localmente com dado sintético de probabilidade conhecida
-    (85% favorito) -- calibração quase perfeita (P13+ previsto 37,54%
-    vs realizado 35%; P14 previsto 11,57% vs realizado 11,5%),
-    confirmando que a porta está mecanicamente correta.
-    Ainda NÃO trocado dentro de elo_probs() (produção) -- esse backtest
-    só mede/valida; a v11.3 (bucket com fallback logístico) continua
-    sendo a fonte usada em /api/analisar e /api/grade-automatica.
-    Próximo passo natural: rodar /api/backtest-p1314 em produção com os
-    dados reais (17k+ jogos, desambiguação de nomes já aplicada) e
-    comparar contra os 4,18%/2,60% da referência; se bater, considerar
-    também adotar frequência global (em vez de curva logística) como
-    fallback dentro de elo_probs(), pra produção e validação usarem
-    exatamente a mesma fórmula ponta a ponta.
-
-Herda tudo da v11.3 abaixo:
-
-15) BUCKET EMPÍRICO como fonte primária de P(1)/P(X)/P(2), substituindo
-    a curva logística paramétrica (que virou fallback só pra faixas de
-    Elo com pouca amostra). Achado de outra sessão em paralelo (resumo
-    "Desambiguação de Times + Fórmula Elo", 31/08-05/09/2026), validado
-    contra P(13/14) real em 1.268 concursos: a curva logística previa
-    5,97% de chance de bater 13+ pontos, mas na realidade batia só 2,60%
-    (superconfiante em ~2,3x); o bucket empírico previa 5,25% e batia
-    4,18% -- muito mais calibrado, 60% mais cartões de 13+ (53 vs 33) e
-    quase o dobro de 14/14 (11 vs 6) no mesmo histórico.
-    calcular_elo_ratings() agora constrói a tabela de bucket na MESMA
-    passada que calcula o Elo (sem custo extra), agrupando por faixa de
-    diferença de Elo (largura 50) e contando a frequência REAL de 1/X/2
-    observada -- SEM VAZAMENTO (conta o resultado de cada jogo só DEPOIS
-    de já ter calculado a previsão daquele jogo). elo_probs() usa essa
-    tabela quando a faixa tem ELO_BUCKET_MIN_AMOSTRAS (30) ou mais;
-    senão cai pro fallback logístico (_elo_diff_para_probs(), mesma
-    fórmula de antes).
-    Novo endpoint /api/backtest-elo compara as duas fórmulas lado a lado
-    (acurácia, Brier Score), walk-forward sem vazamento em nenhuma das
-    duas (bucket também construído incrementalmente no teste, não usa a
-    tabela final inteira). Testado localmente com dados sintéticos com
-    viés conhecido (time muito mais forte, empate raro na realidade) --
-    bucket empírico teve Brier melhor (0,0724 vs 0,083), confirmando que
-    aprende o padrão que a curva paramétrica não capta sozinha.
-    Pendente: validar isso especificamente no critério real do projeto
-    (P13/14 por cartão, agrupando os 14 jogos de cada concurso via
-    Poisson-Binomial) -- precisa da coluna de agrupamento por concurso
-    confiável, ainda não confirmada neste ambiente. O teste_p1314.py da
-    outra sessão faz exatamente isso; portar quando disponível.
-
-Herda tudo da v11.2 abaixo:
-
-14) PLACAR AO VIVO (informativo, nunca entra no cálculo de probabilidade
-    ou confiança -- decisão explícita do usuário). Usa a API-Football já
-    configurada (RAPIDAPI_KEY, endpoint football-current-live,
-    confirmado via RapidAPI Playground). buscar_placar_ao_vivo() faz uma
-    chamada só por requisição (todos os jogos ao vivo do mundo no
-    momento), reaproveitada pros 14 jogos da grade.
-    casar_placar_ao_vivo() casa cada jogo da Loteca com o jogo ao vivo
-    correspondente por nome normalizado (maiusculo, sem acento -- testado
-    até com Fenerbahçe/Beşiktaş). Best-effort: nomes muito diferentes
-    entre as duas fontes podem não casar, retorna null nesse caso sem
-    quebrar o resto da resposta. Cada jogo em /api/grade-automatica ganha
-    o campo "placar_ao_vivo": {"placar","minuto","em_andamento","encerrado"}
-    ou null.
-
-Herda tudo da v11.1 abaixo:
-
-13) BLOQUEIO 403 DA CAIXA CONFIRMADO EM PRODUÇÃO (logs do Render, mesmo
-    já com os headers de navegador do v10.3): é bloqueio por IP/ASN de
-    datacenter, não por cabeçalho -- header não resolve isso.
-    Solução implementada: cache desacoplado via GitHub Actions.
-    - .github/workflows/fetch_loteca.yml roda a cada 30 min (e sob
-      demanda), busca o concurso na Caixa a partir da rede do GitHub
-      Actions (ASN diferente do Render), grava em data/cef_cache.json e
-      commita no repo.
-    - buscar_cef_cache_github() lê esse arquivo via
-      raw.githubusercontent.com (domínio público comum, sem relação com
-      o WAF da Caixa) quando a chamada direta falha.
-    - grade_automatica() agora tenta em cascata: direto na Caixa → cache
-      do GitHub Actions → exemplo fixo (só como último recurso, sempre
-      identificado como exemplo). Resposta inclui "fonte" explícito
-      (caixa_ao_vivo_direto / caixa_ao_vivo_cache_github /
-      EXEMPLO_FIXO_NAO_AO_VIVO) e "cache_idade_minutos" quando vier do
-      cache, pra nunca esconder de onde veio o dado nem sua idade.
-    Ainda não testado ponta a ponta em produção -- depende do workflow
-    ser adicionado ao repo e rodar ao menos uma vez. Se o runner do
-    GitHub Actions TAMBÉM tomar 403, o bloqueio da Caixa é mais amplo
-    que só o ASN do Render, e aí o próximo recurso é um proxy de
-    scraping pago (ScraperAPI/ScrapingBee/Bright Data) -- solução padrão
-    da indústria pra esse tipo de bloqueio, não gambiarra.
-
-Herda a integração do Elo iterativo (K=30, HOME_ADV=75) como motor
-principal, já validada em produção (v11.0), e as correções da v10.4
-(RAPIDAPI_KEY vs APIFOOTBALL_KEY) e v10.3 (headers de navegador em
-buscar_cef(), mantidos mesmo não resolvendo o bloqueio sozinhos --
-não fazem mal e talvez ajudem se o bloqueio um dia for por assinatura
-de header também):
-
-12) MOTOR TROCADO PRA ELO ITERATIVO (K=30, HOME_ADV=75), substituindo
-    H2H+Poisson+shrinkage como fonte principal de previsão -- decisão já
-    registrada no resumo da sessão anterior, baseada no walk-forward sem
-    vazamento (comparativo_h2h_poisson_vs_elo.py, 17.742 jogos):
-      Acuracia:   48,9% (Elo) vs 47,4% (H2H+Poisson)
-      Brier:      0,6213 (Elo, melhor) vs 0,6279 (H2H+Poisson)
-      Acerto "2": 31,7% (Elo) vs 1,9% (H2H+Poisson)
-    Implementado: calcular_elo_ratings() faz replay cronológico completo
-    da tabela histórica real (detecta coluna de data/concurso pra ordenar;
-    se não achar nenhuma, usa ordem de inserção com AVISO explícito no
-    /api/db-info -- nunca falha silenciosamente). elo_probs() converte
-    Elo em P(1/X/2) via expected-score logístico + modelo de largura de
-    empate -- é uma APROXIMAÇÃO documentada, não a bucket empírica exata
-    do walk-forward original (essa vive em comparativo_h2h_poisson_vs_elo.py,
-    ainda não portada). buscar_h2h_real()/buscar_medias_gols_real() ficam
-    no arquivo, sem uso por padrão -- fallback total (sem banco) ainda usa
-    Elo fixo genérico + Poisson por liga, como antes.
-    Testado localmente com dados sintéticos (times fortes/fracos/parelhos)
-    antes do commit -- comportamento validado, mas ainda NÃO testado
-    contra os dados reais de produção. Próximo passo: rodar
-    /api/analisar num confronto conhecido e conferir /api/db-info →
-    elo_iterativo pra ver se o aviso de ordem aparece ou não.
-
-Herda a correção da v10.4 (RAPIDAPI_KEY vs APIFOOTBALL_KEY) e da v10.3
-(headers de navegador em buscar_cef() pro bloqueio 403 da Caixa):
-
-10) grade_automatica() buscava sempre o ÚLTIMO concurso, que na API da
-    Caixa (sem número específico) é o mais recente já FECHADO/disputado
-    (com resultado), não o próximo aberto pra aposta. Descoberto ao
-    testar com o concurso real: API devolvia #1268 (já com gols
-    preenchidos), quando o aberto de verdade era #1269. Corrigido: agora
-    busca o campo "numeroConcursoProximo" da resposta e faz uma segunda
-    chamada específica pra esse número, priorizando ele sempre que tiver
-    jogos publicados.
-
-Herda todas as correções da v10.2 (bug de detecção de coluna mandante/
-visitante, preço R$2,00/combinação) e da v10.1 (H2H_MIN=20, shrinkage
-bayesiano) -- ver changelog completo nessas versões.
+Herda tudo da v11.11 e anteriores (changelog completo mantido no
+histórico do repositório) -- motor Elo iterativo (K=30, HOME_ADV=75),
+bucket empírico com suavização Bayesiana e peso de recência, filtro de
+jogos -INDEFINIDO, baseline real 13 secos + 1 duplo, odds de mercado
+conectadas via The Odds API (peso do blend ainda não calibrado),
+cache de resultados via GitHub Actions para contornar bloqueio 403
+da Caixa, placar ao vivo informativo via API-Football.
 
 Variáveis de ambiente no Render:
   RAPIDAPI_KEY  → API-Football (fixtures, lesões, escalação) -- opcional
@@ -366,20 +60,11 @@ app = Flask(__name__)
 CORS(app)
 
 # ─── Variáveis de ambiente ────────────────────────────────────
-# Achado pendente (resumo 01-02/09/2026): no Render a variável foi
-# criada como APIFOOTBALL_KEY, mas o código sempre leu RAPIDAPI_KEY --
-# ou seja, a API-Football nunca tinha a chave de verdade em produção.
-# Corrigido aceitando os dois nomes (RAPIDAPI_KEY tem prioridade se
-# alguém também criar esse, senão cai pro nome que já existe no Render).
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "") or os.getenv("APIFOOTBALL_KEY", "")
 ODDS_KEY     = os.getenv("ODDS_API_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 USE_PG       = DATABASE_URL.startswith("postgres")
 
-# Cache publicado pelo GitHub Actions (fetch_loteca.yml) -- usado quando
-# a Caixa bloqueia o IP do Render direto (403 confirmado em produção,
-# 04-05/09/2026). Configuravel via env var pra não ficar hardcoded caso
-# o repo mude de nome/dono.
 GITHUB_REPO_CACHE   = os.getenv("GITHUB_REPO_CACHE", "marinholuiz2015-tech/loteca-simulador")
 GITHUB_BRANCH_CACHE = os.getenv("GITHUB_BRANCH_CACHE", "main")
 
@@ -387,9 +72,8 @@ APIF_HOST = "free-api-live-football-data.p.rapidapi.com"
 APIF_BASE = f"https://{APIF_HOST}"
 URL_CEF   = "https://servicebus2.caixa.gov.br/portaldeloterias/api/loteca"
 
-# ─── Constantes validadas no walk-forward de hoje ─────────────
-H2H_MIN      = 20  # corte minimo de confrontos p/ usar H2H (era 3 na v10.0)
-SHRINKAGE_K  = 15  # forca do prior de liga nas medias de gols (Empirical Bayes)
+H2H_MIN      = 20
+SHRINKAGE_K  = 15
 
 # ─── Banco de dados ───────────────────────────────────────────
 def get_conn():
@@ -401,7 +85,6 @@ def get_conn():
     return conn
 
 def _ph():
-    """Placeholder de parametro SQL -- %s no Postgres, ? no SQLite."""
     return "%s" if USE_PG else "?"
 
 def init_db():
@@ -423,14 +106,9 @@ def init_db():
     except Exception as e:
         log.warning("Banco indisponível: %s", e)
 
-# ─── Detecção de schema da tabela de jogos historicos ─────────
 _SCHEMA_CACHE = {"ts": 0, "info": None}
 
 def detectar_schema_jogos():
-    """Detecta nome da tabela e das colunas de gols/posicao, na tabela
-    de jogos historicos -- sem assumir nada, sempre consultando o banco
-    de verdade (mesma logica ja validada hoje contra os dois formatos
-    de schema que apareceram: jogos_loteca/jogos, gols_m/gols_mandante)."""
     if time.time() - _SCHEMA_CACHE["ts"] < 300 and _SCHEMA_CACHE["info"]:
         return _SCHEMA_CACHE["info"]
     info = {"tabela": None, "col_gm": None, "col_gv": None,
@@ -455,11 +133,8 @@ def detectar_schema_jogos():
             else:
                 cur.execute(f"PRAGMA table_info({info['tabela']})")
                 cols_raw = cur.fetchall()
-                cur = [(r[1],) for r in cols_raw]  # normaliza formato
+                cur = [(r[1],) for r in cols_raw]
             cols = [r[0] for r in (cur if isinstance(cur, list) else cur.fetchall())]
-            # colunas de time -- prioriza normalizado (mais limpo, sem duplicidade
-            # de nomes tipo "São Caetano" vs "SAO CAETANO"), com fallback pros
-            # outros formatos ja vistos no schema real
             info["col_m"] = next((c for c in
                 ["time_casa_normalizado", "mandante_normalizado", "time_casa", "mandante"]
                 if c in cols), None)
@@ -480,26 +155,18 @@ def detectar_schema_jogos():
     return info
 
 def _parse_gol(v):
-    """Converte valor de gol pra int, tolerando TEXT, None, ou ja-int
-    (a migracao de hoje recriou a tabela com colunas TEXT -- precisa
-    ser tolerante a isso, sem quebrar)."""
     if v is None: return None
     if isinstance(v, (int, float)): return int(v)
     try: return int(str(v).strip())
     except (ValueError, TypeError): return None
 
 def _parse_num(v):
-    """Como _parse_gol, mas preserva casas decimais (usado em AVG de liga)."""
     if v is None: return None
     if isinstance(v, (int, float)): return float(v)
     try: return float(str(v).strip())
     except (ValueError, TypeError): return None
 
-# ─── Consulta de dado historico REAL (corrige achado #1) ──────
 def buscar_h2h_real(mandante, visitante):
-    """H2H direto do banco, nomes normalizados p/ maiusculo dos dois lados.
-    Corte minimo H2H_MIN=20 (validado no walk-forward de hoje -- corte de
-    3 deixava passar ruido estatistico como se fosse sinal)."""
     schema = detectar_schema_jogos()
     if not schema["existe"]: return None
     m, v = mandante.upper().strip(), visitante.upper().strip()
@@ -528,10 +195,6 @@ def buscar_h2h_real(mandante, visitante):
         return None
 
 def buscar_media_liga_gols(liga):
-    """Media real de gols (casa/fora) da liga, calculada do banco --
-    usada como prior (ancora) do shrinkage nas medias por time. Cai pro
-    dicionario MEDIA_GOLS fixo só se nao houver coluna de liga no schema
-    ou nao houver dado suficiente pra essa liga especifica."""
     schema = detectar_schema_jogos()
     if schema["existe"] and schema["col_gm"] and schema["col_gv"] and schema["col_liga"]:
         try:
@@ -548,18 +211,13 @@ def buscar_media_liga_gols(liga):
                 gm2, gv2 = _parse_num(gm), _parse_num(gv)
                 if gm2 is None or gv2 is None: continue
                 soma_gm += gm2; soma_gv += gv2; n += 1
-            if n >= 10:  # amostra minima pra confiar na media da propria liga
+            if n >= 10:
                 return {"casa": round(soma_gm/n, 3), "fora": round(soma_gv/n, 3)}
         except Exception as e:
             log.warning("buscar_media_liga_gols: %s", e)
     return MEDIA_GOLS.get(liga, {"casa": 1.40, "fora": 1.05})
 
 def buscar_medias_gols_real(time_nome, mandante=True, liga="_default"):
-    """Media de gols pro/contra de um time jogando em casa ou fora,
-    calculada do historico real, com shrinkage bayesiano em direcao a
-    media real da liga (achado #7): quanto menos jogos o time tem, mais
-    a estimativa pende pra media da liga; quanto mais jogos, mais pende
-    pro dado proprio do time. SHRINKAGE_K=15 -> em n=15, peso 50/50."""
     schema = detectar_schema_jogos()
     if not schema["existe"] or not schema["col_gm"] or not schema["col_gv"]:
         return None
@@ -603,39 +261,14 @@ def buscar_medias_gols_real(time_nome, mandante=True, liga="_default"):
         log.warning("buscar_medias_gols_real: %s", e)
         return None
 
-# ─── ELO ITERATIVO (K=30, HOME_ADV=75) — MOTOR PRINCIPAL ──────
-# Decisão de 02/09/2026 (comparativo_h2h_poisson_vs_elo.py, walk-forward
-# sem vazamento, 17.742 jogos): Elo bateu H2H+Poisson+shrinkage com folga
-#   Acuracia:    48,9% (Elo) vs 47,4% (H2H+Poisson)
-#   Brier Score: 0,6213 (Elo, melhor) vs 0,6279 (H2H+Poisson)
-#   Acerto qdo real=2 (visitante): 31,7% (Elo) vs 1,9% (H2H+Poisson)
-# O H2H+Poisson+shrinkage, mesmo corrigido, virava "aposte no mandante"
-# disfarcado porque a maioria dos jogos cai no prior da liga sem H2H
-# suficiente pra corrigir. Por isso o Elo substitui H2H+Poisson como
-# fonte principal aqui -- buscar_h2h_real()/buscar_medias_gols_real()
-# continuam no arquivo (podem virar blend depois), mas nao sao mais
-# chamadas por padrao.
-#
-# RESSALVA (herdada do resumo da sessao): a formula de probabilidade
-# 1/X/2 abaixo (expected-score logistico padrao de Elo + modelo de
-# largura de empate) é uma APROXIMACAO -- nao é a bucket empirica exata
-# que gerou os 48,9% no walk-forward original (essa bucket vive em
-# comparativo_h2h_poisson_vs_elo.py, ainda nao portada pra ca). Testar
-# em producao (/api/analisar) e comparar contra o comportamento esperado
-# antes de confiar de olhos fechados.
-
 ELO_K        = 30
 ELO_HOME_ADV = 75
-ELO_CACHE_TTL = 6 * 3600  # recalcular do zero em toda requisicao seria caro (17k+ jogos)
+ELO_CACHE_TTL = 6 * 3600
 _ELO_CACHE = {"ts": 0, "ratings": None, "aviso": None, "n_jogos": 0, "buckets": None, "global_dist": None}
 
-ELO_BUCKET_LARGURA = 50   # largura da faixa de diferenca de Elo (pontos)
-ELO_SHRINKAGE_ALFA = 30   # forca do shrinkage bayesiano pro bucket empirico --
-                          # em n_bucket=ELO_SHRINKAGE_ALFA, bucket e distribuicao
-                          # global pesam igual; mais amostra pesa mais o bucket,
-                          # menos amostra puxa mais pra global. Sem "penhasco":
-                          # nenhuma faixa é descartada inteira, mesmo com pouca
-                          # amostra -- ela só pesa menos, proporcionalmente.
+ELO_BUCKET_LARGURA = 50
+ELO_SHRINKAGE_ALFA = 30
+ELO_BUCKET_MIN_AMOSTRAS = 15
 
 def _bucket_de_diff(diff):
     return int(diff // ELO_BUCKET_LARGURA) * ELO_BUCKET_LARGURA
@@ -649,13 +282,6 @@ def _listar_colunas(cur, tabela):
     return [r[1] for r in cur.fetchall()]
 
 def _detectar_coluna_ordem(cols):
-    """Ordem cronologica é essencial pro Elo iterativo -- sem ela, os
-    ratings ficam errados de um jeito que NAO aparece em nenhum erro,
-    a mesma familia de bug silencioso ja vista neste projeto (schema
-    cego). Tenta achar coluna de data primeiro, depois numero do
-    concurso; se nao achar nenhuma, usa a ordem de insercao (id/rowid)
-    como ultimo recurso, mas marca aviso explicito -- isso NAO é garantia
-    de ordem cronologica real e precisa ser conferido manualmente."""
     col_data = next((c for c in
         ["data_jogo", "data", "dt_jogo", "data_partida", "dt_partida"]
         if c in cols), None)
@@ -667,28 +293,9 @@ def _detectar_coluna_ordem(cols):
         return col_concurso, "concurso"
     return None, "SEM_COLUNA_DE_ORDEM"
 
-ELO_RECENCIA_MEIA_VIDA = 3000  # em "jogos atrás do mais recente" -- jogo mais
-                               # antigo que isso pesa metade de um jogo atual
-                               # na calibração do bucket. ~3000 jogos equivale a
-                               # uns 4 anos de Loteca (14 jogos/concurso, ~52
-                               # concursos/ano). Parâmetro NÃO re-otimizado via
-                               # grid search ainda -- é um ponto de partida
-                               # estruturalmente correto, não o valor ótimo.
+ELO_RECENCIA_MEIA_VIDA = 3000
 
 def calcular_elo_ratings():
-    """Replay cronologico completo da tabela historica real, calculando
-    Elo de todos os times do zero (K=30, HOME_ADV=75). Na MESMA passada,
-    constrói a tabela de calibração por bucket empírico: agrupa jogos por
-    faixa de diferença de Elo (largura ELO_BUCKET_LARGURA) e conta a
-    frequência REAL de 1/X/2 observada em cada faixa, com PESO DE
-    RECÊNCIA (decaimento exponencial, meia-vida ELO_RECENCIA_MEIA_VIDA
-    jogos) -- jogos mais antigos pesam menos na calibração, porque a
-    relação entre "diferença de Elo X" e "resultado real" pode mudar ao
-    longo dos anos (efeito-casa, estilo de jogo, etc.). O rating de Elo
-    em si NÃO leva decaimento explícito -- a atualização sequencial já
-    dilui resultados antigos organicamente (cada novo jogo desloca o
-    rating, sem precisar de peso extra).
-    Cacheado por ELO_CACHE_TTL. Retorna (ratings_dict, aviso_ou_None)."""
     if (time.time() - _ELO_CACHE["ts"] < ELO_CACHE_TTL
             and _ELO_CACHE["ratings"] is not None):
         return _ELO_CACHE["ratings"], _ELO_CACHE["aviso"]
@@ -718,12 +325,6 @@ def calcular_elo_ratings():
             log.warning("calcular_elo_ratings: %s", aviso)
 
         order_clause = f"ORDER BY {col_ordem} ASC" if col_ordem else ""
-        # Filtra jogos "-INDEFINIDO" (desambiguação de nomes não resolveu
-        # qual time era) -- achado em produção 05-06/09/2026: 866 jogos
-        # com esse rótulo estavam sendo tratados como se fosse UM time de
-        # verdade, misturando dezenas de times distintos sob um nome só e
-        # corrompendo o Elo/bucket. Por design (resumo da desambiguação),
-        # esses jogos deveriam ficar fora do treino -- agora ficam.
         cur.execute(f"""
             SELECT {schema['col_m']}, {schema['col_v']},
                    {schema['col_gm']}, {schema['col_gv']}
@@ -748,7 +349,7 @@ def calcular_elo_ratings():
             diff = (elo_m + ELO_HOME_ADV) - elo_v
             jogos_atras = n_total - 1 - idx
             peso_recencia = 0.5 ** (jogos_atras / ELO_RECENCIA_MEIA_VIDA)
-            buckets[_bucket_de_diff(diff)][real] += peso_recencia  # calibração ANTES de atualizar -- sem vazamento
+            buckets[_bucket_de_diff(diff)][real] += peso_recencia
             global_cnt[real] += peso_recencia
             esperado_m = 1 / (1 + 10 ** (-diff / 400))
             delta = ELO_K * (resultado_m - esperado_m)
@@ -765,25 +366,17 @@ def calcular_elo_ratings():
     buckets_dict = {k: dict(v) for k, v in buckets.items()}
     n_global = sum(global_cnt.values())
     global_dist = ({k: v / n_global for k, v in global_cnt.items()} if n_global > 0
-                    else {"1": 0.4722, "X": 0.2616, "2": 0.2663})  # prior neutro se banco vazio
+                    else {"1": 0.4722, "X": 0.2616, "2": 0.2663})
     _ELO_CACHE.update(ts=time.time(), ratings=resultado, aviso=aviso,
                        n_jogos=n_processados, buckets=buckets_dict, global_dist=global_dist)
     return resultado, aviso
 
 def elo_time(nome):
-    """Elo iterativo real de um time (le do cache calculado por
-    calcular_elo_ratings()). Se o time nao apareceu em nenhum jogo do
-    historico, comeca em 1500 (rating inicial padrao)."""
     ratings, _ = calcular_elo_ratings()
     return round(ratings.get(nome.upper().strip(), 1500.0), 1)
 
 def _elo_diff_para_probs(diff):
-    """Fórmula pura Elo-diff -> P(1)/P(X)/P(2), sem consultar banco.
-    Extraída de elo_probs() pra garantir que o backtest walk-forward
-    (backtest_elo_walkforward, abaixo) testa EXATAMENTE a mesma fórmula
-    que está em produção -- nunca duas versões que podem divergir sem
-    ninguém notar."""
-    we = 1 / (1 + 10 ** (-diff / 400))  # expected score do mandante (empate=0,5pt)
+    we = 1 / (1 + 10 ** (-diff / 400))
     largura_empate = max(0.12, 0.24 * math.exp(-abs(diff) / 600))
     p1 = max(0.02, we - largura_empate / 2)
     p2 = max(0.02, (1 - we) - largura_empate / 2)
@@ -792,16 +385,6 @@ def _elo_diff_para_probs(diff):
     return {"1": p1 / t, "X": px / t, "2": p2 / t}, we
 
 def _probs_bucket_empirico(diff):
-    """P(1)/P(X)/P(2) via suavização Bayesiana (shrinkage tipo Dirichlet)
-    do bucket empírico em direção à distribuição GLOBAL observada --
-    substitui o corte binário anterior (n>=30 usa bucket / n<30 descarta
-    tudo e usa só fallback), que criava descontinuidade artificial e
-    jogava fora informação parcial de faixas com pouca amostra.
-    Fórmula: P(resultado) = (contagem_bucket + α×freq_global) / (n_bucket + α).
-    Com α=ELO_SHRINKAGE_ALFA: bucket vazio -> puro global; bucket com
-    muita amostra -> puro bucket; nada no meio é descartado, só pesa
-    proporcionalmente. Nunca retorna None -- sempre há pelo menos a
-    distribuição global como base (mesmo p/ faixas nunca vistas)."""
     buckets = _ELO_CACHE.get("buckets") or {}
     global_dist = _ELO_CACHE.get("global_dist") or {"1": 0.4722, "X": 0.2616, "2": 0.2663}
     contagem = buckets.get(_bucket_de_diff(diff), {"1": 0, "X": 0, "2": 0})
@@ -814,19 +397,6 @@ def _probs_bucket_empirico(diff):
     return {**probs, "n_amostras_bucket": n_bucket}
 
 def elo_probs(mandante, visitante):
-    """Converte Elo (com vantagem de mandante) em P(1)/P(X)/P(2).
-    Fonte: bucket empírico com suavização Bayesiana em direção à
-    distribuição global (_probs_bucket_empirico) -- nunca cai pro
-    fallback logístico separado, porque o shrinkage já cobre faixas com
-    pouca amostra de forma contínua e proporcional, sem descontinuidade.
-    Validado contra P(13/14) real em 1.268 concursos (metodologia com
-    corte binário, versão anterior desta função, JÁ com o filtro
-    -INDEFINIDO aplicado -- teste_final_3formulas.py, 07/09/2026): bucket
-    empírico bate 4,81% das vezes contra 6,24% previsto (bem calibrado),
-    enquanto a curva logística batia só 3,86% contra 7,44% previsto
-    (superconfiante em ~1,93x). A suavização contínua deve preservar ou
-    melhorar isso, já que usa mais informação (nenhuma faixa é 100%
-    descartada)."""
     ratings, aviso = calcular_elo_ratings()
     ec = ratings.get(mandante.upper().strip(), 1500.0)
     ef = ratings.get(visitante.upper().strip(), 1500.0)
@@ -846,17 +416,6 @@ def elo_probs(mandante, visitante):
     }
 
 def backtest_elo_walkforward(limite_jogos=None):
-    """Walk-forward SEM VAZAMENTO comparando as duas fórmulas lado a lado:
-    bucket empírico (fonte primária em produção) vs curva logística
-    (fallback). Pra cada jogo, ANTES de atualizar Elo E ANTES de contar o
-    resultado no bucket, calcula a previsão das duas fórmulas usando só o
-    que já foi visto até aquele ponto -- exatamente como seria numa
-    previsão real. O bucket empírico aqui é construído incrementalmente
-    (não usa a tabela final inteira), pra não vazar o resultado do
-    próprio jogo sendo testado pra dentro do bucket que o prevê.
-    Existe pra confirmar, com o histórico completo, se a vantagem
-    encontrada pela sessão de desambiguação (4,18% vs 2,60% de acerto em
-    13+/cartão) se sustenta também nessa base de dados corrigida."""
     schema = detectar_schema_jogos()
     if not (schema["existe"] and schema["col_gm"] and schema["col_gv"]):
         return {"erro": "schema_invalido_p_backtest"}
@@ -897,7 +456,7 @@ def backtest_elo_walkforward(limite_jogos=None):
         elo_m, elo_v = ratings[m], ratings[v]
         diff = (elo_m + ELO_HOME_ADV) - elo_v
 
-        probs_curva, we = _elo_diff_para_probs(diff)  # sempre disponível
+        probs_curva, we = _elo_diff_para_probs(diff)
 
         b = _bucket_de_diff(diff)
         contagem = buckets_ate_agora.get(b)
@@ -906,7 +465,7 @@ def backtest_elo_walkforward(limite_jogos=None):
             probs_bucket = {k: contagem[k] / n_bucket for k in ("1", "X", "2")}
             stats["bucket_empirico"]["n_usou_bucket"] += 1
         else:
-            probs_bucket = probs_curva  # mesmo fallback usado em produção
+            probs_bucket = probs_curva
             stats["bucket_empirico"]["n_usou_fallback"] += 1
 
         n_total += 1
@@ -919,7 +478,6 @@ def backtest_elo_walkforward(limite_jogos=None):
             stats[nome]["soma_brier"] += sum(
                 (probs[k] - (1.0 if k == real else 0.0)) ** 2 for k in ("1", "X", "2"))
 
-        # atualiza bucket e Elo SÓ DEPOIS de prever -- sem vazamento em nenhuma das duas fórmulas
         buckets_ate_agora[b][real] += 1
         delta = ELO_K * (resultado_m - we)
         ratings[m] = elo_m + delta
@@ -946,18 +504,11 @@ def backtest_elo_walkforward(limite_jogos=None):
     }
 
 def _detectar_colunas_concurso(cols):
-    """Detecta colunas de agrupamento por concurso e de ordem do jogo
-    dentro do concurso -- necessário pro backtest de P(13/14) por
-    cartão real (14 jogos por concurso). Retorna (col_concurso, col_seq),
-    qualquer um pode vir None se não encontrado."""
     col_concurso = next((c for c in ["concurso", "numero_concurso"] if c in cols), None)
     col_seq = next((c for c in ["sequencial", "numero_jogo", "jogo", "ordem"] if c in cols), None)
     return col_concurso, col_seq
 
 def _poisson_binomial(probs_acerto):
-    """PMF exata do número de acertos, dado uma lista de probabilidades
-    de acerto (uma por jogo). DP clássico O(n²). Idêntico ao usado em
-    elo_p1314_seco.py (sessão de desambiguação, 31/08-05/09/2026)."""
     pmf = [1.0]
     for p in probs_acerto:
         novo = [0.0] * (len(pmf) + 1)
@@ -970,29 +521,17 @@ def _poisson_binomial(probs_acerto):
 BACKTEST_P1314_BUCKET = 50
 
 def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
-    """Porta FIEL de elo_p1314_seco.py (sessão de desambiguação,
-    31/08-05/09/2026) -- mede a força REAL do motor via P(13/14) exato
-    por cartão (Poisson-Binomial), comparando o que o modelo previa
-    (média da própria confiança) contra o que realmente aconteceu.
-    Metodologia EXATA da referência:
-    - Elo (K=30, HOME_ADV=75) atualizado em LOTE por concurso -- todos
-      os jogos de um mesmo concurso usam o Elo de ANTES daquele
-      concurso começar (reflete a realidade de apostar nos 14 de uma
-      vez, sem saber resultado parcial de nenhum).
-    - Bucket empírico por faixa de diferença de Elo (bucket=round(diff/50)),
-      mínimo 15 amostras; sem amostra suficiente, cai pra frequência
-      GLOBAL observada até aquele ponto (não a curva logística).
-
-    `baseline` controla a estrutura de aposta testada:
-    - "14s_puro": 14 secos (1 palpite por jogo) -- é o que a referência
-      testou, mas NINGUÉM aposta assim de verdade: a Loteca não permite
-      aposta de 14 secos puro.
-    - "13s_1d" (padrão, é o mínimo REAL da Loteca, R$4,00): 13 secos +
-      1 duplo obrigatório. O duplo cobre os dois resultados mais
-      prováveis (1+X, 1+2 ou X+2) do jogo MAIS incerto do cartão
-      (heurística padrão -- proteger onde a confiança é menor). Isso
-      não custa nada a mais que o seco puro (é o próprio mínimo padrão),
-      então qualquer ganho aqui é "de graça" na comparação."""
+    """CORREÇÃO v11.12 (achado desta sessão): a versão anterior decidia
+    UMA VEZ SÓ, pra tabela inteira, se usava a coluna "resultado" ou
+    calculava via gols -- se "resultado" existisse no schema, TODA linha
+    com resultado NULL era descartada pelo filtro SQL "WHERE resultado
+    IN (...)", mesmo quando gols_casa/gols_fora daquela linha estavam
+    preenchidos e dariam pra calcular o resultado do mesmo jeito.
+    Confirmado em produção: isso derrubava concursos_avaliados de ~1270
+    pra 632 -- metade do histórico descartada silenciosamente. Agora a
+    decisão é POR LINHA: usa "resultado" quando válido, cai pros gols
+    quando "resultado" vier NULL, e só descarta se nenhum dos dois
+    estiver disponível."""
     schema = detectar_schema_jogos()
     if not schema["existe"]:
         return {"erro": "schema_invalido"}
@@ -1009,11 +548,6 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
                               f"jogos de cada cartão -- não encontrada em {schema['tabela']}. "
                               f"Sem isso não dá pra calcular P(13/14) por cartão real.")}
 
-    # NOVO (v11.11): contagem ORIGINAL de jogos por concurso, SEM o filtro
-    # -INDEFINIDO -- necessário pra distinguir um concurso genuinamente-13
-    # (jogo cancelado, cenário real já documentado) de um concurso que ERA
-    # 14 mas perdeu 1+ jogo pro filtro de desambiguação (não deveria ser
-    # avaliado como se fosse 13 de verdade).
     cur.execute(f"SELECT {col_concurso}, COUNT(*) FROM {schema['tabela']} GROUP BY {col_concurso}")
     contagem_original_por_concurso = dict(cur.fetchall())
 
@@ -1023,36 +557,63 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
         "mas isso não afeta o cálculo em si, só a leitura de qual jogo é qual.")
     order_extra = f", {col_seq}" if col_seq else ""
 
+    # CORREÇÃO v11.12: monta a lista de colunas dinamicamente -- pega
+    # "resultado" E gols juntos (quando ambas existirem), pra decidir
+    # POR LINHA qual fonte usar, em vez de escolher uma fonte só pra
+    # tabela inteira (bug que descartava metade do histórico).
+    tem_gols = bool(schema["col_gm"] and schema["col_gv"])
+    if not col_resultado and not tem_gols:
+        conn.close()
+        return {"erro": "sem_coluna_resultado_nem_gols"}
+
+    select_cols = [col_concurso, schema['col_m'], schema['col_v']]
+    if col_resultado:
+        select_cols.append(col_resultado)
+    if tem_gols:
+        select_cols.append(schema["col_gm"])
+        select_cols.append(schema["col_gv"])
+    cols_sql = ", ".join(select_cols)
+
+    n_via_resultado = n_via_gols = n_descartadas = 0
     try:
-        if col_resultado:
-            cur.execute(f"""
-                SELECT {col_concurso}, {schema['col_m']}, {schema['col_v']}, {col_resultado}
-                FROM {schema['tabela']}
-                WHERE {col_resultado} IN ('1','X','2')
-                  AND UPPER({schema['col_m']}) NOT LIKE '%INDEFINIDO%'
-                  AND UPPER({schema['col_v']}) NOT LIKE '%INDEFINIDO%'
-                ORDER BY {col_concurso} {order_extra}
-            """)
-            linhas = [(conc, m, v, res) for conc, m, v, res in cur.fetchall()]
-        elif schema["col_gm"] and schema["col_gv"]:
-            cur.execute(f"""
-                SELECT {col_concurso}, {schema['col_m']}, {schema['col_v']},
-                       {schema['col_gm']}, {schema['col_gv']}
-                FROM {schema['tabela']}
-                WHERE UPPER({schema['col_m']}) NOT LIKE '%INDEFINIDO%'
-                  AND UPPER({schema['col_v']}) NOT LIKE '%INDEFINIDO%'
-                ORDER BY {col_concurso} {order_extra}
-            """)
-            linhas = []
-            for conc, m, v, gm, gv in cur.fetchall():
-                gm2, gv2 = _parse_gol(gm), _parse_gol(gv)
-                if gm2 is None or gv2 is None:
-                    continue
-                res = "1" if gm2 > gv2 else ("2" if gm2 < gv2 else "X")
-                linhas.append((conc, m, v, res))
-        else:
-            conn.close()
-            return {"erro": "sem_coluna_resultado_nem_gols"}
+        cur.execute(f"""
+            SELECT {cols_sql}
+            FROM {schema['tabela']}
+            WHERE UPPER({schema['col_m']}) NOT LIKE '%INDEFINIDO%'
+              AND UPPER({schema['col_v']}) NOT LIKE '%INDEFINIDO%'
+            ORDER BY {col_concurso} {order_extra}
+        """)
+        linhas = []
+        for row in cur.fetchall():
+            i = 0
+            conc = row[i]; i += 1
+            m = row[i]; i += 1
+            v = row[i]; i += 1
+            res_raw = None
+            if col_resultado:
+                res_raw = row[i]; i += 1
+            gm_raw = gv_raw = None
+            if tem_gols:
+                gm_raw = row[i]; i += 1
+                gv_raw = row[i]; i += 1
+
+            res = None
+            if res_raw in ("1", "X", "2"):
+                res = res_raw
+                n_via_resultado += 1
+            else:
+                gm2, gv2 = _parse_gol(gm_raw), _parse_gol(gv_raw)
+                if gm2 is not None and gv2 is not None:
+                    res = "1" if gm2 > gv2 else ("2" if gm2 < gv2 else "X")
+                    n_via_gols += 1
+            if res is None:
+                n_descartadas += 1
+                continue
+            linhas.append((conc, m, v, res))
+        log.info(
+            "backtest_p1314_seco: %d jogos via 'resultado', %d via gols (fallback), "
+            "%d descartadas (sem nenhum dos dois)", n_via_resultado, n_via_gols, n_descartadas
+        )
     finally:
         conn.close()
 
@@ -1082,9 +643,6 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
 
     concurso_atual = None
     pendentes = []
-    # agora guarda (p1, px, p2, resultado_real) por jogo -- não só o
-    # palpite favorito -- pra poder computar seco puro E 13S+1D na mesma
-    # passada, sem duplicar o cálculo de Elo/bucket
     resultado_por_concurso = defaultdict(list)
 
     for conc, m, v, resultado in linhas:
@@ -1105,9 +663,7 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
         if total_dist > 0:
             global_p = {k: global_cnt[k] / total_dist for k in ("1", "X", "2")}
         else:
-            global_p = {"1": 0.4722, "X": 0.2616, "2": 0.2663}  # prior inicial
-        # MESMA suavização Bayesiana usada em produção (_probs_bucket_empirico)
-        # -- sem isso, backtest e produção medem/usam fórmulas diferentes
+            global_p = {"1": 0.4722, "X": 0.2616, "2": 0.2663}
         denom = n_bucket + ELO_SHRINKAGE_ALFA
         p1 = (stats.get("1", 0) + ELO_SHRINKAGE_ALFA * global_p["1"]) / denom
         px = (stats.get("X", 0) + ELO_SHRINKAGE_ALFA * global_p["X"]) / denom
@@ -1122,9 +678,6 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
         aplicar(*args)
 
     def _probs_do_jogo(p1, px, p2, resultado, cobrir_2=False):
-        """Retorna (prob_de_acerto, acertou) pro jogo. Se cobrir_2=True,
-        cobre os DOIS resultados mais prováveis (duplo); senão só o
-        favorito (seco)."""
         ranking = sorted([("1", p1), ("X", px), ("2", p2)], key=lambda x: x[1], reverse=True)
         if cobrir_2:
             cobertos = {ranking[0][0], ranking[1][0]}
@@ -1145,22 +698,15 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
         if n_jogos < 13:
             continue
 
-        # NOVO (v11.11): exclui concurso que ERA 14 mas caiu pra 13 (ou
-        # menos) só por causa do filtro -INDEFINIDO -- tratar isso como um
-        # concurso genuinamente-13 infla artificialmente a média prevista
-        # de P(14), porque pmf[13] (chance de acertar os 13 restantes) não
-        # é a mesma coisa que P(14) real de um cartão de 14 jogos.
         total_original = contagem_original_por_concurso.get(conc, n_jogos)
         jogos_removidos_indefinido = total_original - n_jogos
         if n_jogos == 13 and jogos_removidos_indefinido > 0:
             continue
 
         if baseline == "13s_1d" and n_jogos >= 1:
-            # acha o jogo MAIS incerto (menor prob do favorito) pra
-            # receber o duplo -- heurística padrão de quem aposta
             idx_incerto = min(range(n_jogos), key=lambda i: max(lista[i][0], lista[i][1], lista[i][2]))
         else:
-            idx_incerto = None  # nenhum jogo recebe duplo -- seco puro
+            idx_incerto = None
 
         probs, acertos_por_jogo = [], []
         for i, (p1, px, p2, resultado) in enumerate(lista):
@@ -1188,6 +734,11 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
     return {
         "baseline_testado": baseline,
         "concursos_avaliados": n_validos,
+        "cobertura_fonte_resultado": {
+            "n_via_resultado": n_via_resultado,
+            "n_via_gols_fallback": n_via_gols,
+            "n_descartadas_sem_fonte": n_descartadas,
+        },
         "aviso_ordem_interna": aviso_ordem_interna,
         "modelo_media_prevista": {
             "p_13_mais": round(soma_p13mais / n_validos, 4),
@@ -1206,7 +757,9 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
         },
         "metodologia": (f"baseline={baseline} -- bucket empírico, Elo em lote por concurso, "
                          f"Poisson-Binomial exato. 13s_1d cobre o jogo mais incerto do cartão "
-                         f"com duplo (2 resultados), igual à aposta mínima real da Loteca."),
+                         f"com duplo (2 resultados), igual à aposta mínima real da Loteca. "
+                         f"v11.12: fonte de resultado decidida por linha (resultado com "
+                         f"fallback pra gols), não mais pela tabela inteira."),
     }
 
 MEDIA_GOLS = {
@@ -1219,7 +772,6 @@ MEDIA_GOLS = {
     "libertadores":{"casa":1.38,"fora":0.95},
 }
 
-# ─── ELO fixo — só usado se o banco estiver mesmo indisponível ─
 ELO_FALLBACK = {
     "ARGENTINA":2140,"FRANÇA":2100,"INGLATERRA":2080,"ESPANHA":2070,
     "ALEMANHA":2060,"PORTUGAL":2040,"HOLANDA":2030,"BRASIL":2050,
@@ -1230,17 +782,10 @@ ELO_FALLBACK = {
     "VITÓRIA":1580,"SPORT":1560,"BRAGANTINO":1620,"ATHLETICO PR":1660,
 }
 
-# ─── Poisson bivariado — usado só no fallback total (banco indisponível) ──
 def _poi(lam, k):
     return math.exp(-lam) * (lam ** k) / math.factorial(k)
 
-# Dixon & Coles (1997), Applied Statistics 46(2) -- corrige a subestimação
-# estrutural de empates em placares baixos (0x0, 1x0, 0x1, 1x1) que o
-# Poisson bivariado puro (independente) comete. rho<0 aumenta P(empate)
-# nesses placares específicos. Só se aplica ao FALLBACK (banco fora do
-# ar) -- o motor principal (Elo+bucket empírico) já é calibrado com
-# frequência real observada, não precisa dessa correção paramétrica.
-RHO_DIXON_COLES = -0.13  # calibrado empiricamente (outra sessão): ~+2pp de P(empate)
+RHO_DIXON_COLES = -0.13
 
 def _tau_dc(i, j, lc, lf, rho):
     if i == 0 and j == 0: return 1.0 - lc * lf * rho
@@ -1250,16 +795,12 @@ def _tau_dc(i, j, lc, lf, rho):
     return 1.0
 
 def poisson_probs(mandante, visitante, liga="_default"):
-    # 1) motor principal: Elo iterativo (decisao de 02/09/2026)
     schema = detectar_schema_jogos()
     if schema["existe"] and schema["col_gm"] and schema["col_gv"]:
         ep = elo_probs(mandante, visitante)
         if ep and ep.get("fonte_base") not in (None,):
             return ep
 
-    # 2) fallback total: banco indisponivel/schema nao detectado --
-    #    Elo fixo generico + media de gols generica por liga, com
-    #    correção Dixon-Coles pra empates em placares baixos
     def elo_fallback_fixo(nome):
         return ELO_FALLBACK.get(nome.upper().strip(), 1650)
     ec, ef = elo_fallback_fixo(mandante), elo_fallback_fixo(visitante)
@@ -1284,13 +825,11 @@ def poisson_probs(mandante, visitante, liga="_default"):
         "fonte_base": "fallback_dixon_coles_SEM_BANCO",
     }
 
-# ─── Remoção de margem ────────────────────────────────────────
 def sem_margem(o1, ox, o2):
     r1, rx, r2 = 1/o1, 1/ox, 1/o2
     over = r1 + rx + r2
     return {"1":round(r1/over,4),"X":round(rx/over,4),"2":round(r2/over,4),"over":round(over,4)}
 
-# ─── Blending ponderado — peso marcado como NAO CALIBRADO (achado #5) ─
 def blending(prob_m, odds=None, w=0.65):
     if not odds:
         return {**prob_m, "fonte":"modelo_puro"}
@@ -1306,7 +845,6 @@ def blending(prob_m, odds=None, w=0.65):
     out["overround"]    = pm["over"]
     return out
 
-# ─── Classificação Loteca ──────────────────────────────────────
 def classificar(probs, odd_1=None, liga="_default"):
     p1, px, p2 = probs["1"], probs["X"], probs["2"]
     ordem = sorted([("1",p1),("X",px),("2",p2)], key=lambda x: x[1], reverse=True)
@@ -1330,7 +868,6 @@ def classificar(probs, odd_1=None, liga="_default"):
         "confianca": round(top_v*100, 1), "classe": classe,
     }
 
-# ─── Kelly Criterion (ja estava correto, mantido) ─────────────
 def kelly(prob, odd, banca=100.0, fracao=0.25):
     b  = odd - 1.0
     kp = (b*prob - (1-prob)) / b if b > 0 else -1.0
@@ -1347,7 +884,7 @@ def score(classif, mot=0.70):
 def painel(jogos):
     nd = sum(1 for j in jogos if j["classificacao"]["tipo"]=="DUPLO")
     nt = sum(1 for j in jogos if j["classificacao"]["tipo"]=="TRIPLO")
-    def c(d,t): return max(4.00, round((2**d)*(3**t)*2.0, 2))  # R$2,00/combinação, confirmado nas regras oficiais da Caixa (não R$3,00)
+    def c(d,t): return max(4.00, round((2**d)*(3**t)*2.0, 2))
     return {
         "secos": sum(1 for j in jogos if j["classificacao"]["tipo"]=="SECO"),
         "duplos": nd, "triplos": nt,
@@ -1356,7 +893,6 @@ def painel(jogos):
         "custo_completo":    c(nd, nt),
     }
 
-# ─── API-Football (opcional, ja estava ok) ─────────────────────
 def apif_get(endpoint, params=None):
     if not RAPIDAPI_KEY:
         return None
@@ -1374,14 +910,6 @@ def apif_get(endpoint, params=None):
         log.warning("API-Football erro: %s", e)
     return None
 
-# ─── Placar ao vivo (informativo, 05/09/2026) ──────────────────
-# Endpoint confirmado via RapidAPI Playground: football-current-live,
-# retorna response.live[] com todos os jogos em andamento no mundo no
-# momento da chamada. Usado só pra mostrar o placar junto de cada jogo
-# da grade -- NUNCA entra no cálculo de probabilidade/confiança (decisão
-# explícita: só informativo). Best-effort: se a API falhar ou não achar
-# o jogo (nomes de time não batem entre as duas fontes), retorna None
-# silenciosamente, sem quebrar o resto da resposta.
 def buscar_placar_ao_vivo():
     data = apif_get("football-current-live")
     if not data:
@@ -1395,12 +923,6 @@ def _normalizar_nome_time(nome):
     return nome.upper().strip()
 
 def casar_placar_ao_vivo(mandante, visitante, jogos_ao_vivo):
-    """Tenta achar, entre os jogos ao vivo do momento (API-Football), um
-    que bata com o confronto mandante x visitante da Loteca. Comparação
-    por nome normalizado (maiusculo, sem acento) contra "name" e
-    "longName" dos dois lados -- best-effort, times com nomes muito
-    diferentes entre as duas fontes (ex: abreviações tipo "ATLETICO MG"
-    vs "Atletico Mineiro") podem não casar. Retorna None se não achar."""
     m_norm = _normalizar_nome_time(mandante)
     v_norm = _normalizar_nome_time(visitante)
     for jogo in jogos_ao_vivo:
@@ -1437,7 +959,6 @@ def buscar_proximos_jogos(league_id, season=2026):
         })
     return jogos
 
-# ─── The Odds API (opcional, ja estava ok) ─────────────────────
 def buscar_odds(sport="soccer_brazil_campeonato"):
     if not ODDS_KEY:
         return {}
@@ -1473,26 +994,9 @@ def buscar_odds(sport="soccer_brazil_campeonato"):
         log.warning("Odds API erro: %s", e)
         return {}
 
-# ─── Conectar odds na previsão real (v11.10) ───────────────────
-# Achado da sessão de validação (07-08/09/2026): ODDS_API_KEY estava
-# configurada e "conectada" (health check de /v4/sports passava), mas
-# buscar_odds() nunca era chamada em nenhuma rota de produção -- a API
-# paga não influenciava NENHUMA previsão real, só entrava se alguém
-# passasse odd_1/odd_x/odd_2 manualmente via query string em
-# /api/analisar. Isso corrige isso.
-#
-# Lista curada de sport keys do The Odds API -- NÃO é exaustiva (não
-# cobre Série C/D nem a maioria das ligas regionais brasileiras, que
-# raramente têm mercado de apostas líquido o suficiente pra aparecer
-# aqui). Best-effort por design: blending() já trata odds=None sem
-# quebrar (cai pro modelo puro), então um jogo sem odds encontradas
-# simplesmente não é blendado -- nunca inventa dado.
-# HONESTIDADE: essa lista não foi validada contra /v4/sports da sua
-# conta -- confirme quais desses keys sua assinatura realmente cobre
-# antes de confiar cegamente na cobertura.
 ODDS_SPORT_KEYS = [
-    "soccer_brazil_campeonato",           # Brasileirão Série A
-    "soccer_brazil_serie_b",              # Brasileirão Série B
+    "soccer_brazil_campeonato",
+    "soccer_brazil_serie_b",
     "soccer_conmebol_copa_libertadores",
     "soccer_conmebol_sudamericana",
     "soccer_epl",
@@ -1500,15 +1004,10 @@ ODDS_SPORT_KEYS = [
     "soccer_uefa_champs_league",
 ]
 
-ODDS_CACHE_TTL = 6 * 3600  # 6h -- concurso fecha 1x/semana, buscar a
-                           # cada request estouraria cota da API à toa
+ODDS_CACHE_TTL = 6 * 3600
 _ODDS_CACHE = {"ts": 0, "dados": {}}
 
 def buscar_odds_todas_ligas():
-    """Busca odds em todas as ligas da lista curada e mescla num dict só,
-    cacheado por ODDS_CACHE_TTL. UMA chamada por liga configurada (não
-    por jogo) -- reusada pros 14 jogos do concurso, mesmo padrão já usado
-    em buscar_placar_ao_vivo()."""
     if time.time() - _ODDS_CACHE["ts"] < ODDS_CACHE_TTL and _ODDS_CACHE["dados"]:
         return _ODDS_CACHE["dados"]
     if not ODDS_KEY:
@@ -1528,11 +1027,6 @@ def buscar_odds_todas_ligas():
     return mesclado
 
 def casar_odds(mandante, visitante, odds_todas):
-    """Casa mandante x visitante da Loteca com uma entrada do dict de
-    odds (chave 'home_team|away_team' do The Odds API), por nome
-    normalizado -- mesma abordagem já usada em casar_placar_ao_vivo().
-    Best-effort: nomes muito diferentes entre as duas fontes podem não
-    casar, retorna None nesse caso (nunca inventa odds)."""
     m_norm = _normalizar_nome_time(mandante)
     v_norm = _normalizar_nome_time(visitante)
     for chave, odds in odds_todas.items():
@@ -1543,7 +1037,6 @@ def casar_odds(mandante, visitante, odds_todas):
             return odds
     return None
 
-# ─── Caixa (CEF) — grade e resultado REAIS (corrige achado #3) ───
 def _parse_float(v):
     if isinstance(v,(int,float)): return float(v)
     try: return float(str(v).replace("R$","").replace(".","").replace(",",".").strip())
@@ -1572,13 +1065,6 @@ def buscar_cef(numero=""):
         return None
 
 def buscar_cef_cache_github():
-    """Fallback pro bloqueio 403 confirmado em produção (04-05/09/2026):
-    lê o cache publicado por um job agendado do GitHub Actions, que
-    busca a Caixa a partir de outra rede (não o IP do Render). Servido
-    via raw.githubusercontent.com -- domínio público comum, sem nenhuma
-    relação com o WAF da Caixa. Nunca finge que é dado direto ao vivo --
-    quem chama isso precisa checar o campo "fetched_em_utc" pra saber a
-    idade do cache."""
     url = (f"https://raw.githubusercontent.com/{GITHUB_REPO_CACHE}/"
            f"{GITHUB_BRANCH_CACHE}/data/cef_cache.json")
     try:
@@ -1598,8 +1084,6 @@ def buscar_cef_cache_github():
         return None
 
 def parsear_cef(numero, d):
-    """Validado hoje contra dado real da Caixa (concurso #1264) --
-    resultado sempre vem null da API, calcula a partir dos gols."""
     if not d: return None, []
     partidas = d.get("listaResultadoEquipeEsportiva") or []
     jos = []
@@ -1618,7 +1102,6 @@ def parsear_cef(numero, d):
         })
     return d.get("numero", numero), jos
 
-# ─── Concurso fixo — mantido só como FALLBACK EXPLICITO (achado #3) ───
 CONCURSO_FALLBACK_EXEMPLO = {
     1255: {
         "nome":"Copa Loteca — 1ª Rodada (DADO DE EXEMPLO, NAO AO VIVO)",
@@ -1630,7 +1113,6 @@ CONCURSO_FALLBACK_EXEMPLO = {
     },
 }
 
-# ─── Analisar jogo ───────────────────────────────────────────
 def analisar_jogo(mandante, visitante, liga="_default", odds=None, banca=100.0):
     pm  = poisson_probs(mandante, visitante, liga)
     pf  = blending(pm, odds)
@@ -1667,11 +1149,6 @@ def analisar_jogo(mandante, visitante, liga="_default", odds=None, banca=100.0):
 def health():
     schema = detectar_schema_jogos()
     apis = {
-        # "status" só confirma que a API responde -- NÃO significa que
-        # odds estão de fato entrando nas previsões. Isso é o que
-        # "usada_em_producao" e "cache_atual" mostram (achado da sessão
-        # de validação 07-08/09/2026: antes da v11.10, a chave estava
-        # conectada mas buscar_odds() nunca era chamada em produção).
         "odds_api":     {"configurada": bool(ODDS_KEY), "status": "não configurada",
                           "usada_em_producao": True,
                           "ligas_configuradas": ODDS_SPORT_KEYS,
@@ -1701,7 +1178,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v11.11",
+        "status": "ok", "versao": "Loteca Elite Pro v11.12",
         "modelo": "elo_iterativo(K30,HA75) > fallback_elo_fixo+poisson_liga",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
@@ -1710,17 +1187,6 @@ def health():
 @app.route("/")
 @app.route("/api/grade-automatica")
 def grade_automatica():
-    """Tenta buscar o concurso AO VIVO real da Caixa, em cascata:
-      1) direto na Caixa (funciona se o IP do Render não estiver bloqueado
-         -- vale sempre tentar primeiro, sem custo, caso o bloqueio suma)
-      2) cache publicado pelo GitHub Actions (fetch_loteca.yml) -- criado
-         pra contornar o 403 confirmado em produção em 04-05/09/2026
-      3) exemplo fixo, só como último recurso, sempre avisando que é
-         exemplo e nunca fingindo ser dado ao vivo
-    Busca especificamente o PRÓXIMO concurso ainda aberto pra aposta
-    (achado de 03/09/2026: a API sem número devolve o último concurso já
-    FECHADO/disputado -- o campo "numeroConcursoProximo" indica qual
-    concurso buscar de verdade)."""
     fonte_dado = None
     cache_idade_min = None
 
@@ -1746,17 +1212,14 @@ def grade_automatica():
             except Exception:
                 cache_idade_min = None
 
-    # prioriza o concurso aberto (jogos ainda não realizados, pra apostar
-    # de verdade); só cai pro último fechado se o aberto não tiver jogos
-    # publicados ainda
     dados = dados_aberto if (dados_aberto and dados_aberto.get("listaResultadoEquipeEsportiva")) else dados_ultimo
 
     if dados:
         numero, jogos_cef = parsear_cef(dados.get("numero"), dados)
         if jogos_cef:
             banca = float(request.args.get("banca", 100))
-            jogos_ao_vivo = buscar_placar_ao_vivo()  # 1 chamada só, reusada pros 14 jogos
-            odds_todas = buscar_odds_todas_ligas()    # idem -- cacheada, reusada pros 14 jogos
+            jogos_ao_vivo = buscar_placar_ao_vivo()
+            odds_todas = buscar_odds_todas_ligas()
             jogos = []
             n_com_odds = 0
             for j in jogos_cef:
@@ -1772,17 +1235,11 @@ def grade_automatica():
                 "status":"sucesso","concurso":numero,"fonte":fonte_dado,
                 "concurso_ainda_aberto": dados is dados_aberto,
                 "cache_idade_minutos": cache_idade_min,
-                # transparência: quantos dos 14 jogos de fato receberam odds
-                # reais (blendados) vs quantos ficaram só no modelo puro --
-                # nunca esconder cobertura parcial, mesmo espírito do resto
-                # do projeto (fonte explícita, cache_idade_minutos, etc.)
                 "cobertura_odds": {"jogos_com_odds": n_com_odds, "total_jogos": len(jogos),
                                     "peso_modelo_no_blend": 0.65,
                                     "aviso": "peso_ainda_NAO_calibrado_via_walkforward"},
                 "total_jogos":len(jogos),"jogos":jogos,"painel":painel(jogos),
             })
-    # fallback explicito -- só chega aqui se nem o direto nem o cache do
-    # GitHub Actions deram certo
     exemplo = CONCURSO_FALLBACK_EXEMPLO[1255]
     banca = float(request.args.get("banca", 100))
     jogos = []
@@ -1812,11 +1269,6 @@ def analisar():
 
 @app.route("/api/backtest-p1314")
 def backtest_p1314_route():
-    """P(13/14) real por cartão -- a métrica de verdade do projeto (não
-    acurácia média por jogo isolado). ?baseline=13s_1d (padrão, é a
-    aposta mínima REAL da Loteca) ou ?baseline=14s_puro (referência
-    teórica, ninguém aposta assim -- a Caixa não permite 14 secos puro).
-    ?comparar=1 roda os dois baselines e retorna o ganho relativo."""
     try:
         limite = request.args.get("limite_concursos")
         limite = int(limite) if limite else None
@@ -1848,9 +1300,6 @@ def backtest_p1314_route():
 
 @app.route("/api/backtest-elo")
 def backtest_elo_route():
-    """Compara bucket empírico vs curva logística no histórico real,
-    walk-forward sem vazamento. Parâmetro opcional ?limite=N pra rodar
-    com uma amostra menor (mais rápido, útil pra teste rápido)."""
     try:
         limite = request.args.get("limite")
         limite = int(limite) if limite else None
@@ -1861,11 +1310,6 @@ def backtest_elo_route():
 
 @app.route("/api/verificar-desambiguacao")
 def verificar_desambiguacao():
-    """Confirma, com dado real do banco, se a desambiguação de nomes de
-    time (sessão de 31/08-05/09/2026: ATLETICO-MG/ATLETICO-GO,
-    AMERICA-MG/AMERICA-RN separados, resto -INDEFINIDO) foi de fato
-    aplicada nas colunas que o app usa (time_casa_normalizado/
-    time_fora_normalizado) -- em vez de supor, verifica direto."""
     try:
         schema = detectar_schema_jogos()
         if not schema["existe"]:
@@ -1930,9 +1374,6 @@ def db_info():
             cur.execute(f"SELECT COUNT(DISTINCT UPPER(TRIM({schema['col_m']}))) FROM {schema['tabela']}")
             info["times_distintos"] = cur.fetchone()[0]
         conn.close()
-        # diagnostico do Elo iterativo (motor principal, v11) -- expõe se
-        # tem aviso de ordem cronologica, quantos jogos processou e a
-        # idade do cache, no mesmo espirito de nunca falhar silenciosamente
         ratings, aviso_elo = calcular_elo_ratings()
         info["elo_iterativo"] = {
             "times_com_rating": len(ratings),
