@@ -1,25 +1,4 @@
 """
-Loteca Elite Pro — app.py v11.13
-Mudança desta sessão, depois da v11.12:
-
-- Dois novos endpoints de diagnóstico, só-leitura, pra investigar a
-  discrepância encontrada em produção (16.778 jogos / 632 concursos =
-  26,5 jogos/concurso, muito acima dos 14 esperados):
-  /api/diagnostico-concursos: conta jogos por concurso, mostra quantos
-  têm exatamente 14 (válidos), menos de 13 (incompletos, descartados
-  pelo backtest) e mais de 14 (possível duplicação, mesmo padrão do
-  bug documentado no concurso 1266). Testado com dado sintético
-  reproduzindo os três cenários misturados.
-  /api/verificar-ambiguidade-residual: checa ATHLETICO/GUARANI (citados
-  como pendência de baixo risco na sessão de desambiguação) e qualquer
-  nome sem sufixo de UF com muita frequência -- candidato a ambiguidade
-  não resolvida. Testado, detecta corretamente nomes genéricos sem
-  sufixo e ignora os já desambiguados.
-  Motivação: evitar rodar scripts locais que exigem colar a senha do
-  banco no terminal/chat -- os dois fazem a mesma investigação direto
-  em produção, só acessando uma URL no navegador, com a conexão já
-  configurada com segurança via variável de ambiente do Render.
-
 Loteca Elite Pro — app.py v11.12
 Mudança desta sessão (12/09/2026), depois da v11.11:
 
@@ -47,24 +26,24 @@ Mudança desta sessão (12/09/2026), depois da v11.11:
     a linha se nenhuma das duas fontes estiver disponível. Loga quantas
     linhas vieram de cada fonte (n_via_resultado / n_via_gols /
     n_descartadas) -- nunca mais silencioso sobre o tamanho do descarte.
-    PRÓXIMO PASSO OBRIGATÓRIO: rodar /api/backtest-p1314?comparar=1 de
-    novo em produção depois de subir essa versão, conferir se
-    "concursos_avaliados" sobe de 632 pra perto do total real de
-    concursos (~1270), e tratar o novo freq_13_mais/freq_14 como o
-    baseline oficial (o anterior, medido sobre só metade do histórico,
-    não deve ser usado pra decisão nenhuma).
 
-Herda tudo da v11.11 e anteriores (changelog completo mantido no
-histórico do repositório) -- motor Elo iterativo (K=30, HOME_ADV=75),
-bucket empírico com suavização Bayesiana e peso de recência, filtro de
-jogos -INDEFINIDO, baseline real 13 secos + 1 duplo, odds de mercado
-conectadas via The Odds API (peso do blend ainda não calibrado),
-cache de resultados via GitHub Actions para contornar bloqueio 403
-da Caixa, placar ao vivo informativo via API-Football.
+26) CORREÇÃO DE INCONSISTÊNCIA (encontrada em revisão de código, sessão
+    seguinte): backtest_p1314_seco() usava um esquema de bucket de Elo
+    diferente do que roda em produção -- bid = round(diff/50) (arredonda
+    pro mais próximo) contra _bucket_de_diff() real = floor(diff/50)*50
+    (arredonda pra baixo), usado por calcular_elo_ratings()/elo_probs().
+    Corrigido para reusar _bucket_de_diff() em vez de recalcular com round().
+
+27) REGRESSÃO CORRIGIDA (encontrada na mesma revisão): a correção do
+    "jogo base real da Loteca" (13 secos + 1 duplo, não 14 secos puro)
+    tinha sumido do painel(). Restaurada: quando nd==0 e nt==0, aplica 1
+    duplo automático no jogo de menor confiança do cartão, expõe qual
+    jogo recebeu o ajuste em "duplo_base_gratuito" e explica em
+    "nota_custo".
 
 Variáveis de ambiente no Render:
-  RAPIDAPI_KEY  → API-Football (fixtures, lesões, escalação) -- opcional
-  ODDS_API_KEY  → The Odds API (odds de mercado Bet365/Pinnacle) -- opcional
+  RAPIDAPI_KEY  → API-Football -- opcional
+  ODDS_API_KEY  → The Odds API -- opcional
   DATABASE_URL  → PostgreSQL (se ausente usa SQLite local) -- recomendado
 """
 
@@ -80,7 +59,6 @@ log = logging.getLogger("loteca")
 app = Flask(__name__)
 CORS(app)
 
-# ─── Variáveis de ambiente ────────────────────────────────────
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "") or os.getenv("APIFOOTBALL_KEY", "")
 ODDS_KEY     = os.getenv("ODDS_API_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
@@ -96,7 +74,6 @@ URL_CEF   = "https://servicebus2.caixa.gov.br/portaldeloterias/api/loteca"
 H2H_MIN      = 20
 SHRINKAGE_K  = 15
 
-# ─── Banco de dados ───────────────────────────────────────────
 def get_conn():
     if USE_PG:
         import psycopg2
@@ -341,8 +318,7 @@ def calcular_elo_ratings():
             aviso = ("Nenhuma coluna de data/concurso encontrada na tabela "
                       f"{schema['tabela']} -- Elo calculado na ordem de "
                       "insercao (id/rowid), que pode NAO refletir a ordem "
-                      "cronologica real dos jogos. Ratings finais podem "
-                      "estar incorretos ate isso ser confirmado/corrigido.")
+                      "cronologica real dos jogos.")
             log.warning("calcular_elo_ratings: %s", aviso)
 
         order_clause = f"ORDER BY {col_ordem} ASC" if col_ordem else ""
@@ -519,9 +495,6 @@ def backtest_elo_walkforward(limite_jogos=None):
             "usou_fallback_logistico": stats["bucket_empirico"]["n_usou_fallback"],
         },
         "ordem_usada": tipo_ordem,
-        "metodologia": ("walk-forward sem vazamento -- bucket empírico também construído "
-                         "incrementalmente (só usa jogos ANTERIORES ao ponto de previsão, "
-                         "nunca a tabela final inteira)"),
     }
 
 def _detectar_colunas_concurso(cols):
@@ -542,17 +515,6 @@ def _poisson_binomial(probs_acerto):
 BACKTEST_P1314_BUCKET = 50
 
 def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
-    """CORREÇÃO v11.12 (achado desta sessão): a versão anterior decidia
-    UMA VEZ SÓ, pra tabela inteira, se usava a coluna "resultado" ou
-    calculava via gols -- se "resultado" existisse no schema, TODA linha
-    com resultado NULL era descartada pelo filtro SQL "WHERE resultado
-    IN (...)", mesmo quando gols_casa/gols_fora daquela linha estavam
-    preenchidos e dariam pra calcular o resultado do mesmo jeito.
-    Confirmado em produção: isso derrubava concursos_avaliados de ~1270
-    pra 632 -- metade do histórico descartada silenciosamente. Agora a
-    decisão é POR LINHA: usa "resultado" quando válido, cai pros gols
-    quando "resultado" vier NULL, e só descarta se nenhum dos dois
-    estiver disponível."""
     schema = detectar_schema_jogos()
     if not schema["existe"]:
         return {"erro": "schema_invalido"}
@@ -566,22 +528,15 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
         conn.close()
         return {"erro": "sem_coluna_de_concurso",
                 "mensagem": (f"Precisa de uma coluna tipo 'concurso' pra agrupar os 14 "
-                              f"jogos de cada cartão -- não encontrada em {schema['tabela']}. "
-                              f"Sem isso não dá pra calcular P(13/14) por cartão real.")}
+                              f"jogos de cada cartão -- não encontrada em {schema['tabela']}.")}
 
     cur.execute(f"SELECT {col_concurso}, COUNT(*) FROM {schema['tabela']} GROUP BY {col_concurso}")
     contagem_original_por_concurso = dict(cur.fetchall())
 
     aviso_ordem_interna = None if col_seq else (
-        "Sem coluna de sequencial/ordem dentro do concurso -- a ordem dos "
-        "jogos num mesmo cartão pode não refletir a numeração real (1 a 14), "
-        "mas isso não afeta o cálculo em si, só a leitura de qual jogo é qual.")
+        "Sem coluna de sequencial/ordem dentro do concurso.")
     order_extra = f", {col_seq}" if col_seq else ""
 
-    # CORREÇÃO v11.12: monta a lista de colunas dinamicamente -- pega
-    # "resultado" E gols juntos (quando ambas existirem), pra decidir
-    # POR LINHA qual fonte usar, em vez de escolher uma fonte só pra
-    # tabela inteira (bug que descartava metade do histórico).
     tem_gols = bool(schema["col_gm"] and schema["col_gv"])
     if not col_resultado and not tem_gols:
         conn.close()
@@ -653,7 +608,7 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
     global_cnt = {"1": 0, "X": 0, "2": 0}
 
     def aplicar(m, v, diff, resultado):
-        bid = round(diff / BACKTEST_P1314_BUCKET)
+        bid = _bucket_de_diff(diff)
         bucket_stats[bid][resultado] += 1
         global_cnt[resultado] += 1
         E = 1 / (1 + 10 ** (-diff / 400))
@@ -677,7 +632,7 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
         concurso_atual = conc
 
         diff = (elo[m] + ELO_HOME_ADV) - elo[v]
-        bid = round(diff / BACKTEST_P1314_BUCKET)
+        bid = _bucket_de_diff(diff)
         stats = bucket_stats[bid]
         n_bucket = sum(stats.values())
         total_dist = sum(global_cnt.values())
@@ -776,11 +731,6 @@ def backtest_p1314_seco(limite_concursos=None, baseline="13s_1d"):
             "concursos_13_mais_esperados": round(concursos_13mais_real / n_validos * 52, 1),
             "concursos_14_esperados": round(concursos_14_real / n_validos * 52, 2),
         },
-        "metodologia": (f"baseline={baseline} -- bucket empírico, Elo em lote por concurso, "
-                         f"Poisson-Binomial exato. 13s_1d cobre o jogo mais incerto do cartão "
-                         f"com duplo (2 resultados), igual à aposta mínima real da Loteca. "
-                         f"v11.12: fonte de resultado decidida por linha (resultado com "
-                         f"fallback pra gols), não mais pela tabela inteira."),
     }
 
 MEDIA_GOLS = {
@@ -905,14 +855,45 @@ def score(classif, mot=0.70):
 def painel(jogos):
     nd = sum(1 for j in jogos if j["classificacao"]["tipo"]=="DUPLO")
     nt = sum(1 for j in jogos if j["classificacao"]["tipo"]=="TRIPLO")
+
+    duplo_base_gratuito = None
+    if nd == 0 and nt == 0 and jogos:
+        idx_menor_confianca = min(
+            range(len(jogos)),
+            key=lambda i: jogos[i]["classificacao"]["confianca"]
+        )
+        jogo_alvo = jogos[idx_menor_confianca]
+        cl = jogo_alvo["classificacao"]
+        pf = jogo_alvo.get("prob_final", {})
+        p1, px, p2 = pf.get("1", 0), pf.get("X", 0), pf.get("2", 0)
+        ordem = sorted([("1", p1), ("X", px), ("2", p2)], key=lambda x: x[1], reverse=True)
+        cl["tipo"] = "DUPLO"
+        cl["colunas"] = [ordem[0][0], ordem[1][0]]
+        cl["coluna_display"] = "/".join(sorted(cl["colunas"]))
+        nd = 1
+        duplo_base_gratuito = {
+            "indice_jogo": idx_menor_confianca,
+            "mandante": jogo_alvo.get("mandante"),
+            "visitante": jogo_alvo.get("visitante"),
+        }
+
     def c(d,t): return max(4.00, round((2**d)*(3**t)*2.0, 2))
-    return {
+    resultado = {
         "secos": sum(1 for j in jogos if j["classificacao"]["tipo"]=="SECO"),
         "duplos": nd, "triplos": nt,
         "custo_minimo":      c(nd, 0),
         "custo_recomendado": c(nd, min(nt,1)),
         "custo_completo":    c(nd, nt),
     }
+    if duplo_base_gratuito:
+        resultado["duplo_base_gratuito"] = duplo_base_gratuito
+        resultado["nota_custo"] = (
+            "O jogo mínimo real da Loteca é 13 secos + 1 duplo, não 14 secos "
+            "puro (a Caixa nem permite cartão 100% seco) -- por isso o duplo "
+            "acima foi aplicado automaticamente no jogo de menor confiança do "
+            "cartão, sem custo adicional em relação ao seco puro."
+        )
+    return resultado
 
 def apif_get(endpoint, params=None):
     if not RAPIDAPI_KEY:
@@ -1096,9 +1077,7 @@ def buscar_cef_cache_github():
         cache = r.json()
         if cache.get("status_ultimo") != 200:
             log.warning("buscar_cef_cache_github: cache existe mas a ultima busca do "
-                        "Action tambem falhou (%s) -- se isso persistir, o bloqueio da "
-                        "Caixa pode nao ser só por IP do Render, e sim mais amplo",
-                        cache.get("erro"))
+                        "Action tambem falhou (%s)", cache.get("erro"))
         return cache
     except Exception as e:
         log.warning("buscar_cef_cache_github: %s", e)
@@ -1150,6 +1129,7 @@ def analisar_jogo(mandante, visitante, liga="_default", odds=None, banca=100.0):
             melhor = {"resultado":best[0],"odd":odds[best[0]],
                       "ev":best[1]["ev"],"stake":best[1]["stake"]}
     return {
+        "mandante": mandante, "visitante": visitante,
         "prob_modelo": {"1":pm["1"],"X":pm["X"],"2":pm["2"]},
         "prob_final":  {"1":pf["1"],"X":pf["X"],"2":pf["2"]},
         "fonte": pf.get("fonte","modelo_puro"),
@@ -1160,10 +1140,6 @@ def analisar_jogo(mandante, visitante, liga="_default", odds=None, banca=100.0):
         "classificacao": cl, "score": sc,
         "kelly": kelly_res or None, "melhor_aposta": melhor,
     }
-
-# ════════════════════════════════════════════════════════════
-# ROTAS
-# ════════════════════════════════════════════════════════════
 
 @app.route("/health")
 @app.route("/api/status")
@@ -1182,8 +1158,8 @@ def health():
                                              else "APIFOOTBALL_KEY" if os.getenv("APIFOOTBALL_KEY")
                                              else None)},
         "banco":        {"tipo": "postgresql" if USE_PG else "sqlite",
-                          "tabela_jogos_historicos": schema["tabela"] or "NENHUMA (previsao cai no fallback ELO fixo)"},
-        "caixa_loteca":  {"direto": "desconhecido (só testado no /api/grade-automatica)",
+                          "tabela_jogos_historicos": schema["tabela"] or "NENHUMA"},
+        "caixa_loteca":  {"direto": "desconhecido",
                            "cache_github": {"repo": GITHUB_REPO_CACHE, "branch": GITHUB_BRANCH_CACHE}},
     }
     if ODDS_KEY:
@@ -1199,7 +1175,7 @@ def health():
             apis["api_football"]["status"] = "conectada" if r.status_code==200 else f"erro {r.status_code}"
         except: apis["api_football"]["status"] = "timeout"
     return jsonify({
-        "status": "ok", "versao": "Loteca Elite Pro v11.13",
+        "status": "ok", "versao": "Loteca Elite Pro v11.12.1",
         "modelo": "elo_iterativo(K30,HA75) > fallback_elo_fixo+poisson_liga",
         "banco": "postgresql" if USE_PG else "sqlite",
         "apis": apis,
@@ -1269,7 +1245,7 @@ def grade_automatica():
         jogos.append({**j, **analise})
     return jsonify({
         "status":"aviso","fonte":"EXEMPLO_FIXO_NAO_AO_VIVO",
-        "mensagem":"API da Caixa indisponivel no momento (direto e via cache do GitHub Actions) -- mostrando dado de exemplo, nao concurso real",
+        "mensagem":"API da Caixa indisponivel no momento -- mostrando dado de exemplo, nao concurso real",
         "nome":exemplo["nome"],"total_jogos":len(jogos),"jogos":jogos,"painel":painel(jogos),
     })
 
@@ -1309,8 +1285,6 @@ def backtest_p1314_route():
                 "14s_puro": r_seco, "13s_1d": r_real,
                 "ganho_relativo_13s_1d_vs_14s_puro": {
                     "p_13_mais_pct": ganho_13, "p_14_pct": ganho_14,
-                    "nota": ("13s_1d é o mínimo REAL da Loteca (mesmo custo do seco puro, "
-                              "que a Caixa nem permite apostar) -- esse ganho é 'de graça'."),
                 },
             })
         baseline = request.args.get("baseline", "13s_1d")
@@ -1326,69 +1300,6 @@ def backtest_elo_route():
         limite = int(limite) if limite else None
         resultado = backtest_elo_walkforward(limite)
         return jsonify({"status": "sucesso", **resultado})
-    except Exception as e:
-        return jsonify({"status": "erro", "mensagem": str(e)}), 500
-
-@app.route("/api/verificar-ambiguidade-residual")
-def verificar_ambiguidade_residual():
-    """Procura por nomes de time que ainda podem estar ambíguos além dos
-    já tratados (ATLETICO/AMERICA) -- especificamente ATHLETICO (tem
-    Athletico Paranaense, mas também pode aparecer como forma alternativa
-    de escrita de Atlético) e GUARANI (tem Guarani-SP e Guarani-CE),
-    citados como pendência na sessão de desambiguação (baixo risco, mas
-    não zero). Também lista, de forma genérica, qualquer nome que
-    apareça em MUITOS jogos mas sem sufixo de UF -- candidato a ser um
-    nome genérico não resolvido, sem assumir que sabemos quais são."""
-    try:
-        schema = detectar_schema_jogos()
-        if not schema["existe"]:
-            return jsonify({"status": "erro", "mensagem": "schema_invalido"}), 500
-        conn = get_conn(); cur = conn.cursor()
-        ph = _ph()
-
-        candidatos = ["ATHLETICO", "GUARANI", "ATLETICO", "AMERICA",
-                      "SANTA CRUZ", "SAO RAIMUNDO", "BRASIL DE PELOTAS",
-                      "OPERARIO", "FLUMINENSE", "RIO BRANCO"]
-        resultado = {}
-        for nome in candidatos:
-            cur.execute(f"""
-                SELECT COUNT(*) FROM {schema['tabela']}
-                WHERE UPPER(TRIM({schema['col_m']}))={ph}
-                   OR UPPER(TRIM({schema['col_v']}))={ph}
-            """, (nome, nome))
-            n = cur.fetchone()[0]
-            if n > 0:
-                resultado[nome] = n
-
-        # nomes SEM sufixo de UF/desambiguação (sem hífen) que aparecem
-        # em muitos jogos -- candidatos a precisar de atenção, sem viés
-        # de lista fixa
-        cur.execute(f"""
-            SELECT UPPER(TRIM({schema['col_m']})) AS t, COUNT(*) AS n
-            FROM {schema['tabela']}
-            WHERE {schema['col_m']} NOT LIKE '%-%'
-              AND UPPER({schema['col_m']}) NOT LIKE '%INDEFINIDO%'
-            GROUP BY t
-            HAVING COUNT(*) > 100
-            ORDER BY n DESC
-            LIMIT 20
-        """)
-        nomes_sem_sufixo = [{"nome": r[0], "n_jogos": r[1]} for r in cur.fetchall()]
-        conn.close()
-
-        return jsonify({
-            "status": "sucesso",
-            "contagem_nomes_candidatos_conhecidos": resultado,
-            "nomes_sem_sufixo_uf_mais_frequentes": nomes_sem_sufixo,
-            "interpretacao": (
-                "Nomes na primeira lista com contagem > 0 SEM o correspondente "
-                "com sufixo (ex: ATHLETICO sem ATHLETICO-PR/ATHLETICO-*) podem "
-                "estar misturando times diferentes sob um nome genérico. A "
-                "segunda lista mostra os nomes mais frequentes sem hífen -- "
-                "vale checar manualmente se algum desses é time único de "
-                "verdade (não precisa desambiguar) ou nome genérico escondido."
-            ),
-        })
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": str(e)}), 500
 
@@ -1435,83 +1346,6 @@ def verificar_desambiguacao():
             "jogos_marcados_indefinido": n_indefinido,
             "times_distintos_no_banco": n_times_distintos,
             "desambiguacao_aplicada": desambiguado,
-            "interpretacao": (
-                "Se ATLETICO-MG/ATLETICO-GO/AMERICA-MG/AMERICA-RN aparecerem com "
-                "contagem > 0 E o genérico ATLETICO/AMERICA tiver contagem 0 (ou "
-                "bem menor), a desambiguação foi aplicada nas colunas que o app usa. "
-                "Se ATLETICO/AMERICA genérico ainda tiver contagem alta e as versões "
-                "desambiguadas forem 0, a desambiguação NÃO chegou nessa coluna/banco."
-            ),
-        })
-    except Exception as e:
-        return jsonify({"status": "erro", "mensagem": str(e)}), 500
-
-@app.route("/api/diagnostico-concursos")
-def diagnostico_concursos():
-    """Investiga a distribuição real de jogos por concurso -- motivado
-    pela discrepância encontrada em produção: 16.778 jogos / 632
-    concursos = 26,5 jogos/concurso em média, muito acima dos 14
-    esperados. Mostra quantos concursos têm exatamente 14 (válidos),
-    quantos têm menos de 13 (incompletos, descartados pelo backtest),
-    e quantos têm mais de 14 (possível duplicação de jogos -- já houve
-    um caso documentado de 28 jogos duplicados no concurso 1266)."""
-    try:
-        schema = detectar_schema_jogos()
-        if not schema["existe"]:
-            return jsonify({"status": "erro", "mensagem": "schema_invalido"}), 500
-        conn = get_conn(); cur = conn.cursor()
-        cols = _listar_colunas(cur, schema["tabela"])
-        col_concurso, col_seq = _detectar_colunas_concurso(cols)
-        if not col_concurso:
-            conn.close()
-            return jsonify({"status": "erro", "mensagem": "sem_coluna_de_concurso"}), 500
-
-        cur.execute(f"""
-            SELECT {col_concurso}, COUNT(*)
-            FROM {schema['tabela']}
-            GROUP BY {col_concurso}
-        """)
-        contagens = cur.fetchall()
-        conn.close()
-
-        total_concursos = len(contagens)
-        total_jogos = sum(n for _, n in contagens)
-        distribuicao = defaultdict(int)
-        concursos_14 = concursos_menos_13 = concursos_mais_14 = concursos_13 = 0
-        exemplos_duplicados, exemplos_incompletos = [], []
-
-        for conc, n in contagens:
-            distribuicao[n] += 1
-            if n == 14:
-                concursos_14 += 1
-            elif n == 13:
-                concursos_13 += 1
-            elif n < 13:
-                concursos_menos_13 += 1
-                if len(exemplos_incompletos) < 15:
-                    exemplos_incompletos.append({"concurso": conc, "n_jogos": n})
-            else:  # n > 14
-                concursos_mais_14 += 1
-                if len(exemplos_duplicados) < 15:
-                    exemplos_duplicados.append({"concurso": conc, "n_jogos": n})
-
-        return jsonify({
-            "status": "sucesso",
-            "total_concursos_distintos": total_concursos,
-            "total_jogos": total_jogos,
-            "media_jogos_por_concurso": round(total_jogos / total_concursos, 2) if total_concursos else None,
-            "concursos_com_exatamente_14": concursos_14,
-            "concursos_com_13_exatos": concursos_13,
-            "concursos_com_menos_de_13_incompletos": concursos_menos_13,
-            "concursos_com_mais_de_14_possivel_duplicacao": concursos_mais_14,
-            "distribuicao_n_jogos_por_concurso": dict(sorted(distribuicao.items())),
-            "exemplos_concursos_com_duplicacao": sorted(
-                exemplos_duplicados, key=lambda x: -x["n_jogos"]),
-            "exemplos_concursos_incompletos": exemplos_incompletos,
-            "nota": ("backtest_p1314_seco só considera concursos com >=13 jogos "
-                      "válidos -- concursos_com_menos_de_13 explica boa parte da "
-                      "diferença entre total_concursos_distintos e "
-                      "concursos_avaliados no backtest."),
         })
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": str(e)}), 500
