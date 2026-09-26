@@ -1350,6 +1350,78 @@ def verificar_desambiguacao():
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": str(e)}), 500
 
+@app.route("/api/diagnostico-concursos-indefinido")
+def diagnostico_concursos_indefinido():
+    """Investiga a causa real de concursos_avaliados=632 no backtest --
+    hipotese (12/09/2026, apos a correcao do fallback resultado/gols NAO
+    ter mudado o numero 632): concursos inteiros estao sendo descartados
+    quando PELO MENOS UM dos 14 jogos tem nome de time ambiguo
+    (-INDEFINIDO), mesmo que os outros 13 estejam perfeitos. Isso e
+    diferente do bug anterior (que era sobre a FONTE do resultado, nao
+    sobre quantos jogos sobram por concurso)."""
+    try:
+        schema = detectar_schema_jogos()
+        if not schema["existe"]:
+            return jsonify({"status": "erro", "mensagem": "schema_invalido"}), 500
+        conn = get_conn(); cur = conn.cursor()
+        cols = _listar_colunas(cur, schema["tabela"])
+        col_concurso, col_seq = _detectar_colunas_concurso(cols)
+        if not col_concurso:
+            conn.close()
+            return jsonify({"status": "erro", "mensagem": "sem_coluna_de_concurso"}), 500
+
+        cur.execute(f"SELECT {col_concurso}, COUNT(*) FROM {schema['tabela']} GROUP BY {col_concurso}")
+        original = dict(cur.fetchall())
+
+        cur.execute(f"""
+            SELECT {col_concurso}, COUNT(*) FROM {schema['tabela']}
+            WHERE UPPER({schema['col_m']}) NOT LIKE '%INDEFINIDO%'
+              AND UPPER({schema['col_v']}) NOT LIKE '%INDEFINIDO%'
+            GROUP BY {col_concurso}
+        """)
+        filtrado = dict(cur.fetchall())
+        conn.close()
+
+        buckets = defaultdict(int)
+        exemplos_afetados = []
+        for conc, n_orig in original.items():
+            n_filt = filtrado.get(conc, 0)
+            removidos = n_orig - n_filt
+            if removidos == 0:
+                buckets["sem_perda_nenhuma"] += 1
+            elif n_filt >= 14:
+                buckets["perdeu_mas_ainda_tem_14_ou_mais"] += 1
+            elif n_filt == 13:
+                buckets["virou_13_por_causa_do_filtro_EXCLUIDO"] += 1
+            elif n_filt < 13:
+                buckets["caiu_abaixo_de_13_EXCLUIDO"] += 1
+            if removidos > 0 and len(exemplos_afetados) < 25:
+                exemplos_afetados.append({
+                    "concurso": conc, "jogos_originais": n_orig,
+                    "jogos_apos_filtro": n_filt, "jogos_removidos": removidos,
+                })
+
+        total_excluidos = (buckets.get("virou_13_por_causa_do_filtro_EXCLUIDO", 0)
+                            + buckets.get("caiu_abaixo_de_13_EXCLUIDO", 0))
+
+        return jsonify({
+            "status": "sucesso",
+            "total_concursos_no_banco": len(original),
+            "buckets": dict(buckets),
+            "total_concursos_excluidos_por_causa_do_filtro_indefinido": total_excluidos,
+            "exemplos_concursos_afetados": exemplos_afetados,
+            "interpretacao": (
+                "Se 'total_concursos_excluidos...' for perto de 638 (a diferenca "
+                "entre ~1270 concursos totais e os 632 avaliados no backtest), "
+                "isso confirma que a causa real do backtest avaliar so 632 concursos "
+                "e o filtro -INDEFINIDO descartando o CONCURSO INTEIRO quando so 1 "
+                "dos 14 jogos tem time ambiguo -- nao o problema de fonte de "
+                "resultado (resultado vs gols) que foi corrigido antes."
+            ),
+        })
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+
 @app.route("/api/db-info")
 def db_info():
     try:
