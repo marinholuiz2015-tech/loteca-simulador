@@ -1422,6 +1422,45 @@ def diagnostico_concursos_indefinido():
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": str(e)}), 500
 
+@app.route("/api/listar-times-indefinido")
+def listar_times_indefinido():
+    """Lista os valores exatos marcados como -INDEFINIDO, com contagem --
+    necessario pra saber QUAIS times/nomes estao causando os 629 concursos
+    excluidos do backtest (achado de 12/09/2026), antes de decidir como
+    resolver cada um."""
+    try:
+        schema = detectar_schema_jogos()
+        if not schema["existe"]:
+            return jsonify({"status": "erro", "mensagem": "schema_invalido"}), 500
+        conn = get_conn(); cur = conn.cursor()
+
+        cur.execute(f"""
+            SELECT UPPER(TRIM({schema['col_m']})) AS nome, COUNT(*) AS n
+            FROM {schema['tabela']}
+            WHERE UPPER({schema['col_m']}) LIKE '%INDEFINIDO%'
+            GROUP BY nome
+            ORDER BY n DESC
+        """)
+        mandantes = [{"nome": r[0], "ocorrencias": r[1]} for r in cur.fetchall()]
+
+        cur.execute(f"""
+            SELECT UPPER(TRIM({schema['col_v']})) AS nome, COUNT(*) AS n
+            FROM {schema['tabela']}
+            WHERE UPPER({schema['col_v']}) LIKE '%INDEFINIDO%'
+            GROUP BY nome
+            ORDER BY n DESC
+        """)
+        visitantes = [{"nome": r[0], "ocorrencias": r[1]} for r in cur.fetchall()]
+        conn.close()
+
+        return jsonify({
+            "status": "sucesso",
+            "como_mandante": mandantes,
+            "como_visitante": visitantes,
+        })
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+
 @app.route("/api/db-info")
 def db_info():
     try:
