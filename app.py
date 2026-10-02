@@ -1461,6 +1461,164 @@ def listar_times_indefinido():
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": str(e)}), 500
 
+@app.route("/api/resolver-indefinido")
+def resolver_indefinido():
+    """Backfill dos jogos -INDEFINIDO (achado de 12/09/2026: so 2 familias
+    de nome causam os 866 jogos ambiguos -- ATLETICO-INDEFINIDO e
+    AMERICA-INDEFINIDO). Busca cada concurso afetado na API de resultados
+    da Caixa (servicebus2, que ja confirmamos que retorna siglaUFEquipeUm/
+    siglaUFEquipeDois), casa pela posicao do jogo (ou pelo nome do
+    adversario quando nao houver coluna de posicao confiavel), e corrige
+    o nome composto (ex: "ATLETICO-INDEFINIDO" -> "ATLETICO-MG").
+
+    MODO SIMULACAO por padrao (nao grava nada, so mostra o que mudaria).
+    Passe ?aplicar=1 pra gravar de verdade no banco.
+    Passe ?limite=N (padrao 50) pra processar só N concursos por chamada
+    -- evita timeout do Render ao processar centenas de concursos de
+    uma vez; chame de novo com ?offset=N pra continuar de onde parou.
+    """
+    aplicar = request.args.get("aplicar") == "1"
+    limite = int(request.args.get("limite", 50))
+    offset = int(request.args.get("offset", 0))
+
+    try:
+        schema = detectar_schema_jogos()
+        if not schema["existe"]:
+            return jsonify({"status": "erro", "mensagem": "schema_invalido"}), 500
+
+        conn = get_conn(); cur = conn.cursor()
+        cols = _listar_colunas(cur, schema["tabela"])
+        col_concurso, col_seq = _detectar_colunas_concurso(cols)
+        if not col_concurso:
+            conn.close()
+            return jsonify({"status": "erro", "mensagem": "sem_coluna_de_concurso"}), 500
+        ph = _ph()
+
+        cur.execute(f"""
+            SELECT DISTINCT {col_concurso} FROM {schema['tabela']}
+            WHERE UPPER({schema['col_m']}) LIKE '%INDEFINIDO%'
+               OR UPPER({schema['col_v']}) LIKE '%INDEFINIDO%'
+            ORDER BY {col_concurso}
+        """)
+        todos_concursos_afetados = [r[0] for r in cur.fetchall()]
+        lote = todos_concursos_afetados[offset:offset + limite]
+
+        resolvidos, falhas, sem_mudanca = [], [], 0
+
+        for numero_concurso in lote:
+            dados = buscar_cef(str(numero_concurso))
+            if not dados:
+                falhas.append({"concurso": numero_concurso, "motivo": "api_nao_retornou"})
+                time.sleep(0.3)
+                continue
+
+            partidas = dados.get("listaResultadoEquipeEsportiva") or []
+            mapa_posicao = {p.get("posicaoJogo"): p for p in partidas}
+            mapa_por_nomes = {}
+            for p in partidas:
+                n1 = _normalizar_nome_time(p.get("nomeEquipeUm", ""))
+                n2 = _normalizar_nome_time(p.get("nomeEquipeDois", ""))
+                mapa_por_nomes[(n1, n2)] = p
+
+            if col_seq:
+                cur.execute(f"""
+                    SELECT {col_seq}, {schema['col_m']}, {schema['col_v']}
+                    FROM {schema['tabela']} WHERE {col_concurso}={ph}
+                """, (numero_concurso,))
+            else:
+                cur.execute(f"""
+                    SELECT NULL, {schema['col_m']}, {schema['col_v']}
+                    FROM {schema['tabela']} WHERE {col_concurso}={ph}
+                """, (numero_concurso,))
+            linhas_concurso = cur.fetchall()
+
+            for seq, m_atual, v_atual in linhas_concurso:
+                m_tem_indef = m_atual and "INDEFINIDO" in m_atual.upper()
+                v_tem_indef = v_atual and "INDEFINIDO" in v_atual.upper()
+                if not m_tem_indef and not v_tem_indef:
+                    continue
+
+                partida_api = mapa_posicao.get(seq) if seq is not None else None
+                if partida_api is None:
+                    # fallback: casa pelo lado que NAO esta ambiguo
+                    if m_tem_indef and not v_tem_indef:
+                        alvo = _normalizar_nome_time(v_atual)
+                        for (n1, n2), p in mapa_por_nomes.items():
+                            if n2 == alvo:
+                                partida_api = p
+                                break
+                    elif v_tem_indef and not m_tem_indef:
+                        alvo = _normalizar_nome_time(m_atual)
+                        for (n1, n2), p in mapa_por_nomes.items():
+                            if n1 == alvo:
+                                partida_api = p
+                                break
+
+                if partida_api is None:
+                    falhas.append({"concurso": numero_concurso, "posicao": seq,
+                                     "motivo": "nao_casou_com_nenhum_jogo_da_api",
+                                     "mandante_banco": m_atual, "visitante_banco": v_atual})
+                    continue
+
+                novo_m, novo_v = m_atual, v_atual
+                if m_tem_indef:
+                    uf = partida_api.get("siglaUFEquipeUm")
+                    if uf:
+                        base = m_atual.split("-")[0]
+                        novo_m = f"{base}-{uf}"
+                if v_tem_indef:
+                    uf = partida_api.get("siglaUFEquipeDois")
+                    if uf:
+                        base = v_atual.split("-")[0]
+                        novo_v = f"{base}-{uf}"
+
+                if novo_m == m_atual and novo_v == v_atual:
+                    sem_mudanca += 1
+                    continue
+
+                registro = {
+                    "concurso": numero_concurso, "posicao": seq,
+                    "mandante_antes": m_atual, "mandante_depois": novo_m,
+                    "visitante_antes": v_atual, "visitante_depois": novo_v,
+                }
+                resolvidos.append(registro)
+
+                if aplicar:
+                    if col_seq and seq is not None:
+                        cur.execute(f"""
+                            UPDATE {schema['tabela']}
+                            SET {schema['col_m']}={ph}, {schema['col_v']}={ph}
+                            WHERE {col_concurso}={ph} AND {col_seq}={ph}
+                        """, (novo_m, novo_v, numero_concurso, seq))
+                    else:
+                        cur.execute(f"""
+                            UPDATE {schema['tabela']}
+                            SET {schema['col_m']}={ph}, {schema['col_v']}={ph}
+                            WHERE {col_concurso}={ph} AND {schema['col_m']}={ph} AND {schema['col_v']}={ph}
+                        """, (novo_m, novo_v, numero_concurso, m_atual, v_atual))
+
+            time.sleep(0.3)  # mesmo intervalo ja usado no coletor historico do projeto
+
+        if aplicar:
+            conn.commit()
+        conn.close()
+
+        return jsonify({
+            "status": "sucesso",
+            "modo": "APLICADO_NO_BANCO" if aplicar else "SIMULACAO_NADA_GRAVADO",
+            "total_concursos_afetados_no_banco": len(todos_concursos_afetados),
+            "concursos_processados_nesta_chamada": len(lote),
+            "offset_usado": offset, "limite_usado": limite,
+            "proximo_offset_sugerido": offset + limite if (offset + limite) < len(todos_concursos_afetados) else None,
+            "jogos_resolvidos": len(resolvidos),
+            "jogos_sem_mudanca_uf_vazia_na_api": sem_mudanca,
+            "falhas": len(falhas),
+            "exemplos_resolvidos": resolvidos[:15],
+            "exemplos_falhas": falhas[:15],
+        })
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+
 @app.route("/api/db-info")
 def db_info():
     try:
