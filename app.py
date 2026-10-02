@@ -1494,11 +1494,15 @@ def resolver_indefinido():
             return jsonify({"status": "erro", "mensagem": "sem_coluna_de_concurso"}), 500
         ph = _ph()
 
+        ordem = request.args.get("ordem", "desc")  # desc = mais recentes primeiro (padrao,
+                                                      # prioriza o que mais importa pro Elo
+                                                      # e tem mais chance de a API ainda ter o dado)
+        direcao_sql = "DESC" if ordem == "desc" else "ASC"
         cur.execute(f"""
             SELECT DISTINCT {col_concurso} FROM {schema['tabela']}
             WHERE UPPER({schema['col_m']}) LIKE '%INDEFINIDO%'
                OR UPPER({schema['col_v']}) LIKE '%INDEFINIDO%'
-            ORDER BY {col_concurso}
+            ORDER BY {col_concurso} {direcao_sql}
         """)
         todos_concursos_afetados = [r[0] for r in cur.fetchall()]
         lote = todos_concursos_afetados[offset:offset + limite]
@@ -1506,9 +1510,17 @@ def resolver_indefinido():
         resolvidos, falhas, sem_mudanca = [], [], 0
 
         for numero_concurso in lote:
-            dados = buscar_cef(str(numero_concurso))
+            detalhe_falha = None
+            try:
+                url_tentativa = f"{URL_CEF}/{numero_concurso}"
+                resp_diag = requests.get(url_tentativa, timeout=12, headers=HEADERS_NAVEGADOR)
+                detalhe_falha = f"HTTP {resp_diag.status_code}"
+                dados = resp_diag.json() if resp_diag.status_code == 200 else None
+            except Exception as e_diag:
+                detalhe_falha = f"excecao: {e_diag}"
+                dados = None
             if not dados:
-                falhas.append({"concurso": numero_concurso, "motivo": "api_nao_retornou"})
+                falhas.append({"concurso": numero_concurso, "motivo": detalhe_falha or "desconhecido"})
                 time.sleep(0.3)
                 continue
 
