@@ -1,0 +1,48 @@
+name: Baixar historico completo da Loteca (CEF)
+
+# Roda 1 vez por dia (so baixa concursos novos) e tambem na mao
+# (aba Actions > este workflow > Run workflow).
+# Grava data/historico_cef.json; o app importa os concursos novos sozinho.
+# Fase 1 do Estudo Base Unico (21/11/2026).
+on:
+  schedule:
+    - cron: "37 11 * * *"
+  workflow_dispatch:
+    inputs:
+      limite:
+        description: "Quantos concursos baixar nesta rodada (0 = todos)"
+        required: false
+        default: "0"
+
+permissions:
+  contents: write
+
+jobs:
+  historico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: pip install requests
+
+      - name: Baixar concursos da Caixa
+        env:
+          LIMITE: ${{ github.event.inputs.limite }}
+        run: python scripts/fetch_historico_cef.py
+
+      - name: Commitar historico
+        if: always()
+        run: |
+          git config user.name "loteca-cache-bot"
+          git config user.email "actions@github.com"
+          git add data/historico_cef.json || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Atualiza historico completo da Loteca (manual)"
+          git pull --rebase origin main
+          git push
