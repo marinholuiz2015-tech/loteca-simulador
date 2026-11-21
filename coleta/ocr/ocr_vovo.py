@@ -30,6 +30,18 @@ def colunas(img, gray):
     e = cv2.Canny(gray, 30, 100)
     vl = cv2.morphologyEx(e, cv2.MORPH_OPEN,
                           cv2.getStructuringElement(cv2.MORPH_RECT, (1, max(12, h // 40))))
+    # procura as 3 colunas estreitas e parecidas (1, X, 2) entre duas largas
+    # (mandante e visitante); resiste a faixas/logos extras nas bordas.
+    # Tenta primeiro o limiar normal e depois um mais sensivel (linha fraca).
+    for limiar in (0.25, 0.15):
+        xs = _picos(vl.sum(0) / 255, h * limiar)
+        for i in range(2, len(xs) - 3):
+            lar = [xs[i + k + 1] - xs[i + k] for k in range(3)]
+            med = float(np.median(lar))
+            mand = xs[i] - xs[i - 1]
+            vis = xs[i + 4] - xs[i + 3] if i + 4 < len(xs) else w - xs[i + 3]
+            if med > 15 and all(abs(l - med) <= med * 0.3 for l in lar) and mand > 1.8 * med and vis > 1.8 * med:
+                return xs[i - 2], xs[i - 1], xs[i:i + 4]
     xs = _picos(vl.sum(0) / 255, h * 0.25)
     if len(xs) >= 7:
         return xs[0], xs[1], xs[2:6]
@@ -116,7 +128,20 @@ def _sequencias_grade(gray, tol=0.22):
     return seqs
 
 
-def ler_imagem(caminho):
+def _norm_nome(s):
+    import unicodedata
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().upper()
+    return re.sub(r"[^A-Z]", "", s)
+
+
+def confere_nome(texto, nome):
+    a, b = _norm_nome(texto), _norm_nome(nome)
+    return bool(a and b) and (a[:3] == b[:3] or a in b or b in a)
+
+
+def ler_imagem(caminho, mandantes=None):
+    """mandantes: lista opcional com os 14 mandantes da grade da Caixa; se
+    vier, a posicao das linhas e escolhida tambem pelos nomes que batem."""
     img = cv2.imread(caminho)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     x0, x1, lim = colunas(img, gray)
@@ -129,9 +154,27 @@ def ler_imagem(caminho):
     if not opcoes:
         raise ValueError("linhas da tabela nao encontradas")
     # fica com a posicao de linhas que deixa mais jogos com soma ~100
-    melhor = max((_ler_linhas(gray, lim, c, a) for c, a in opcoes),
-                 key=lambda js: sum(1 for j in js if not checar(j)))
-    return melhor
+    h, w = gray.shape
+    resultados = []
+    for c, a in opcoes:
+        js = _ler_linhas(gray, lim, c, a)
+        for j, yc in zip(js, c):
+            j["texto_mandante"] = _texto(gray, x1, lim[0], yc, a)
+            j["texto_visitante"] = _texto(gray, lim[3], w - 2, yc, a)
+        pontos = sum(1 for j in js if not checar(j))
+        if mandantes:
+            pontos += 2 * sum(1 for j, m in zip(js, mandantes) if confere_nome(j["texto_mandante"], m))
+        resultados.append((pontos, js))
+    return max(resultados, key=lambda r: r[0])[1]
+
+
+def _texto(gray, xa, xb, yc, alt):
+    cel = gray[max(0, int(yc - alt * 0.42)):int(yc + alt * 0.42), xa + 2:xb - 2]
+    if cel.size == 0:
+        return ""
+    cel = cv2.resize(cel, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+    t = pytesseract.image_to_string(cel, config="--psm 7")
+    return re.sub(r"\s+", " ", t).strip()
 
 
 def checar(j):
