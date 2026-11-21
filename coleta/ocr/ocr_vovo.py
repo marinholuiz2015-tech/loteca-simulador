@@ -33,7 +33,7 @@ def colunas(img, gray):
     # procura as 3 colunas estreitas e parecidas (1, X, 2) entre duas largas
     # (mandante e visitante); resiste a faixas/logos extras nas bordas.
     # Tenta primeiro o limiar normal e depois um mais sensivel (linha fraca).
-    for limiar in (0.25, 0.15):
+    for limiar in (0.25, 0.15, 0.08):
         xs = _picos(vl.sum(0) / 255, h * limiar)
         for i in range(2, len(xs) - 3):
             lar = [xs[i + k + 1] - xs[i + k] for k in range(3)]
@@ -79,26 +79,68 @@ def ler_celula(gray, x0, x1, yc, alt):
                config=f"--psm 8 -c tessedit_char_whitelist={wl}"))
     b = _valor(pytesseract.image_to_string(_binariza(cel, 2),
                config=f"--psm 7 -c tessedit_char_whitelist={wl}"))
-    return a, b
+    # terceira leitura sem a borda direita (setas/icones ao lado do numero)
+    w = cel.shape[1]
+    c = _valor(pytesseract.image_to_string(_binariza(cel[:, : int(w * 0.74)], 3),
+               config=f"--psm 7 -c tessedit_char_whitelist={wl}")) if w > 20 else None
+    return a, b, c
 
 
-def _candidatos(par):
-    """Leituras a/b de uma celula + versao sem o ultimo digito (icone ou '%'
-    lido como digito: '4%' -> 14)."""
+FAIXAS = {  # faixa de valor indicada pela cor de fundo da celula
+    "zebra": (0, 12.99), "surpresa": (13, 25.99), "normal": (26, 50.99),
+    "favorito": (51, 80.99), "super": (79, 100),
+}
+
+
+def faixa_por_cor(img, x0, x1, yc, alt):
+    """Classifica a cor de fundo da celula (mediana da celula inteira).
+    Devolve a faixa de valores possivel ou None se a cor nao for reconhecida."""
+    if img is None:
+        return None
+    cel = img[max(0, int(yc - alt * 0.35)):int(yc + alt * 0.35), x0 + 3:x1 - 3]
+    if cel.size == 0:
+        return None
+    hsv = cv2.cvtColor(cel, cv2.COLOR_BGR2HSV).reshape(-1, 3)
+    h, s, v = np.median(hsv, axis=0)
+    if s < 90:
+        return None  # branco/cinza: formato sem cor de faixa
+    if h < 10 or h > 165:
+        return FAIXAS["zebra"]
+    if 18 <= h <= 40:
+        return FAIXAS["surpresa"]
+    if 80 <= h <= 105:
+        return FAIXAS["normal"]
+    if 40 < h < 80:
+        return FAIXAS["favorito"] if v > 200 else FAIXAS["super"]
+    return None
+
+
+def _candidatos(par, faixa=None):
+    """Leituras a/b de uma celula + variantes sem um digito (icone ou '%' lido
+    como digito: '4%' -> 14). Se a cor da celula indicar a faixa, so ficam os
+    candidatos dentro dela (um 14 em celula de zebra e impossivel)."""
     out = set()
     for v in par:
         if v is None:
             continue
         out.add(v)
         if v == int(v) and v >= 10:
-            out.add(float(int(v) // 10))
+            out.add(float(int(v) // 10))   # sem o ultimo digito
+            out.add(float(int(v) % 10))    # sem o primeiro digito
+            if v >= 100:
+                out.add(float(int(v) % 100))
+    if faixa:
+        dentro = {v for v in out if faixa[0] <= v <= faixa[1]}
+        if dentro:
+            return dentro
     return out or {None}
 
 
-def _ler_linhas(gray, lim, centros, alt):
+def _ler_linhas(gray, lim, centros, alt, img=None):
     jogos = []
     for j, yc in enumerate(centros, 1):
-        leituras = [_candidatos(ler_celula(gray, lim[k], lim[k + 1], yc, alt)) for k in range(3)]
+        leituras = [_candidatos(ler_celula(gray, lim[k], lim[k + 1], yc, alt),
+                                faixa_por_cor(img, lim[k], lim[k + 1], yc, alt)) for k in range(3)]
         melhor, dif = None, 1e9
         for va in leituras[0]:
             for vx in leituras[1]:
@@ -155,13 +197,18 @@ def ler_imagem(caminho, mandantes=None):
         raise ValueError("linhas da tabela nao encontradas")
     # fica com a posicao de linhas que deixa mais jogos com soma ~100
     h, w = gray.shape
-    resultados = []
+    # 1o: le os percentuais em cada posicao de linha possivel
+    candidatos = []
     for c, a in opcoes:
-        js = _ler_linhas(gray, lim, c, a)
+        js = _ler_linhas(gray, lim, c, a, img)
+        candidatos.append((sum(1 for j in js if not checar(j)), js, c, a))
+    candidatos.sort(key=lambda r: -r[0])
+    # 2o: le os nomes dos times so nas 2 melhores posicoes (economiza tempo)
+    resultados = []
+    for pontos, js, c, a in candidatos[:2]:
         for j, yc in zip(js, c):
             j["texto_mandante"] = _texto(gray, x1, lim[0], yc, a)
             j["texto_visitante"] = _texto(gray, lim[3], w - 2, yc, a)
-        pontos = sum(1 for j in js if not checar(j))
         if mandantes:
             pontos += 2 * sum(1 for j, m in zip(js, mandantes) if confere_nome(j["texto_mandante"], m))
         resultados.append((pontos, js))
@@ -183,7 +230,7 @@ def checar(j):
         return ["nao lido"]
     s = sum(v)
     decimal = any(x != int(x) for x in v)
-    lim = 0.6 if decimal else 2  # formato A soma 100,00; formato B arredonda
+    lim = 0.6 if decimal else 1  # formato A soma 100,00; formato B arredonda (99 a 101)
     return [] if abs(s - 100) <= lim else [f"soma={s:.1f}"]
 
 

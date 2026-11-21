@@ -1,0 +1,19 @@
+== 1) Ganhadores: 195 concursos com odds completas e massa (>=10 jogos) ==
+  ganhadores de 14: erro (log10) odds 0.379 | massa 0.393 | odds+massa 0.366
+  ganhadores de 13: erro (log10) odds 0.450 | massa 0.397 | odds+massa 0.351
+
+== 2) Desdobre com o mesmo custo: chance x retorno (massa) x cheia ==
+  170 concursos testados (os 25 primeiros so treinam o modelo de ganhadores)
+   Comb. Cartela                Chance 14  Fez 14  Fez 13  Comb.13      Premios  Retorno
+    1296 cheia 6+4+4                2.48%       3      17       57       51,475     12%
+    1296 desdobre por chance        3.41%       3      25       68       47,784     11%
+    1296 desdobre por retorno       2.91%       2      19       47       56,474     13%
+
+    1944 cheia 6+3+5                3.24%       5      20       89      183,392     28%
+    1944 desdobre por chance        4.25%       4      29       90       62,025      9%
+    1944 desdobre por retorno       3.70%       2      27       62       68,175     10%
+
+    3888 cheia 5+4+5                4.57%       6      28      117      369,309     28%
+    3888 desdobre por chance        6.04%       6      36      138      285,735     22%
+    3888 desdobre por retorno       5.44%       3      38      104      313,409     24%
+

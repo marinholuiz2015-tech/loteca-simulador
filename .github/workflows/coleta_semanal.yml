@@ -68,6 +68,11 @@ jobs:
         continue-on-error: true
         run: python -W ignore coleta/vovoteca_enquete.py semanal
 
+      - name: Vovoteca (parcial do concurso aberto, antes do fechamento)
+        id: vovoteca_aberto
+        continue-on-error: true
+        run: python -W ignore coleta/vovoteca_enquete.py aberto
+
       - name: Massa x mercado
         id: massa
         continue-on-error: true
@@ -87,8 +92,8 @@ jobs:
           exit 1
 
       - name: Marcar falha se algum passo falhou
-        if: steps.guia.outcome == 'failure' || steps.lotequeiros.outcome == 'failure' || steps.caixa.outcome == 'failure' || steps.avaliar.outcome == 'failure' || steps.arena.outcome == 'failure' || steps.vovoteca.outcome == 'failure' || steps.massa.outcome == 'failure'
+        if: steps.guia.outcome == 'failure' || steps.lotequeiros.outcome == 'failure' || steps.caixa.outcome == 'failure' || steps.avaliar.outcome == 'failure' || steps.arena.outcome == 'failure' || steps.vovoteca.outcome == 'failure' || steps.vovoteca_aberto.outcome == 'failure' || steps.massa.outcome == 'failure'
         run: |
           echo "guia=${{ steps.guia.outcome }} lotequeiros=${{ steps.lotequeiros.outcome }} caixa=${{ steps.caixa.outcome }} avaliar=${{ steps.avaliar.outcome }}"
-          echo "arena=${{ steps.arena.outcome }} vovoteca=${{ steps.vovoteca.outcome }} massa=${{ steps.massa.outcome }}"
+          echo "arena=${{ steps.arena.outcome }} vovoteca=${{ steps.vovoteca.outcome }} aberto=${{ steps.vovoteca_aberto.outcome }} massa=${{ steps.massa.outcome }}"
           exit 1
