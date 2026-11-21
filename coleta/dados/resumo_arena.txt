@@ -1,3 +1,5 @@
+posts recentes: [1274, 1275, 1276, 1277, 1279, 1280, 1281, 1282, 1283, 1284] | a ler: [1284]
+  concurso 1284 (titulo da imagem: 1284): 14/14 jogos com odds aceitas
 == Leitura ==
   imagens                   383
   imagem_falhou             1
