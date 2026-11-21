@@ -1,0 +1,26 @@
+Palpites: 6395 | casados com a Caixa: 6350 | sem resultado: 4 | nomes diferentes (descartados): 4 | sorteio: 37
+
+== Geral ==
+Todos                  secos= 4845  acerto seco= 49.2%  (sempre '1'= 45.9%, ganho= +3.3%)  duplos= 4605  acerto duplo= 76.0%
+
+== Por forma de leitura ==
+padrao                 secos= 1605  acerto seco= 49.4%  (sempre '1'= 46.3%, ganho= +3.1%)  duplos= 1419  acerto duplo= 79.1%
+livre                  secos= 2485  acerto seco= 47.6%  (sempre '1'= 44.5%, ganho= +3.1%)  duplos= 3186  acerto duplo= 74.6%
+ultima_coluna          secos=  755  acerto seco= 53.8%  (sempre '1'= 49.3%, ganho= +4.5%)  duplos=    0  acerto duplo=  nan%
+
+== Por faixa de concurso ==
+700-799                secos=  230  acerto seco= 56.5%  (sempre '1'= 50.4%, ganho= +6.1%)  duplos=  261  acerto duplo= 69.3%
+800-899                secos=  527  acerto seco= 53.1%  (sempre '1'= 49.9%, ganho= +3.2%)  duplos=  469  acerto duplo= 75.3%
+900-999                secos= 1147  acerto seco= 45.3%  (sempre '1'= 42.7%, ganho= +2.6%)  duplos= 1120  acerto duplo= 71.4%
+1000-1099              secos= 1179  acerto seco= 49.1%  (sempre '1'= 46.5%, ganho= +2.6%)  duplos= 1174  acerto duplo= 77.8%
+1100-1199              secos=  912  acerto seco= 48.0%  (sempre '1'= 45.6%, ganho= +2.4%)  duplos=  848  acerto duplo= 79.2%
+1200-1299              secos=  850  acerto seco= 51.3%  (sempre '1'= 45.8%, ganho= +5.5%)  duplos=  733  acerto duplo= 79.0%
+
+== Por palpite seco ==
+seco = 1               secos= 2812  acerto seco= 55.7%  (sempre '1'= 55.7%, ganho= +0.0%)  duplos= 2073  acerto duplo= 80.8%
+seco = X               secos=  813  acerto seco= 32.6%  (sempre '1'= 40.5%, ganho= -7.9%)  duplos=  727  acerto duplo= 70.3%
+seco = 2               secos= 1220  acerto seco= 45.2%  (sempre '1'= 26.7%, ganho=+18.4%)  duplos=  973  acerto duplo= 73.0%
+
+== Concursos com os 14 secos (203): acertos por concurso ==
+  0:1  1:1  2:1  3:3  4:16  5:28  6:42  7:36  8:31  9:27  10:14  11:1  12:2
+  media = 6.83 de 14
