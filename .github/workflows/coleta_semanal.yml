@@ -1,0 +1,75 @@
+name: Coleta semanal de fontes (Lotequeiros, Guia da Loteria, resultados)
+
+# Roda no GitHub Actions, nao no Render.
+#   - quinta 19:23 (Brasilia): primeiro retrato da semana
+#   - sabado 10:17 (Brasilia): retrato perto do fechamento das 15h
+#   - terca 00:41 (segunda 21:41 Brasilia): resultados oficiais e assertividade
+# Tambem pode ser disparado na mao: aba Actions > este workflow > Run workflow.
+# Cada passo continua mesmo se outro falhar; o job fica vermelho no final
+# se algum passo falhou, para a falha nunca passar despercebida.
+on:
+  schedule:
+    - cron: "23 22 * * 4"
+    - cron: "17 13 * * 6"
+    - cron: "41 0 * * 2"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: coleta-semanal
+  cancel-in-progress: false
+
+jobs:
+  coleta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: pip install requests
+
+      - name: Guia da Loteria (odds de mercado + palpite)
+        id: guia
+        continue-on-error: true
+        run: python coleta/guia_loteria.py
+
+      - name: Lotequeiros (palpites novos)
+        id: lotequeiros
+        continue-on-error: true
+        run: python coleta/coletar_lotequeiros.py semanal
+
+      - name: Resultados oficiais da Caixa
+        id: caixa
+        continue-on-error: true
+        run: python coleta/resultados_caixa.py
+
+      - name: Assertividade do Lotequeiros
+        id: avaliar
+        continue-on-error: true
+        run: python coleta/avaliar_lotequeiros.py | tee coleta/dados/resumo_lotequeiros.txt
+
+      - name: Gravar dados no repositorio
+        run: |
+          git config user.name "loteca-coleta-bot"
+          git config user.email "actions@github.com"
+          git add coleta/dados/*.csv coleta/dados/*.txt || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Coleta semanal de fontes (automatico)"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            sleep 10
+          done
+          exit 1
+
+      - name: Marcar falha se algum passo falhou
+        if: steps.guia.outcome == 'failure' || steps.lotequeiros.outcome == 'failure' || steps.caixa.outcome == 'failure' || steps.avaliar.outcome == 'failure'
+        run: |
+          echo "guia=${{ steps.guia.outcome }} lotequeiros=${{ steps.lotequeiros.outcome }} caixa=${{ steps.caixa.outcome }} avaliar=${{ steps.avaliar.outcome }}"
+          exit 1
