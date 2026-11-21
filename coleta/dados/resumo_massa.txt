@@ -1,0 +1,31 @@
+== 683 jogos com enquete final + odds + resultado (58 concursos) ==
+  acerto do favorito: massa 54.6% | mercado 57.8%
+  Brier: massa 0.5804 | mercado 0.5519 (menor = melhor)
+
+== Favoritos diferentes: 123 jogos ==
+  massa acerta 38 (31%) | mercado acerta 60 (49%)
+  McNemar z = 2.2 (positivo = mercado melhor)
+
+== Vies da massa por resultado (diferenca massa - mercado, em pontos) ==
+  resultado 1:
+    subvotado >15       21 jogos | massa 21.6% | mercado 42.0% | real 42.9%
+    subvotado 5-15     136 jogos | massa 24.8% | mercado 34.2% | real 40.4%
+    alinhado +-5       212 jogos | massa 41.4% | mercado 41.6% | real 48.1%
+    supervotado 5-15   183 jogos | massa 62.7% | mercado 52.5% | real 56.3%
+    supervotado >15    131 jogos | massa 72.0% | mercado 52.0% | real 55.0%
+  resultado X:
+    subvotado 5-15     135 jogos | massa 16.6% | mercado 24.7% | real 25.9%
+    alinhado +-5       322 jogos | massa 24.9% | mercado 24.8% | real 23.9%
+    supervotado 5-15   187 jogos | massa 36.5% | mercado 28.0% | real 24.6%
+    supervotado >15     33 jogos | massa 45.1% | mercado 28.1% | real 36.4%
+  resultado 2:
+    subvotado >15       78 jogos | massa 13.8% | mercado 32.8% | real 30.8%
+    subvotado 5-15     337 jogos | massa 14.0% | mercado 24.1% | real 19.6%
+    alinhado +-5       163 jogos | massa 27.0% | mercado 27.9% | real 23.3%
+    supervotado 5-15    81 jogos | massa 54.3% | mercado 45.0% | real 42.0%
+    supervotado >15     24 jogos | massa 66.1% | mercado 42.3% | real 33.3%
+
+== Agregado ==
+  coluna 1: massa 49.1% | mercado 45.0% | real 49.9%
+  coluna X: massa 27.3% | mercado 25.8% | real 25.2%
+  coluna 2: massa 23.7% | mercado 29.1% | real 24.9%
