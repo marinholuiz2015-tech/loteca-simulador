@@ -19,3 +19,13 @@ pela aba **Actions → Coleta semanal de fontes → Run workflow**.
 - Seco: **49,2%** vs. 45,9% de "sempre coluna 1" → lift 1,072x (McNemar z = 4,2)
 - Duplo: **76,0%** (79% de 2024 em diante)
 - Seco "2": 45,2% (marcar 1 nesses jogos daria 26,7%) · Seco "X": 32,6% (marcar 1 daria 40,5%)
+
+## Odds da Arena do AZ (bet365), lidas das imagens — 21/11/2026
+Pasta `ocr/`: `ocr_arena.py` (leitura célula a célula), `rodar_arena.py`
+(processa as imagens em paralelo, retomável), `avaliar_arena.py` (casa com a
+grade da Caixa em `data/historico_cef.json` e mede). Base final:
+`dados/arena_odds.csv` (5.162 jogos, concursos 895–1283).
+- Cobertura: 97% dos jogos desses concursos têm odds (inclui estaduais e divisões menores).
+- Favorito do mercado acerta **52,0%** vs. 45,6% de "sempre coluna 1" (lift 1,141x); Brier 0,5883 vs. 0,6442 (−8,7%).
+- Contra o Lotequeiros nos mesmos 3.944 jogos: mercado 51,5% × 47,9% (McNemar z = 4,8). Quando discordam: mercado 44,0% × 31,6%.
+- Conferência: 180 odds checadas a olho sem erro; cada jogo só entra se as odds passam na checagem de coerência e os times batem com a grade da Caixa.
