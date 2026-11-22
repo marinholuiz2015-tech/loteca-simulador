@@ -516,7 +516,7 @@ function abaApostas() {
     '<select class="sel" id="apperforc">' + [16, 32, 64, 100, 162, 200].map(function (o) { return '<option value="' + o + '">' + brl(o) + '</option>'; }).join('') + '</select></div>' +
     '<div class="barraf" style="margin-top:8px"><button class="btn" id="apdesd">Desdobrar o quadro em volantes de 1 duplo</button><select class="sel" id="apdesdorc">' + [40, 80, 100, 160, 200, 300].map(function (o) { return '<option value="' + o + '"' + (o === 200 ? ' selected' : '') + '>' + brl(o) + '</option>'; }).join('') + '</select><span class="sub" id="apdesdmsg"></span></div></div>';
   // subabas
-  var subs = [['apostas', 'Apostas'], ['estat', 'Estatísticas rápidas'], ['filtros', 'Filtros'], ['cart', 'Combinação cartesiana'], ['unif', 'Unificação linear'], ['conf', 'Conferência'], ['res', 'Resultados para conferência']];
+  var subs = [['apostas', 'Apostas'], ['fech', 'Fechamento (garantia)'], ['estat', 'Estatísticas rápidas'], ['filtros', 'Filtros'], ['cart', 'Combinação cartesiana'], ['unif', 'Unificação linear'], ['conf', 'Conferência'], ['res', 'Resultados para conferência']];
   h += '<div class="card"><div class="barraf noprint" role="tablist">' + subs.map(function (s) { return '<button class="btn' + (AP.sub === s[0] ? ' pri' : '') + '" data-sub="' + s[0] + '">' + s[1] + '</button>'; }).join('') + '</div><div id="apsub" style="margin-top:14px"></div></div></div>';
   el.innerHTML = h;
   // eventos topo e quadro
@@ -539,6 +539,46 @@ function abaApostas() {
   el.querySelectorAll('[data-sub]').forEach(function (b) { b.onclick = function () { AP.sub = b.dataset.sub; abaApostas(); }; });
   abaApostasSub();
 }
+// ---------------------------------------------------------------- fechamento com garantia (estilo LoteriaSoft)
+function fechamento(base, P, nd, nt, garantia) {
+  var vars = [], opts = []; base.forEach(function (t, i) { if (t.length > 1) { vars.push(i); opts.push(t.split('').map(function (k) { return R.indexOf(k); })); } });
+  var nv = vars.length, r = 14 - garantia;
+  if (!nv) return { erro: 'Marque duplos ou triplos na base para fechar.' };
+  if (nd + nt > nv) return { erro: 'O volante pede ' + (nd + nt) + ' jogos com duplo/triplo, mas a base só tem ' + nv + ' jogos com mais de uma marcação.' };
+  var podeT = opts.filter(function (o) { return o.length === 3; }).length; if (nt > podeT) return { erro: 'O volante pede ' + nt + ' triplos, mas a base só tem ' + podeT + ' jogos com triplo.' };
+  var N = 1; opts.forEach(function (o) { N *= o.length; }); if (N > 60000) return { erro: 'Base grande demais para fechar aqui (' + N.toLocaleString('pt-BR') + ' combinações; até 60 mil). Tire alguns triplos.' };
+  if (r < 0) return { erro: 'Garantia inválida.' };
+  // combinacoes da base (so os jogos variaveis) e probabilidade de cada uma
+  var dig = new Uint8Array(N * nv), pr = new Float64Array(N);
+  for (var n = 0; n < N; n++) { var x = n, p = 1; for (var v = nv - 1; v >= 0; v--) { var L = opts[v].length, d = x % L; x = Math.floor(x / L); dig[n * nv + v] = opts[v][d]; p *= P[vars[v]][opts[v][d]]; } pr[n] = p; }
+  var desc = new Uint8Array(N), falta = N, vols = [], incert = vars.map(function (gi) { return 1 - Math.max.apply(null, P[gi]); });
+  var ordem = Array.from({ length: N }, function (_, i) { return i; }).sort(function (a, b) { return pr[b] - pr[a]; }), ptr = 0;
+  var dist = function (n, mask) { var s = 0; for (var v = 0; v < nv; v++) if (!(mask[v] >> dig[n * nv + v] & 1)) { s++; if (s > r) return s; } return s; };
+  var cobre = function (mask) { var g = 0, w = 0; for (var n = 0; n < N; n++) if (!desc[n] && dist(n, mask) <= r) { g++; w += pr[n]; } return g + w; };
+  var t0 = Date.now();
+  while (falta > 0) {
+    while (desc[ordem[ptr]]) ptr++;
+    var alvo = ordem[ptr], melhor = null, mg = -1;
+    for (var k = 0; k < 40; k++) {
+      var mask = []; for (var v = 0; v < nv; v++) mask.push(1 << dig[alvo * nv + v]);
+      var cand = vars.map(function (_, v) { return v; }).sort(function (a, b) { return (incert[b] + Math.random() * 0.25) - (incert[a] + Math.random() * 0.25); });
+      var tr = cand.filter(function (v) { return opts[v].length === 3; }).slice(0, nt);
+      tr.forEach(function (v) { mask[v] = 7; });
+      var du = cand.filter(function (v) { return tr.indexOf(v) < 0; }).slice(0, nd);
+      du.forEach(function (v) { var outros = opts[v].filter(function (o) { return o !== dig[alvo * nv + v]; }); var gi = vars[v];
+        var o = outros.length === 1 || Math.random() < 0.7 ? outros.sort(function (a, b) { return P[gi][b] - P[gi][a]; })[0] : outros[1]; mask[v] |= 1 << o; });
+      var g = cobre(mask); if (g > mg) { mg = g; melhor = mask; }
+    }
+    vols.push(melhor);
+    for (var n2 = 0; n2 < N; n2++) if (!desc[n2] && dist(n2, melhor) <= r) { desc[n2] = 1; falta--; }
+    if (Date.now() - t0 > 25000) return { erro: 'Demorou demais: diminua a base ou a garantia.' };
+  }
+  // conferir o fechamento: melhor pontuacao para cada combinacao da base
+  var hist = {}; for (var n3 = 0; n3 < N; n3++) { var md = 99; for (var q = 0; q < vols.length && md > 0; q++) { var dd = dist(n3, vols[q]); if (dd < md) md = dd; } var pts = 14 - Math.min(md, 14); hist[pts] = (hist[pts] || 0) + 1; }
+  var vol = vols.map(function (mask) { return base.map(function (t, i) { var v = vars.indexOf(i); if (v < 0) return t; return R.split('').filter(function (k, kk) { return mask[v] >> kk & 1; }).join(''); }); });
+  return { vols: vol, N: N, hist: hist, seg: (Date.now() - t0) / 1000 };
+}
+
 function abaApostasSub() {
   var el = document.getElementById('apsub'); if (!el) return; var C = apConc(AP.conc), P = C.jogos.map(function (j) { return j.p; }), L = AP.lista;
   var tot = L.reduce(function (a, v) { return a + apCombos(v) * 2; }, 0), h = '';
@@ -566,6 +606,30 @@ function abaApostasSub() {
       apSalva(); abaApostas(); };
     el.querySelectorAll('tr.linha').forEach(function (tr) { var f = function () { AP.sel = Number(tr.dataset.n); AP.quadro = AP.lista[AP.sel].slice(); abaApostas(); }; tr.onclick = f; tr.onkeydown = function (e) { if (e.key === 'Enter') f(); }; });
     el.querySelector('#apvol').onclick = function () { if (!AP.lista.length) { alert('A lista está vazia.'); return; } renderVolantes('apvols', AP.lista, 'loteca_' + AP.conc + '_apostas', C.jogos.map(function (j) { return { mandante: j.m, visitante: j.v }; })); document.getElementById('apvols').scrollIntoView({ block: 'start' }); };
+  } else if (AP.sub === 'fech') {
+    var b = AP.quadro, ok = b.every(function (t) { return t; }), Nb = ok ? apCombos(b) : 0;
+    h = '<p class="sub">Como o "Fechamento Loteca" do LoteriaSoft: a <b>base</b> é o que está marcado no quadro (à esquerda). Você escolhe o formato de cada volante e a garantia; o sistema escolhe o menor número de volantes que garante essa pontuação <b>sempre que o resultado cair dentro da base</b> (condição para acerto: 14). As combinações mais prováveis entram primeiro.</p>' +
+      (ok ? '<p><b>Base:</b> ' + esc(apSpeed(b)) + ' · ' + Nb.toLocaleString('pt-BR') + ' combinações (custaria ' + brl(Nb * 2) + ' cheia) · chance de o resultado cair na base: <b>' + pc(estat(b, P).p14, 2) + '</b></p>' : '<p class="no">Marque os 14 jogos da base no quadro.</p>') +
+      '<div class="barraf"><label>Duplos por volante <input id="fd" type="number" min="0" max="14" value="1" class="sel" style="width:70px"></label><label>Triplos por volante <input id="ft" type="number" min="0" max="14" value="0" class="sel" style="width:70px"></label>' +
+      '<label>Garantia mínima <select id="fg" class="sel">' + [10, 11, 12, 13].map(function (g) { return '<option' + (g === 12 ? ' selected' : '') + '>' + g + '</option>'; }).join('') + '</select></label><label>Condição para acerto <input class="sel" value="14" disabled style="width:60px"></label>' +
+      '<button class="btn pri" id="fgo"' + (ok ? '' : ' disabled') + '>Iniciar fechamento</button><span class="sub" id="fmsg"></span></div><div id="fres"></div>';
+    el.innerHTML = h;
+    var fgo = el.querySelector('#fgo'); if (fgo) fgo.onclick = function () { var m = el.querySelector('#fmsg'); m.textContent = 'Calculando… (pode levar alguns segundos)';
+      setTimeout(function () { var g = Number(el.querySelector('#fg').value), r = fechamento(b, P, Number(el.querySelector('#fd').value), Number(el.querySelector('#ft').value), g);
+        if (r.erro) { m.textContent = r.erro; return; } m.textContent = 'Pronto em ' + r.seg.toFixed(1).replace('.', ',') + ' s';
+        var cu = r.vols.reduce(function (a, v) { return a + apCombos(v) * 2; }, 0), ch = apChance(r.vols, P), chb = estat(b, P);
+        var linhas = Object.keys(r.hist).sort(function (a, c) { return c - a; }).map(function (k) { return '<tr><td>' + k + ' pontos</td><td>' + r.hist[k].toLocaleString('pt-BR') + '</td><td>' + pc(r.hist[k] / r.N, 1) + '</td></tr>'; }).join('');
+        el.querySelector('#fres').innerHTML = '<div class="grid" style="margin-top:12px"><div class="stat"><span>Volantes do fechamento</span><b>' + r.vols.length + '</b><span>' + brl(cu) + ' (a base cheia custaria ' + brl(r.N * 2) + ')</span></div>' +
+          '<div class="stat"><span>Garantia conferida</span><b>' + g + ' pontos</b><span>em todas as ' + r.N.toLocaleString('pt-BR') + ' combinações da base</span></div>' +
+          '<div class="stat"><span>Chance real de 14 (motor)</span><b>' + (ch ? pc(ch.p14, 2) : '—') + '</b><span>base cheia: ' + pc(chb.p14, 2) + '</span></div><div class="stat"><span>Chance real de 13 ou 14</span><b>' + (ch ? pc(ch.p13, 1) : '—') + '</b><span>base cheia: ' + pc(chb.p13, 1) + '</span></div></div>' +
+          '<h3>Conferência do fechamento (melhor pontuação garantida em cada combinação da base)</h3><div class="rolagem"><table><thead><tr><th>Pontuação mínima</th><th>Combinações</th><th>%</th></tr></thead><tbody>' + linhas + '</tbody></table></div>' +
+          (function () { var e = espalhado(b, P, Math.max(1, Math.floor(cu / 4))); if (e.erro || !ch) return '';
+            var melhor = e.p13 > ch.p13; return '<div class="licao" style="margin-top:10px"><b>Pelo mesmo dinheiro (' + brl(e.vols.length * 4) + '), o desdobre espalhado nesta base dá ' + pc(e.p13, 1) + ' de chance de 13 ou 14 e ' + pc(e.p14, 2) + ' de 14</b>, contra ' + pc(ch.p13, 1) + ' e ' + pc(ch.p14, 2) + ' do fechamento. ' +
+              (melhor ? 'O espalhado rende mais chance; o fechamento troca chance pela garantia, que só vale se o resultado cair dentro da base (' + pc(chb.p14, 2) + ').' : 'Aqui o fechamento rende mais.') + '</div>'; })() +
+          '<div class="licao" style="margin-top:10px">A garantia só vale se o resultado cair dentro da base; a chance disso é ' + pc(chb.p14, 2) + '. Fora da base, os pontos podem ser menores.</div>' +
+          '<div class="barraf" style="margin-top:10px"><button class="btn pri" id="flev">Levar estes ' + r.vols.length + ' volantes para Suas apostas</button></div>';
+        el.querySelector('#flev').onclick = function () { AP.lista = AP.lista.concat(r.vols); apSalva(); AP.sub = 'apostas'; abaApostas(); };
+      }, 30); };
   } else if (AP.sub === 'estat') {
     var ch = apChance(L, P), F = apFavs(P);
     h = '<div class="grid"><div class="stat"><span>Volantes</span><b>' + L.length + '</b></div><div class="stat"><span>Custo total</span><b>' + brl(tot) + '</b><span>' + (tot / 2).toLocaleString('pt-BR') + ' combinações</span></div>' +
