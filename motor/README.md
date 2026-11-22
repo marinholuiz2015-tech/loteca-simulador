@@ -71,3 +71,6 @@ Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `mot
 - Teste (176 concursos, só passado): chance de 14 e de 13 calibradas (R$ 2.592: 5,6 × 6 de 14; 20,3 × 21 de 13). Retorno esperado ~27% numa semana normal; só 4 semanas passaram de 100% (prêmios de R$ 3,5 a 12,5 mi). `motor/camada3.md`.
 - Decisão: semana fraca → mínimo; média → orçamento base; boa/forte/excepcional → sobe até o teto, sempre dentro do orçamento mensal (`motor/camada3_config.json`). Saída `motor/saida/concurso_N_decisao.md`; jogo recomendado em `motor/apostas/recomendadas.csv`.
 - Segunda: `python motor/camada3.py conferir` → `motor/placar_financeiro.md` (recomendadas e, se registradas, `motor/apostas/jogadas.csv`), com o rateio oficial.
+
+## Rodízio previsto (`motor/rodizio.py`)
+A escalação real só sai ~1h antes do jogo, depois que a Loteca fecha. O rodízio é previsto na quinta pelo descanso, jogos em 14 dias e o costume do time de poupar (AUC 0,70; previsão ≥ 50% → poupou 70%, base 28%). A nuance "visitante poupa e mandante não" tem sempre o mesmo sinal, mas no teste no tempo não melhora a previsão de forma comprovada (rodízio previsto força +0,4; escalação real −0,5) → só alerta (visitante ≥ 45% e mandante < 30%). Reajustado toda segunda.
