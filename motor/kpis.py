@@ -90,6 +90,10 @@ class Contexto:
             for r in ler(os.path.join(DADOS, nome)):
                 if r.get("seco") in ("1", "X", "2") and r.get("concurso") and r.get("jogo"):
                     self.lot.setdefault((int(r["concurso"]), int(r["jogo"])), r["seco"])
+        import glob
+        for arq in sorted(glob.glob(os.path.join(DADOS, "noticias_historico*.csv"))):
+            for r in ler(arq):
+                self.noticias[(int(r["concurso"]), int(r["jogo"]))] = dict(r, coletado_em_utc="")
         for r in ler(os.path.join(DADOS, "noticias_aberto.csv")):
             k = (int(r["concurso"]), int(r["jogo"]))
             if k not in self.noticias or r["coletado_em_utc"] > self.noticias[k]["coletado_em_utc"]:
