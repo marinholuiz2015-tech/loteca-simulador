@@ -1,0 +1,11 @@
+{
+ "jogos_teste": 3037,
+ "perda_mercado": 0.96089,
+ "perda_sentinela": 0.96254,
+ "melhora_perda": -0.00166,
+ "erro_padrao": 0.00086,
+ "acerto_mercado": 0.542,
+ "acerto_sentinela": 0.537
+}
+Pesos: {'desfalques': np.float64(0.048), 'valor_desfalques': np.float64(-0.046), 'descanso': np.float64(-0.031), 'jogos_14d': np.float64(0.005), 'forma5': np.float64(-0.02), 'chuva_empate': np.float64(0.747)}
+CAMADA SENTINELA: desligada (nao superou o mercado com folga)
