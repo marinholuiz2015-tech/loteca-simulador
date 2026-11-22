@@ -1901,13 +1901,17 @@ def historico():
         return jsonify({"status":"erro","mensagem":str(e)}), 500
 
 # ------------------------------------------------------------------ painel oficial (com senha)
-# Usuario e senha ficam em variaveis de ambiente do Render: PAINEL_USUARIO e PAINEL_SENHA.
+# Usuario e senha ficam em variaveis de ambiente do Render: PAINEL_USUARIO e PAINEL_SENHA;
+# com o repositorio privado, tambem PAINEL_GITHUB_TOKEN.
 # Os dados vem do repositorio (docs/dados), buscados na hora com cache de 60 s: o painel fica
 # atualizado sem precisar de novo deploy.
 import hmac as _hmac
 from flask import Response, redirect
 
 _PAINEL_RAW = "https://raw.githubusercontent.com/marinholuiz2015-tech/loteca-simulador/main/docs/"
+# repositorio privado: com PAINEL_GITHUB_TOKEN (token so de leitura do conteudo deste repositorio)
+# os arquivos vem pela API do GitHub
+_PAINEL_API = "https://api.github.com/repos/marinholuiz2015-tech/loteca-simulador/contents/docs/"
 _painel_cache = {}
 
 
@@ -1932,7 +1936,12 @@ def _painel_arquivo(caminho, tipo):
     if c and agora - c[0] < 60:
         return Response(c[1], 200, {"Content-Type": tipo, "Cache-Control": "no-store"})
     try:
-        r = requests.get(_PAINEL_RAW + caminho, timeout=20)
+        token = os.environ.get("PAINEL_GITHUB_TOKEN")
+        if token:
+            r = requests.get(_PAINEL_API + caminho, timeout=20, params={"ref": "main"},
+                             headers={"Authorization": "Bearer " + token, "Accept": "application/vnd.github.raw"})
+        else:
+            r = requests.get(_PAINEL_RAW + caminho, timeout=20)
         r.raise_for_status()
         _painel_cache[caminho] = (agora, r.content)
         return Response(r.content, 200, {"Content-Type": tipo, "Cache-Control": "no-store"})
