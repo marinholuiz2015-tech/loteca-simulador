@@ -1,14 +1,19 @@
 name: Coleta semanal de fontes (Lotequeiros, Guia da Loteria, Arena, Vovoteca, resultados)
 
-# Roda no GitHub Actions, nao no Render.
-#   - quinta 19:23 (Brasilia): primeiro retrato da semana
-#   - sabado 10:17 (Brasilia): retrato perto do fechamento das 15h
-#   - terca 00:41 (segunda 21:41 Brasilia): resultados oficiais e assertividade
+# Roda no GitHub Actions, nao no Render. Horarios de Brasilia:
+#   - terca 09:17: previsao PROVISORIA (cotacoes da semana ja publicadas)
+#   - quinta 09:47: previsao OFICIAL (depois da atualizacao das 7h da Arena,
+#     a tempo dos especialistas e dos bolões)
+#   - quinta 19:23: oficial atualizada + parcial da enquete da massa
+#   - sabado 10:17: ATUALIZACAO (medida a parte: esperar melhora o acerto?)
+#   - segunda 21:41: resultados oficiais, assertividade e placar
 # Tambem pode ser disparado na mao: aba Actions > este workflow > Run workflow.
 # Cada passo continua mesmo se outro falhar; o job fica vermelho no final
 # se algum passo falhou, para a falha nunca passar despercebida.
 on:
   schedule:
+    - cron: "17 12 * * 2"
+    - cron: "47 12 * * 4"
     - cron: "23 22 * * 4"
     - cron: "17 13 * * 6"
     - cron: "41 0 * * 2"
@@ -78,7 +83,7 @@ jobs:
         continue-on-error: true
         run: python coleta/avaliar_massa.py | tee coleta/dados/resumo_massa.txt
 
-      - name: Motor - camada 1 (previsao do concurso aberto, registrada antes do fechamento)
+      - name: Motor - camada 1 (previsao do concurso aberto - provisoria/oficial/atualizacao)
         id: motor
         continue-on-error: true
         run: python motor/camada1.py
