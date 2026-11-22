@@ -85,12 +85,22 @@ def fator_empate():
 
 
 def p_para_duplo(p):
-    """Probabilidades usadas para escolher o duplo: empate corrigido nos jogos equilibrados."""
-    if not equilibrado(p):
-        return np.array(p)
+    """Probabilidades usadas para a cobertura do duplo: empate corrigido (o mercado subestima o empate:
+    27,7% real x 25,9% previsto em 5.152 jogos; nos equilibrados 33,7% x 29,3%)."""
     q = np.array(p, float)
-    q[1] *= fator_empate()
+    q[1] *= fator_empate() if equilibrado(p) else FATOR_EMPATE_GERAL
     return q / q.sum()
+
+
+FATOR_EMPATE_GERAL = 1.07
+
+
+def duplo_de(p):
+    """Duplo = favorito + empate, em qualquer tipo de jogo (5.152 jogos: melhor par em todas as faixas de
+    probabilidade, com mandante ou visitante favorito, nos tres periodos testados; o 1-2 nunca foi o melhor).
+    Se o favorito for o proprio empate, cobre o empate + o mais provavel dos outros dois."""
+    fav = int(np.argmax(p))
+    return [fav, 1] if fav != 1 else [1, 0 if p[0] >= p[2] else 2]
 
 
 def classes_da_cartela(linhas, d, t):
@@ -243,13 +253,8 @@ def prever(concurso):
         ordem_res = list(np.argsort(-p))
         fav = "1X2"[ordem_res[0]]
         pd_ = p_para_duplo(p)
-        if equilibrado(p) and not fonte.startswith("sem odds"):
-            # jogo equilibrado: favorito + empate (1.007 jogos: 69,6% x 66,4% do duplo dos dois maiores,
-            # vantagem nos tres periodos testados)
-            od = [0 if p[0] > p[2] else 2, 1]
-        else:
-            od = list(np.argsort(-pd_))[:2]
-        duplo = "".join(c for c in "1X2" if c in {"1X2"[od[0]], "1X2"[od[1]]})
+        od = duplo_de(p)
+        duplo = "".join(c for c in "1X2" if "1X2".index(c) in od)
         cobertura = float(p[od[0]] + p[od[1]])
         cobertura_real = float(pd_[od[0]] + pd_[od[1]])  # cobertura com o empate corrigido
         classe = "TRIPLO" if fonte.startswith("sem odds") else ""
