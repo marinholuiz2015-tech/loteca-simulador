@@ -182,6 +182,43 @@ def financeiro():
     return out
 
 
+def financeiro_historico(H):
+    """se tivesse jogado: gasto e premio por concurso de cada estrategia (rateio oficial da Caixa).
+    - jogo perfeito (ate R$ 200), toda semana: premio exato (14 + combinacoes de 13).
+    - desdobre espalhado R$ 200, toda semana: 14 = premio do 14; 13 = ao menos 1 combinacao (minimo).
+    - cofrinho: R$ 200 guardados por semana; aposta a cartela 6+4+4 so quando o retorno esperado passou de 100%."""
+    rat, odds, res = c2.rateio(), c2.odds_por_concurso(), c3.resultados_cef()
+    ret = {}
+    arq = os.path.join(AQUI, "camada3_historico.csv")
+    if os.path.exists(arq):
+        ret = {int(r["concurso"]): float(r["retorno_2592"]) for r in csv.DictReader(open(arq))}
+    out = []
+    for c in sorted(x["c"] for x in H):
+        if c not in rat:
+            continue
+        Rt = rat[c]
+        h = next(x for x in H if x["c"] == c)
+        sel = [set(R.index(k) for k in g["s"]) for g in h["jogos"]]
+        r = res[c]
+        er = [j for j in range(14) if r[j] not in sel[j]]
+        custo_s = int(np.prod([len(s) for s in sel])) * 2
+        pr_s = (Rt["premio_14"] + sum(len(s) - 1 for s in sel) * Rt["premio_13"]) if not er else \
+            (len(sel[er[0]]) * Rt["premio_13"] if len(er) == 1 else 0.0)
+        pe = h.get("pts_espalhado")
+        pr_e = Rt["premio_14"] if pe == 14 else (Rt["premio_13"] if pe == 13 else 0.0)
+        cof = None
+        if ret.get(c, 0) >= 1.0 and len(odds.get(c, {})) >= 10:
+            P = c3.P_de(odds[c])
+            cart = c2.cartela(P, 4, 4)
+            er2 = [j for j in range(14) if r[j] not in cart[j]]
+            cof = (Rt["premio_14"] + sum(len(s) - 1 for s in cart) * Rt["premio_13"]) if not er2 else \
+                (len(cart[er2[0]]) * Rt["premio_13"] if len(er2) == 1 else 0.0)
+        out.append({"c": c, "custo_s": custo_s, "premio_s": round(pr_s, 2), "custo_e": 200 if pe is not None else 0,
+                    "premio_e": round(pr_e, 2), "cofrinho_aposta": 2592 if cof is not None else 0,
+                    "cofrinho_premio": round(cof or 0.0, 2)})
+    return out
+
+
 def kpis():
     md = os.path.join(AQUI, "kpis.md")
     linhas = []
@@ -225,7 +262,8 @@ def main():
         print(f"desdobre espalhado calculado em mais {n} concursos do historico")
     H = historico()
     dados = {"gerado": __import__("datetime").datetime.now().strftime("%d/%m/%Y %H:%M"), "semana": semana(),
-             "historico": H, "aprendizado": aprendizado(H), "sites": sites(), "financeiro": financeiro(), "kpis": kpis()}
+             "historico": H, "aprendizado": aprendizado(H), "sites": sites(), "financeiro": financeiro(), "kpis": kpis(),
+             "financeiro_historico": financeiro_historico(H)}
     os.makedirs(os.path.dirname(DESTINO), exist_ok=True)
     sem = dados["semana"]
     if sem and sem.get("desdobre"):
