@@ -22,7 +22,9 @@ Arquitetura em camadas separadas (cada uma com o seu próprio teste):
   O empate subestimado visto no histórico inteiro não se sustentou fora da amostra; ficou de fora.
 - **Classe:** SECO se o favorito tem ≥ 60%; TRIPLO se os dois resultados mais prováveis somam < 70%; senão DUPLO (com o duplo dos dois mais prováveis). Jogos sem odds: frequência histórica, TRIPLO.
 - **Grade:** API da Caixa → tabela do Guia da Loteria → imagem da Arena. As probabilidades da bolsa (Guia) ficam gravadas, ainda sem peso (precisam de semanas para validar).
-- **Registro prospectivo** (`registro_previsoes.csv`): gravado só de quinta a sábado até 15h, pela coleta semanal, para cada previsão ser anterior ao fechamento. Nunca é sobrescrito.
-- **Placar ao vivo** (`placar.py` → `placar.md`): última previsão antes do fechamento × resultado oficial, contra as metas (14 = 56%, 10 = 60%, 8 = 62%, 6 = 65%, 4 = 70%). Primeiro concurso: 1285.
+- **Calendário (Brasília):** terça 09:17 = previsão **provisória**; quinta 09:47 (depois da atualização das 7h da Arena) e 19:23 = previsão **oficial**, a tempo dos especialistas e bolões; sábado 10:17 = **atualização**. Fora disso, nada é registrado.
+- **Registro prospectivo** (`registro_previsoes.csv`, coluna `versao`): gravado pela coleta semanal; nunca é sobrescrito.
+- **Placar ao vivo** (`placar.py` → `placar.md`): mede a última previsão **oficial** de cada concurso contra o resultado e as metas (14 = 56%, 10 = 60%, 8 = 62%, 6 = 65%, 4 = 70%), mais a chance de 14 da aposta mínima (13 secos + 1 duplo). A **atualização de sábado** é medida à parte, para saber se esperar mais informação melhora o acerto. Primeiro concurso: 1285.
+- **Escada** (`escada.py`): chance de 14 da aposta mínima (R$4: 0,039%, 1 em 2.563) até R$8.192 (4,65%), acrescentando o duplo/triplo que mais compra chance por real.
 
 Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `motor/saida/` sem gravar no registro).

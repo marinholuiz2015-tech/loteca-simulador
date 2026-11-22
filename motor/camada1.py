@@ -51,7 +51,7 @@ SECO_MIN = 0.60     # favorito >= 60%: seco (acerta ~67% a 94% conforme a faixa)
 TRIPLO_MAX = 0.70   # dois resultados mais provaveis cobrem < 70%: triplo
 CAMPOS = ["concurso", "jogo", "mandante", "visitante", "p1", "px", "p2", "favorito", "confianca",
           "ordem", "classe", "duplo_sugerido", "cobertura_duplo", "fonte_prob", "odd_1", "odd_x", "odd_2",
-          "bolsa_1", "bolsa_x", "bolsa_2", "gama", "gerado_em_utc"]
+          "bolsa_1", "bolsa_x", "bolsa_2", "gama", "versao", "gerado_em_utc"]
 
 
 # ----------------------------------------------------------------- utilidades
@@ -235,23 +235,39 @@ def concurso_encerrado(c):
         return False
 
 
+def versao_do_dia(agora_br):
+    """Calendario (Brasilia): terca/quarta = provisoria; quinta/sexta = OFICIAL
+    (depois da atualizacao das 7h da Arena, a tempo dos especialistas e bolões);
+    sabado ate 15h = atualizacao (medida a parte). Fora disso: nao registra."""
+    d = agora_br.weekday()
+    if d in (1, 2):
+        return "provisoria"
+    if d in (3, 4):
+        return "oficial"
+    if d == 5 and agora_br.hour < 15:
+        return "atualizacao"
+    return None
+
+
 def main():
-    """Sem argumento: modo automatico (coleta semanal). So registra o concurso
-    aberto, de quinta a sabado ate 15h (Brasilia), para o registro ser sempre
-    anterior ao fechamento. Com numero: gera a tabela, mas so registra se
-    o concurso ainda estiver aberto e dentro da janela."""
+    """Sem argumento: modo automatico (coleta semanal) para o concurso aberto.
+    Registra conforme o calendario (versao_do_dia). Com numero: gera a tabela
+    e so registra se o concurso estiver aberto e dentro do calendario."""
     from datetime import timedelta
     agora_br = datetime.now(timezone.utc) - timedelta(hours=3)
-    janela = agora_br.weekday() in (3, 4) or (agora_br.weekday() == 5 and agora_br.hour < 15)
+    versao = versao_do_dia(agora_br)
+    janela = versao is not None
     c = int(sys.argv[1]) if len(sys.argv) > 1 else max(arena().keys())
     if concurso_encerrado(c):
         print(f"Concurso {c} ja encerrado: nada a prever.")
         return
     linhas, fonte = prever(c)
+    for l in linhas:
+        l["versao"] = versao or "fora do calendario"
     registrar = janela and "--sem-registro" not in sys.argv
     print(gravar(linhas, fonte, registrar))
-    print("\nRegistro prospectivo: " + ("GRAVADO (antes do fechamento)" if registrar else
-                                       "nao gravado (fora da janela quinta-sabado 15h)"))
+    print("\nRegistro prospectivo: " + (f"GRAVADO como previsao {versao}" if registrar else
+                                       "nao gravado (fora do calendario terca-sabado 15h)"))
 
 
 if __name__ == "__main__":
