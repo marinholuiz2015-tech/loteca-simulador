@@ -53,3 +53,10 @@ Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `mot
 ## Varredura semanal de nuances
 
 `motor/varredura.py` (toda segunda): cruza tipos de jogo com sinais do jogo e compara com as odds. Descobre só nos concursos antigos, exige força e repetição nas duas metades, e **confere no último terço, que a descoberta nunca viu**. Só fica o que se repete. Resultado em `motor/nuances.md`; a previsão mostra "Alertas de nuance" nos jogos da semana em que alguma nuance confirmada se aplica. Nuances novas entram e as que param de funcionar saem sozinhas.
+## Camada 2 — rateio (jogo por valor)
+
+`motor/camada2.py` (terça, quinta e sábado, depois da camada 1):
+- Massa: enquete parcial da Vovoteca quando existe; senão, modelo da massa pelas odds (a massa exagera no favorito).
+- Ganhadores previstos de cada combinação: `log(ganhadores+0,5) = a + log(apostas) + b·log(chance pela massa) + c·log(chance pelo mercado)`, ajustado com o rateio oficial (`coleta/dados/rateio_caixa.csv`, atualizado toda segunda). Correlação 0,75 (concurso deixado de fora).
+- Para cada orçamento (R$ 1.296, 2.592, 3.888): cartela cheia × jogo por valor (chance × prêmio ÷ ganhadores previstos), com a chance de 14, o retorno esperado e os volantes em CSV (`motor/saida/concurso_N_valor_R<orçamento>.csv`).
+- Teste (145 concursos com enquete e rateio): retorno esperado do 14 por valor 58–66% × cartela cheia 46–52%. Retorno real: cartela cheia na frente por causa de **um** concurso (1152, R$ 124 mil, 1 ganhador). Por isso a camada 2 é mostrada lado a lado; a decisão final fica para a camada 3 e para a prova ao vivo.
