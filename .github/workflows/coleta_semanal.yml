@@ -46,7 +46,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq tesseract-ocr
-          pip install requests numpy opencv-python-headless pytesseract
+          pip install requests numpy opencv-python-headless pytesseract pillow scipy
 
       - name: Guia da Loteria (odds de mercado + palpite)
         id: guia
@@ -88,6 +88,16 @@ jobs:
         continue-on-error: true
         run: python coleta/avaliar_massa.py | tee coleta/dados/resumo_massa.txt
 
+      - name: Jogos prontos e boloes dos sites (Arena, Vovoteca) e confronto com o nosso
+        id: sites
+        continue-on-error: true
+        timeout-minutes: 10
+        run: |
+          timeout 150 python -W ignore coleta/ocr/arena_palpites.py semanal || echo "arena palpites: falhou nesta rodada"
+          timeout 150 python -W ignore coleta/ocr/vovo_matriz.py semanal || echo "vovo matriz: falhou nesta rodada"
+          timeout 150 python -W ignore coleta/ocr/vovo_boloes.py semanal || echo "vovo boloes: falhou nesta rodada"
+          timeout 120 python motor/confronto_sites.py > motor/confronto_sites.md || echo "confronto: falhou nesta rodada"
+
       - name: Sentinela - fatos do concurso aberto (desfalques, descanso, forma, clima)
         id: sentinela
         continue-on-error: true
@@ -124,12 +134,13 @@ jobs:
           CLIMA_PRAZO=300 MAX_CLIMA=600 timeout 360 python coleta/sentinela/coletar_sentinela.py clima || echo "clima: parou no limite de tempo"
           python motor/kpis.py medir > /dev/null && echo "placar de KPIs atualizado (motor/kpis.md)"
           python motor/varredura.py > /dev/null && echo "varredura de nuances atualizada (motor/nuances.md)"
+          timeout 300 python motor/sinal_especialista.py > motor/sinal_especialista.md && echo "teste do sinal dos sites atualizado (motor/sinal_especialista.md)"
 
       - name: Gravar dados no repositorio
         run: |
           git config user.name "loteca-coleta-bot"
           git config user.email "actions@github.com"
-          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md 2>/dev/null || true
+          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md motor/confronto_sites.md motor/sinal_especialista.md 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit -m "Coleta semanal de fontes (automatico)"
           for i in 1 2 3; do

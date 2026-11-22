@@ -11,6 +11,10 @@ for k,c in H.items():
     if len(js)==14 and all(j['nuGolEquipeUm'] is not None for j in js):
         res[int(k)]=[0 if j['nuGolEquipeUm']>j['nuGolEquipeDois'] else (1 if j['nuGolEquipeUm']==j['nuGolEquipeDois'] else 2) for j in js]
 rat=c2.rateio(); odds=c2.odds_por_concurso()
+FREQ=np.array([0.472,0.262,0.266])  # mesma regra do motor (camada1) para jogo sem odds
+def P_de(c):
+    return [c2.prob_mercado(odds[c][j]) if j in odds.get(c,{}) else FREQ for j in range(1,15)]
+def tem_odds(c): return len(odds.get(c,{}))>=10
 def carregar(arq,col='marcas'):
     d=collections.defaultdict(dict)
     for r in csv.DictReader(open(arq)): d[int(r['concurso'])][int(r['jogo'])]=sorted("1X2".index(x) for x in r[col])
@@ -26,11 +30,11 @@ def avalia(cart,r,R):
     secos=[ok[i] for i in range(14) if tam[i]==1]; duplos=[ok[i] for i in range(14) if tam[i]==2]
     return 14-er, er<=1, n14, pr, secos, duplos
 def confronto(nome,outro):
-    cs=[c for c in outro if c in res and len(odds.get(c,{}))==14]
+    cs=[c for c in outro if c in res and tem_odds(c)]
     T=collections.defaultdict(lambda:[0,0,0,0.0,0.0,[],[]])
     for c in cs:
         A=outro[c]; d=sum(len(x)==2 for x in A); t=sum(len(x)==3 for x in A)
-        P=[c2.prob_mercado(odds[c][j]) for j in range(1,15)]
+        P=P_de(c)
         N=c2.cartela(P,d,t)
         R=rat.get(c); custo=2**d*3**t*2
         for quem,cart in ((nome,A),('Nosso (mesma estrutura)',N)):
@@ -45,11 +49,11 @@ def confronto(nome,outro):
 aaz=carregar('coleta/dados/arena_palpites.csv')
 confronto('Arena do AZ',aaz)
 
-cs=[c for c in aaz if c in res and len(odds.get(c,{}))==14]
+cs=[c for c in aaz if c in res and tem_odds(c)]
 dif=[];sec=[]
 for c in cs:
     A=aaz[c]; d=sum(len(x)==2 for x in A); t=sum(len(x)==3 for x in A)
-    N=c2.cartela([c2.prob_mercado(odds[c][j]) for j in range(1,15)],d,t)
+    N=c2.cartela(P_de(c),d,t)
     dif.append(avalia(N,res[c],None)[0]-avalia(A,res[c],None)[0])
 dif=np.array(dif); print(f"\ndiferenca de pontos por concurso (nosso - Arena): {dif.mean():+.2f} | erro {dif.std()/math.sqrt(len(dif)):.2f} | z {dif.mean()/(dif.std()/math.sqrt(len(dif))):+.1f} | nosso melhor em {np.mean(dif>0)*100:.0f}% dos concursos, empate {np.mean(dif==0)*100:.0f}%, Arena melhor {np.mean(dif<0)*100:.0f}%")
 
@@ -57,14 +61,14 @@ vov=carregar('coleta/dados/vovo_matriz.csv','seco')
 cs=confronto('Vovoteca (matriz, 14 secos)',vov)
 dif=[]
 for c in cs:
-    N=c2.cartela([c2.prob_mercado(odds[c][j]) for j in range(1,15)],0,0)
+    N=c2.cartela(P_de(c),0,0)
     dif.append(avalia(N,res[c],None)[0]-avalia(vov[c],res[c],None)[0])
 dif=np.array(dif); se=dif.std()/math.sqrt(len(dif))
 print(f"\ndiferenca (nosso - Vovoteca): {dif.mean():+.2f} | erro {se:.2f} | z {dif.mean()/se:+.1f} | nosso melhor {np.mean(dif>0)*100:.0f}%, empate {np.mean(dif==0)*100:.0f}%, Vovo melhor {np.mean(dif<0)*100:.0f}%")
 # concordancia e quem acerta quando discordam
 a=b=n=0
 for c in cs:
-    P=[c2.prob_mercado(odds[c][j]) for j in range(1,15)]
+    P=P_de(c)
     for j in range(14):
         nos=int(np.argmax(P[j])); v=vov[c][j][0]
         if nos!=v: n+=1; a+=res[c][j]==nos; b+=res[c][j]==v
@@ -75,12 +79,12 @@ bol = collections.defaultdict(dict)
 for r in csv.DictReader(open('coleta/dados/vovo_boloes.csv')):
     bol[(int(r['concurso']), r['bolao'])][int(r['jogo'])] = sorted("1X2".index(x) for x in r['marcas'])
 bol = {k: [v[j] for j in range(1, 15)] for k, v in bol.items() if len(v) == 14}
-ks = [k for k in bol if k[0] in res and len(odds.get(k[0], {})) == 14]
+ks = [k for k in bol if k[0] in res and tem_odds(k[0])]
 T = {'Vovoteca (boloes)': [0, 0, 0, 0.0, 0.0, [], []], 'Nosso (mesma estrutura)': [0, 0, 0, 0.0, 0.0, [], []]}
 dif = []
 for k in ks:
     c = k[0]; A = bol[k]; d = sum(len(x) == 2 for x in A); t = sum(len(x) == 3 for x in A)
-    N = c2.cartela([c2.prob_mercado(odds[c][j]) for j in range(1, 15)], d, t)
+    N = c2.cartela(P_de(c), d, t)
     R = rat.get(c); custo = 2 ** d * 3 ** t * 2
     pts = {}
     for quem, cart in (('Vovoteca (boloes)', A), ('Nosso (mesma estrutura)', N)):
