@@ -1900,6 +1900,70 @@ def historico():
     except Exception as e:
         return jsonify({"status":"erro","mensagem":str(e)}), 500
 
+# ------------------------------------------------------------------ painel oficial (com senha)
+# Usuario e senha ficam em variaveis de ambiente do Render: PAINEL_USUARIO e PAINEL_SENHA.
+# Os dados vem do repositorio (docs/dados), buscados na hora com cache de 60 s: o painel fica
+# atualizado sem precisar de novo deploy.
+import hmac as _hmac
+from flask import Response, redirect
+
+_PAINEL_RAW = "https://raw.githubusercontent.com/marinholuiz2015-tech/loteca-simulador/main/docs/"
+_painel_cache = {}
+
+
+def _painel_autorizado():
+    usuario, senha = os.environ.get("PAINEL_USUARIO", "luiz"), os.environ.get("PAINEL_SENHA")
+    a = request.authorization
+    return bool(senha) and a is not None and _hmac.compare_digest(a.username or "", usuario) \
+        and _hmac.compare_digest(a.password or "", senha)
+
+
+def _painel_pedir_senha():
+    if not os.environ.get("PAINEL_SENHA"):
+        return Response("Painel sem senha configurada: defina PAINEL_SENHA nas variaveis de ambiente do Render.",
+                        503, {"Content-Type": "text/plain; charset=utf-8"})
+    return Response("Acesso restrito.", 401, {"WWW-Authenticate": 'Basic realm="Loteca Elite Pro"',
+                                             "Content-Type": "text/plain; charset=utf-8"})
+
+
+def _painel_arquivo(caminho, tipo):
+    agora = time.time()
+    c = _painel_cache.get(caminho)
+    if c and agora - c[0] < 60:
+        return Response(c[1], 200, {"Content-Type": tipo, "Cache-Control": "no-store"})
+    try:
+        r = requests.get(_PAINEL_RAW + caminho, timeout=20)
+        r.raise_for_status()
+        _painel_cache[caminho] = (agora, r.content)
+        return Response(r.content, 200, {"Content-Type": tipo, "Cache-Control": "no-store"})
+    except Exception:
+        if c:
+            return Response(c[1], 200, {"Content-Type": tipo, "Cache-Control": "no-store"})
+        return Response("Dados indisponiveis no momento.", 502, {"Content-Type": "text/plain; charset=utf-8"})
+
+
+@app.route("/painel")
+def painel_raiz():
+    return redirect("/painel/", code=302)
+
+
+@app.route("/painel/")
+def painel_pagina():
+    if not _painel_autorizado():
+        return _painel_pedir_senha()
+    return _painel_arquivo("index.html", "text/html; charset=utf-8")
+
+
+@app.route("/painel/dados/<nome>")
+def painel_dados(nome):
+    if not _painel_autorizado():
+        return _painel_pedir_senha()
+    if nome not in ("painel.json", "ao_vivo.json", "desdobre.csv"):
+        return Response("Nao encontrado.", 404)
+    tipo = "text/csv; charset=utf-8" if nome.endswith(".csv") else "application/json; charset=utf-8"
+    return _painel_arquivo("dados/" + nome, tipo)
+
+
 init_db()
 
 if __name__ == "__main__":
