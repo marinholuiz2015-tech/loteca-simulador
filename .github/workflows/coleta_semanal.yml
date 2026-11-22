@@ -98,6 +98,13 @@ jobs:
           timeout 150 python -W ignore coleta/ocr/vovo_boloes.py semanal || echo "vovo boloes: falhou nesta rodada"
           timeout 120 python motor/confronto_sites.py > motor/confronto_sites.md || echo "confronto: falhou nesta rodada"
 
+      - name: Tabela ao vivo (football-data) para os alertas de motivacao
+        id: tabela
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          timeout 180 python coleta/futebol_data.py semanal || echo "football-data falhou nesta rodada"
+
       - name: Sentinela - fatos do concurso aberto (desfalques, descanso, forma, clima)
         id: sentinela
         continue-on-error: true
@@ -128,19 +135,22 @@ jobs:
         # so na rodada de segunda (resultados) ou na mao; tempo limitado para nunca travar o resto
         if: github.event.schedule == '41 0 * * 2' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
-        timeout-minutes: 20
+        timeout-minutes: 28
         run: |
           timeout 420 python coleta/sentinela/coletar_sentinela.py historico || echo "historico: parou no limite de tempo (continua na proxima semana)"
           CLIMA_PRAZO=300 MAX_CLIMA=600 timeout 360 python coleta/sentinela/coletar_sentinela.py clima || echo "clima: parou no limite de tempo"
           python motor/kpis.py medir > /dev/null && echo "placar de KPIs atualizado (motor/kpis.md)"
           python motor/varredura.py > /dev/null && echo "varredura de nuances atualizada (motor/nuances.md)"
           timeout 300 python motor/sinal_especialista.py > motor/sinal_especialista.md && echo "teste do sinal dos sites atualizado (motor/sinal_especialista.md)"
+          timeout 240 python coleta/futebol_data.py historico || echo "football-data historico: incompleto"
+          timeout 240 python motor/motivacao.py > /dev/null && echo "teste de motivacao pela tabela atualizado (motor/motivacao.md)"
+          timeout 180 python coleta/pesquisa/fechamento.py > /dev/null && echo "odd de quinta x fechamento atualizado (motor/fechamento.md)"
 
       - name: Gravar dados no repositorio
         run: |
           git config user.name "loteca-coleta-bot"
           git config user.email "actions@github.com"
-          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md motor/confronto_sites.md motor/sinal_especialista.md 2>/dev/null || true
+          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md motor/confronto_sites.md motor/sinal_especialista.md motor/motivacao.md motor/motivacao.json motor/fechamento.md 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit -m "Coleta semanal de fontes (automatico)"
           for i in 1 2 3; do

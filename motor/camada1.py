@@ -307,6 +307,12 @@ def gravar(linhas, fonte_grade, registrar=True):
     except Exception as e:  # alerta nunca pode derrubar a previsao
         al = {}
         print("Alertas de nuance indisponiveis:", e)
+    try:
+        import motivacao
+        for j, t in motivacao.alertas([(l["jogo"], l["mandante"], l["visitante"]) for l in linhas]).items():
+            al.setdefault(j, []).extend("Tabela: " + x for x in t)
+    except Exception as e:
+        print("Alertas da tabela indisponiveis:", e)
     if al:
         md += ["", "## Alertas de nuance (onde as odds costumam errar)", "",
                "Nuances confirmadas no período que a busca nunca viu (lista completa: `motor/nuances.md`). "
