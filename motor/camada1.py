@@ -257,7 +257,8 @@ def main():
     agora_br = datetime.now(timezone.utc) - timedelta(hours=3)
     versao = versao_do_dia(agora_br)
     janela = versao is not None
-    c = int(sys.argv[1]) if len(sys.argv) > 1 else max(arena().keys())
+    nums = [a for a in sys.argv[1:] if a.isdigit()]
+    c = int(nums[0]) if nums else max(arena().keys())
     if concurso_encerrado(c):
         print(f"Concurso {c} ja encerrado: nada a prever.")
         return
