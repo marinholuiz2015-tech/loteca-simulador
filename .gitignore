@@ -4,3 +4,5 @@ coleta/ocr/_tmp_vovo/
 __pycache__/
 
 coleta/sentinela/cache/
+coleta/ocr/aaz_palpites/
+coleta/ocr/vovo_matriz/
