@@ -35,3 +35,12 @@ Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `mot
 - `coleta/sentinela/coletar_sentinela.py historico`: os mesmos fatos para todos os jogos da base de odds (895 em diante); toda segunda acrescenta os jogos do concurso que acabou. `clima` completa a chuva/temperatura respeitando o limite da Open-Meteo.
 - `motor/sentinela.py treinar` (toda segunda): teste no tempo do ajuste mercado + fatos. **Só liga se melhorar a perda logarítmica com folga (mais de 2 erros-padrão) e não piorar o acerto.** Resultado em `motor/sentinela_modelo.json` e `motor/sentinela_relatorio.txt`.
 - `camada1.py` aplica o ajuste quando ligado e grava as duas probabilidades (`pm1/pmx/pm2` = mercado, `p1/px/p2` = final) e o estado da camada em cada jogo. O placar compara motor × só mercado ao vivo.
+
+## KPIs (substitui o ajuste da Sentinela)
+
+`motor/kpis.py` reúne todos os indicadores do jogo num só lugar: desempenho (forma, sequência sem perder, confronto direto), situacional (descanso, calendário, rodízio, desfalques), ambiente (altitude, viagem, clássico, chuva), massa, especialistas, notícias (crise, técnico, reservas, desfalques) e movimento da odd.
+
+- `python motor/kpis.py medir` (toda segunda): mede cada KPI sozinho no tempo (força = ganho/erro) e todos juntos com pesos aprendidos. Escreve o placar em `motor/kpis.md` e o modelo em `motor/kpis_modelo.json`. Os KPIs juntos só entram na previsão com força acima de 2 e sem perder acerto.
+- Pesos do Luiz: copiar `motor/kpis_pesos_luiz.exemplo.json` para `motor/kpis_pesos_luiz.json` e ajustar. São testados do mesmo jeito e usados se superarem o mercado e os pesos aprendidos.
+- KPIs sem histórico (notícias, movimento da odd) ficam "coletando" até 20 concursos.
+- A previsão (`motor/saida/concurso_N.md`) mostra a nota de cada KPI por jogo.

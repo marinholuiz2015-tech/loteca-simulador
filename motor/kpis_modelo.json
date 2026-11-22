@@ -1,0 +1,179 @@
+{
+ "ligado": false,
+ "usa": "mercado",
+ "pesos": {
+  "Forma (pontos nos ultimos 5)": -0.0004,
+  "Sequencia sem perder": -0.0469,
+  "Confronto direto (H2H)": 0.0926,
+  "Descanso": -0.0452,
+  "Calendario apertado": -0.0019,
+  "Rodizio / time reserva": 0.0884,
+  "Desfalques": 0.0262,
+  "Altitude": 0.1261,
+  "Viagem do visitante": 0.0433,
+  "Classico / rivalidade local": 0.1348,
+  "Chuva forte": 0.2163,
+  "Massa x mercado (manada)": -0.0591,
+  "Especialista (Lotequeiros)": 0.01,
+  "Noticias: crise": 0.0,
+  "Noticias: tecnico": 0.0,
+  "Noticias: reservas": 0.0,
+  "Noticias: desfalques": 0.0,
+  "Movimento da odd": 0.0
+ },
+ "pesos_luiz": {},
+ "combinado": {
+  "jogos": 3484,
+  "ganho": -0.000427,
+  "erro": 0.001144,
+  "forca": -0.37,
+  "acerto_mercado": 0.5353,
+  "acerto_modelo": 0.5299
+ },
+ "combinado_luiz": null,
+ "por_kpi": {
+  "Forma (pontos nos ultimos 5)": {
+   "jogos": 3034,
+   "ganho": -0.001042,
+   "erro": 0.000637,
+   "forca": -1.63,
+   "acerto_mercado": 0.5419,
+   "acerto_modelo": 0.5389,
+   "status": "medido"
+  },
+  "Sequencia sem perder": {
+   "jogos": 3034,
+   "ganho": -9.3e-05,
+   "erro": 0.000313,
+   "forca": -0.3,
+   "acerto_mercado": 0.5419,
+   "acerto_modelo": 0.5392,
+   "status": "medido"
+  },
+  "Confronto direto (H2H)": {
+   "jogos": 2705,
+   "ganho": 0.00013,
+   "erro": 0.000236,
+   "forca": 0.55,
+   "acerto_mercado": 0.542,
+   "acerto_modelo": 0.5416,
+   "status": "medido"
+  },
+  "Descanso": {
+   "jogos": 3034,
+   "ganho": 6.9e-05,
+   "erro": 0.000159,
+   "forca": 0.43,
+   "acerto_mercado": 0.5419,
+   "acerto_modelo": 0.5402,
+   "status": "medido"
+  },
+  "Calendario apertado": {
+   "jogos": 3034,
+   "ganho": -0.000386,
+   "erro": 0.00025,
+   "forca": -1.54,
+   "acerto_mercado": 0.5419,
+   "acerto_modelo": 0.5412,
+   "status": "medido"
+  },
+  "Rodizio / time reserva": {
+   "jogos": 2637,
+   "ganho": 0.000646,
+   "erro": 0.000668,
+   "forca": 0.97,
+   "acerto_mercado": 0.537,
+   "acerto_modelo": 0.5328,
+   "status": "medido"
+  },
+  "Desfalques": {
+   "jogos": 3037,
+   "ganho": -5e-06,
+   "erro": 0.000179,
+   "forca": -0.03,
+   "acerto_mercado": 0.542,
+   "acerto_modelo": 0.542,
+   "status": "medido"
+  },
+  "Altitude": {
+   "jogos": 2915,
+   "ganho": 0.000293,
+   "erro": 0.000435,
+   "forca": 0.67,
+   "acerto_mercado": 0.5441,
+   "acerto_modelo": 0.5437,
+   "status": "medido"
+  },
+  "Viagem do visitante": {
+   "jogos": 2829,
+   "ganho": 0.000785,
+   "erro": 0.000613,
+   "forca": 1.28,
+   "acerto_mercado": 0.5419,
+   "acerto_modelo": 0.5426,
+   "status": "medido"
+  },
+  "Classico / rivalidade local": {
+   "jogos": 2829,
+   "ganho": -3.8e-05,
+   "erro": 0.000316,
+   "forca": -0.12,
+   "acerto_mercado": 0.5419,
+   "acerto_modelo": 0.5412,
+   "status": "medido"
+  },
+  "Chuva forte": {
+   "jogos": 247,
+   "ganho": -0.0,
+   "erro": 0.0,
+   "forca": -0.76,
+   "acerto_mercado": 0.4899,
+   "acerto_modelo": 0.4899,
+   "status": "medido"
+  },
+  "Massa x mercado (manada)": {
+   "jogos": 2496,
+   "ganho": -0.000209,
+   "erro": 0.000264,
+   "forca": -0.79,
+   "acerto_mercado": 0.5333,
+   "acerto_modelo": 0.5308,
+   "status": "medido"
+  },
+  "Especialista (Lotequeiros)": {
+   "jogos": 2806,
+   "ganho": 3.7e-05,
+   "erro": 0.000184,
+   "forca": 0.2,
+   "acerto_mercado": 0.5267,
+   "acerto_modelo": 0.5282,
+   "status": "medido"
+  },
+  "Noticias: crise": {
+   "status": "coletando",
+   "jogos": 0,
+   "concursos": 0
+  },
+  "Noticias: tecnico": {
+   "status": "coletando",
+   "jogos": 0,
+   "concursos": 0
+  },
+  "Noticias: reservas": {
+   "status": "coletando",
+   "jogos": 0,
+   "concursos": 0
+  },
+  "Noticias: desfalques": {
+   "status": "coletando",
+   "jogos": 0,
+   "concursos": 0
+  },
+  "Movimento da odd": {
+   "status": "coletando",
+   "jogos": 0,
+   "concursos": 0
+  }
+ },
+ "treinado_em_utc": "2026-11-22T15:10:56Z"
+}

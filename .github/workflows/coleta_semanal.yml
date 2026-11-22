@@ -106,7 +106,7 @@ jobs:
         continue-on-error: true
         run: python motor/placar.py
 
-      - name: Sentinela - fatos dos jogos encerrados e novo teste da camada (liga so se superar o mercado)
+      - name: KPIs - fatos dos jogos encerrados e novo placar de KPIs (pesos reaprendidos; liga so se superar o mercado)
         id: sentinela_treino
         # so na rodada de segunda (resultados) ou na mao; tempo limitado para nunca travar o resto
         if: github.event.schedule == '41 0 * * 2' || github.event_name == 'workflow_dispatch'
@@ -115,13 +115,13 @@ jobs:
         run: |
           timeout 420 python coleta/sentinela/coletar_sentinela.py historico || echo "historico: parou no limite de tempo (continua na proxima semana)"
           CLIMA_PRAZO=300 MAX_CLIMA=600 timeout 360 python coleta/sentinela/coletar_sentinela.py clima || echo "clima: parou no limite de tempo"
-          python motor/sentinela.py treinar | tee motor/sentinela_relatorio.txt
+          python motor/kpis.py medir > /dev/null && echo "placar de KPIs atualizado (motor/kpis.md)"
 
       - name: Gravar dados no repositorio
         run: |
           git config user.name "loteca-coleta-bot"
           git config user.email "actions@github.com"
-          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/sentinela_modelo.json motor/sentinela_relatorio.txt 2>/dev/null || true
+          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit -m "Coleta semanal de fontes (automatico)"
           for i in 1 2 3; do

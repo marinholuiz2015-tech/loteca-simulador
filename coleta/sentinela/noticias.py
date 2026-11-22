@@ -7,7 +7,8 @@ Google Noticias (todos os times, inclusive de fora). Guarda as manchetes dos
 ultimos 6 dias e marca sinais por palavras-chave:
   reservas  - poupar, time alternativo/misto/reserva, rodizio, foco em outra competicao
   desfalque - lesao, suspenso, vetado, desfalque, fora do jogo, duvida
-  crise     - salarios atrasados, crise, protesto, demissao/saida de tecnico, interino
+  crise     - salarios atrasados, crise, protesto, dividas
+  tecnico   - tecnico demitido, interino, novo tecnico, cargo ameacado
   reforco   - volta, retorno, liberado, recuperado, reforco
 
 Se existir a variavel ANTHROPIC_API_KEY, um modelo le as manchetes de cada jogo e
@@ -41,7 +42,8 @@ DIAS = 6
 SINAIS = {
     "reservas": r"poupa|poupad|time alternativo|time misto|equipe alternativa|reservas|rodizio|preservar|foco na (libertadores|copa|final|sul-americana)|priorizar",
     "desfalque": r"lesao|lesionad|suspens|vetad|desfalque|fora do jogo|fora da partida|duvida|cirurgia|entorse|contusao|dores",
-    "crise": r"salarios? atrasad|atraso salarial|crise|protesto|demitid|demissao|deixa o cargo|treinador interino|tecnico interino|pressao da torcida|organizada",
+    "crise": r"salarios? atrasad|atraso salarial|crise|protesto|pressao da torcida|organizada|dividas?|penhora|transfer ban",
+    "tecnico": r"demitid|demissao|deixa o cargo|treinador interino|tecnico interino|novo tecnico|novo treinador|balanca no cargo|cargo ameacado|ultimato|anuncia tecnico|fica no cargo",
     "reforco": r"volta ao time|retorno|retorna|liberad|recuperad|reforco|estreia|de volta",
 }
 
@@ -173,28 +175,26 @@ def main():
              [f"{lado}_{k}" for lado in ("casa", "fora") for k in list(SINAIS) + ["n"]] + \
              ["nota_modelo", "motivo_modelo", "manchetes_casa", "manchetes_fora", "coletado_em_utc"]
     arq = os.path.join(DADOS, "noticias_aberto.csv")
-    novo = not os.path.exists(arq)
-    with open(arq, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=campos)
-        if novo:
-            w.writeheader()
-        for j in sorted(grade):
-            mand, vis = grade[j]
-            mc, mv = noticias_do_time(mand), noticias_do_time(vis)
-            sc, sv = sinais(mc), sinais(mv)
-            nota, motivo = nota_modelo(mand, vis, mc, mv)
-            linha = {"concurso": c, "jogo": j, "mandante": mand, "visitante": vis, "nota_modelo": nota,
-                     "motivo_modelo": motivo, "coletado_em_utc": agora,
-                     "manchetes_casa": json.dumps(mc[:15], ensure_ascii=False),
-                     "manchetes_fora": json.dumps(mv[:15], ensure_ascii=False)}
-            for lado, s, m in (("casa", sc, mc), ("fora", sv, mv)):
-                for k, v in s.items():
-                    linha[f"{lado}_{k}"] = v
-                linha[f"{lado}_n"] = len(m)
-            w.writerow(linha)
-            print(f"Jogo {j}: {mand} ({len(mc)} manchetes, {sc}) x {vis} ({len(mv)}, {sv})"
-                  + (f" | nota {nota}: {motivo}" if nota != "" else ""))
-
+    sys.path.insert(0, AQUI)
+    from coletar_sentinela import anexar
+    linhas = []
+    for j in sorted(grade):
+        mand, vis = grade[j]
+        mc, mv = noticias_do_time(mand), noticias_do_time(vis)
+        sc, sv = sinais(mc), sinais(mv)
+        nota, motivo = nota_modelo(mand, vis, mc, mv)
+        linha = {"concurso": c, "jogo": j, "mandante": mand, "visitante": vis, "nota_modelo": nota,
+                 "motivo_modelo": motivo, "coletado_em_utc": agora,
+                 "manchetes_casa": json.dumps(mc[:15], ensure_ascii=False),
+                 "manchetes_fora": json.dumps(mv[:15], ensure_ascii=False)}
+        for lado, s_, m in (("casa", sc, mc), ("fora", sv, mv)):
+            for k, v in s_.items():
+                linha[f"{lado}_{k}"] = v
+            linha[f"{lado}_n"] = len(m)
+        linhas.append(linha)
+        print(f"Jogo {j}: {mand} ({len(mc)} manchetes, {sc}) x {vis} ({len(mv)}, {sv})"
+              + (f" | nota {nota}: {motivo}" if nota != "" else ""))
+    anexar(arq, campos, linhas)
 
 if __name__ == "__main__":
     main()
