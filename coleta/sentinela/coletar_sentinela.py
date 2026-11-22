@@ -299,8 +299,8 @@ def historico():
             linha, st = fatos(r["concurso"], r["jogo"], r["mandante"], r["visitante"], data, r["resultado"] or None)
             cont[st] = cont.get(st, 0) + 1
             w.writerow(linha)
+            f.flush()  # linha inteira gravada: se o tempo acabar, nada fica pela metade
             if i % 100 == 0:
-                f.flush()
                 print(f"{i}/{len(jogos)} {cont}", flush=True)
     print("Fim:", cont)
 
@@ -311,7 +311,10 @@ def completar_clima():
     with open(arq, encoding="utf-8") as f:
         linhas = list(csv.DictReader(f))
     feitos = 0
+    prazo = time.time() + float(os.environ.get("CLIMA_PRAZO", "1e9"))
     for l in linhas:
+        if time.time() > prazo:
+            break
         if l["match_id"] and l["lat"] and l["chuva_mm"] == "" and l["inicio_utc"]:
             inicio = dt.datetime.strptime(l["inicio_utc"], "%Y-%m-%dT%H:%MZ")
             l["chuva_mm"], l["temp_c"] = clima(float(l["lat"]), float(l["lon"]), inicio, True)
