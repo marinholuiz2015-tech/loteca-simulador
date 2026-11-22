@@ -138,7 +138,7 @@ jobs:
         timeout-minutes: 28
         run: |
           timeout 420 python coleta/sentinela/coletar_sentinela.py historico || echo "historico: parou no limite de tempo (continua na proxima semana)"
-          CLIMA_PRAZO=300 MAX_CLIMA=600 timeout 360 python coleta/sentinela/coletar_sentinela.py clima || echo "clima: parou no limite de tempo"
+          CLIMA_PRAZO=300 MAX_CLIMA=5000 timeout 360 python coleta/sentinela/coletar_sentinela.py clima || echo "clima: parou no limite de tempo"
           python motor/kpis.py medir > /dev/null && echo "placar de KPIs atualizado (motor/kpis.md)"
           python motor/varredura.py > /dev/null && echo "varredura de nuances atualizada (motor/nuances.md)"
           timeout 300 python motor/sinal_especialista.py > motor/sinal_especialista.md && echo "teste do sinal dos sites atualizado (motor/sinal_especialista.md)"

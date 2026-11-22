@@ -1,12 +1,12 @@
 {
  "jogos_teste": 3037,
  "perda_mercado": 0.96089,
- "perda_sentinela": 0.96097,
- "melhora_perda": -8e-05,
- "erro_padrao": 0.00123,
+ "perda_sentinela": 0.96083,
+ "melhora_perda": 5e-05,
+ "erro_padrao": 0.0014,
  "acerto_mercado": 0.542,
- "acerto_sentinela": 0.537
+ "acerto_sentinela": 0.5361
 }
 NOTICIAS: desligada - 0 de 20 concursos com noticias e resultado
-Pesos: {'desfalques': np.float64(0.04), 'valor_desfalques': np.float64(-0.053), 'descanso': np.float64(-0.047), 'jogos_14d': np.float64(-0.002), 'forma5': np.float64(-0.017), 'altitude': np.float64(0.093), 'reservas': np.float64(0.086), 'chuva_empate': np.float64(0.751)}
+Pesos: {'desfalques': np.float64(0.04), 'valor_desfalques': np.float64(-0.054), 'descanso': np.float64(-0.047), 'jogos_14d': np.float64(-0.003), 'forma5': np.float64(-0.016), 'altitude': np.float64(0.094), 'reservas': np.float64(0.086), 'chuva_empate': np.float64(0.268)}
 CAMADA SENTINELA: desligada (nao superou o mercado com folga)
