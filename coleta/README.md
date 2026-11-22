@@ -47,3 +47,19 @@ depois do fechamento de sábado, formato tabela com decimais) e grava
 
 A coleta semanal (`.github/workflows/coleta_semanal.yml`) agora instala o tesseract e roda também
 `ocr/arena_semanal.py` (odds da Arena) e `vovoteca_enquete.py semanal` + `avaliar_massa.py`.
+
+## Massa ampliada com as enquetes parciais — 21/11/2026
+`vovoteca_enquete.py parciais` lê a última parcial (arte colorida de quinta/sexta) dos concursos
+sem enquete final. A cor de cada célula indica a faixa do número (vermelho = zebra 0–12%,
+amarelo = surpresa 13–25%, ciano = normal 26–50%, verde = favorito, verde escuro = super
+favorito), o que elimina leituras impossíveis ("4%" com ícone lido como 14). Conferência à mão
+em 10 parciais: 137 jogos aceitos, nenhum errado. Base: 3.889 jogos, 297 concursos (61 finais + 236 parciais).
+
+`vovoteca_enquete.py aberto` (coleta semanal) guarda a parcial do concurso **ainda aberto** em
+`dados/vovoteca_massa_aberto.csv` — é a massa disponível na hora de apostar; nunca é sobrescrita.
+
+`pesquisa/teste_massa.py` (195 concursos, validação deixando um concurso de fora):
+- Ganhadores de 13: erro (log10) odds 0,450 × massa 0,397 × **odds+massa 0,351 (−22%)**; de 14: 0,379 × 0,393 × 0,366 (−3%).
+- Desdobre com o mesmo custo (170 concursos): cortar pelo retorno (ganhadores previstos pela massa)
+  troca chance por combinações menos jogadas e pagou 10–18% mais que cortar pela chance; inconclusivo
+  (2 a 6 casos de 14 por coluna).
