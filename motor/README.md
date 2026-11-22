@@ -49,3 +49,11 @@ Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `mot
 
 - **Classe pela cartela padrão (6+4+4):** os jogos mais incertos viram triplo, os do meio duplo e os mais firmes seco, escolhidos para maximizar a chance de 14 (antes eram limites fixos por jogo, e o jogo mais incerto podia sair como duplo). A cartela padrão muda com `DUPLOS`/`TRIPLOS`.
 - **Duplo = favorito + empate, em qualquer jogo.** Estudo em 5.152 jogos: em todas as faixas de probabilidade, com mandante ou visitante favorito, favorito + empate foi o par que mais acertou, nos três períodos (o 1-2 nunca foi o melhor). Ex.: visitante favorito com 40% a 50%: 76,8% contra 71,2% da regra antiga. Nas cartelas (238 concursos) o acerto dos duplos subiu em todas as estruturas (6+4+4: 76,2% → 77,5%; 8+6+0: 71,1% → 74,4%). O empate é subestimado pelo mercado (27,7% x 25,9%; nos equilibrados 33,7% x 29,3%).
+
+## Camada 2 — rateio (jogo por valor)
+
+`motor/camada2.py` (terça, quinta e sábado, depois da camada 1):
+- Massa: enquete parcial da Vovoteca quando existe; senão, modelo da massa pelas odds (a massa exagera no favorito).
+- Ganhadores previstos de cada combinação: `log(ganhadores+0,5) = a + log(apostas) + b·log(chance pela massa) + c·log(chance pelo mercado)`, ajustado com o rateio oficial (`coleta/dados/rateio_caixa.csv`, atualizado toda segunda). Correlação 0,75 (concurso deixado de fora).
+- Para cada orçamento (R$ 1.296, 2.592, 3.888): cartela cheia × jogo por valor (chance × prêmio ÷ ganhadores previstos), com a chance de 14, o retorno esperado e os volantes em CSV (`motor/saida/concurso_N_valor_R<orçamento>.csv`).
+- Teste (145 concursos com enquete e rateio): retorno esperado do 14 por valor 58–66% × cartela cheia 46–52%. Retorno real: cartela cheia na frente por causa de **um** concurso (1152, R$ 124 mil, 1 ganhador). Por isso a camada 2 é mostrada lado a lado; a decisão final fica para a camada 3 e para a prova ao vivo.
