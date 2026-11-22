@@ -74,3 +74,6 @@ Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `mot
 
 ## Rodízio previsto (`motor/rodizio.py`)
 A escalação real só sai ~1h antes do jogo, depois que a Loteca fecha. O rodízio é previsto na quinta pelo descanso, jogos em 14 dias e o costume do time de poupar (AUC 0,70; previsão ≥ 50% → poupou 70%, base 28%). A nuance "visitante poupa e mandante não" tem sempre o mesmo sinal, mas no teste no tempo não melhora a previsão de forma comprovada (rodízio previsto força +0,4; escalação real −0,5) → só alerta (visitante ≥ 45% e mandante < 30%). Reajustado toda segunda.
+
+### Modo cofrinho (padrão desde 22/11, pedido do Luiz: no máximo R$ 200, o jogo tem que se pagar)
+Guarda R$ 200 por semana e só aposta quando o retorno esperado de alguma cartela que cabe no saldo passa de 100% (`retorno_minimo`). Histórico (176 concursos): apostando R$ 200 toda semana nenhuma cartela se paga (retorno esperado 12–27%; R$ 144 9+3+2 faz 13 ou 14 ~2 vezes por ano); no cofrinho houve 4 apostas de R$ 2.592 (gasto R$ 10.368, prêmios R$ 15.176, um 14 no 1210). Amostra pequena — é o único caminho que se paga em média, não garantia. `"modo": "semanal"` volta ao orçamento mensal.

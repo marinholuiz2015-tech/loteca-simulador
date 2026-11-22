@@ -1,6 +1,10 @@
 {
- "orcamento_mensal": 10368,
- "minimo_semana": 1296,
- "teto_semana": 7776,
- "obs": "orcamento_mensal = dinheiro que pode ser perdido sem fazer falta (retorno esperado < 100% na maioria das semanas)"
+ "modo": "cofrinho",
+ "deposito_semana": 200,
+ "retorno_minimo": 1.0,
+ "inicio_concurso": 1284,
+ "orcamento_mensal": 800,
+ "minimo_semana": 0,
+ "teto_semana": 200,
+ "obs": "modo cofrinho: guarda deposito_semana toda semana e so aposta quando o retorno esperado passa de retorno_minimo (o jogo se paga em media). modo semanal: aposta toda semana dentro do orcamento_mensal."
 }

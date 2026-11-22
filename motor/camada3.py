@@ -23,7 +23,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 SAIDA = os.path.join(AQUI, "saida")
 FREQ = np.array([0.472, 0.262, 0.266])
 # orcamento -> (duplos, triplos) da cartela cheia
-ESCADA = {1296: (3, 4), 2592: (4, 4), 3888: (3, 5), 7776: (4, 5), 11664: (3, 6)}
+ESCADA = {144: (3, 2), 192: (5, 1), 1296: (3, 4), 2592: (4, 4), 3888: (3, 5), 7776: (4, 5), 11664: (3, 6)}
 
 
 def P_de(odds_c):
@@ -170,8 +170,10 @@ def historico():
 
 # ------------------------------------------------------------------ decisao da semana
 CONFIG = os.path.join(AQUI, "camada3_config.json")
-PADRAO = {"orcamento_mensal": 10368, "minimo_semana": 1296, "teto_semana": 7776,
-          "obs": "orcamento_mensal = dinheiro que pode ser perdido sem fazer falta (retorno esperado < 100% na maioria das semanas)"}
+PADRAO = {"modo": "cofrinho", "deposito_semana": 200, "retorno_minimo": 1.0, "inicio_concurso": 1285,
+          "orcamento_mensal": 800, "minimo_semana": 0, "teto_semana": 200,
+          "obs": "modo cofrinho: guarda deposito_semana toda semana e so aposta quando o retorno esperado passa de "
+                 "retorno_minimo (o jogo se paga em media). modo semanal: aposta toda semana dentro do orcamento_mensal."}
 APOSTAS = os.path.join(AQUI, "apostas")
 RECOMENDADAS = os.path.join(APOSTAS, "recomendadas.csv")
 HIST = os.path.join(AQUI, "camada3_historico.csv")  # retorno esperado de cada semana, calculado antes do concurso
@@ -232,6 +234,8 @@ def decidir(c=None):
         w.writeheader()
         w.writerows(hist[k] for k in sorted(hist))
     pct = float(np.mean([x <= r for x in hist_r])) if hist_r else None
+    if cfg.get("modo") == "cofrinho":
+        return decidir_cofrinho(c, info, cfg, r, pct, hist_r)
     base = max([o for o in ESCADA if o <= cfg["orcamento_mensal"] / 4] or [min(ESCADA)])
     if r >= 1.0:
         nivel, alvo = "excepcional (retorno esperado acima de 100%)", cfg["teto_semana"]
@@ -275,6 +279,60 @@ def decidir(c=None):
                "semanas passaram de 100%, todas com prêmio acumulado muito alto. O sistema faz mais pontos que os sites, "
                "mas a Loteca devolve menos do que arrecada: aposte só o orçamento definido.", "",
            "Para o jogo por valor (menos chance, prêmio mais inteiro) veja a camada 2."]
+    open(os.path.join(SAIDA, f"concurso_{c}_decisao.md"), "w", encoding="utf-8").write("\n".join(md) + "\n")
+    print("\n".join(md))
+
+
+def cofre(c, cfg):
+    """saldo guardado antes do concurso c: depositos desde inicio_concurso menos o que foi apostado."""
+    ini = int(cfg["inicio_concurso"])
+    dep = cfg["deposito_semana"] * max(0, c - ini + 1)
+    gasto = 0.0
+    arq = JOGADAS if os.path.exists(JOGADAS) else RECOMENDADAS
+    if os.path.exists(arq):
+        gasto = sum(float(x["orcamento"]) for x in csv.DictReader(open(arq, encoding="utf-8"))
+                    if ini <= int(x["concurso"]) < c)
+    return dep - gasto
+
+
+def decidir_cofrinho(c, info, cfg, r, pct, hist_r):
+    saldo = cofre(c, cfg)
+    minimo = cfg["retorno_minimo"]
+    boas = [(o, v) for o, v in info["orc"].items() if v["retorno"] >= minimo and o <= saldo]
+    alvo = max(boas, key=lambda t: t[1]["e14"] + t[1]["e13"] - t[0])[0] if boas else 0
+    melhor = max(info["orc"].items(), key=lambda t: t[1]["retorno"])
+    md = [f"# Concurso {c} — camada 3 (decisão da semana · modo cofrinho)", "",
+          f"Prêmio de 14 estimado pela Caixa: **R$ {info['pool14']:,.0f}** · apostas previstas: {info['apostas']:,.0f}.".replace(",", "."), "",
+          (f"Cofrinho: R$ {cfg['deposito_semana']:,.0f} por semana desde o concurso {cfg['inicio_concurso']} · "
+           f"saldo guardado: **R$ {saldo:,.0f}** · só aposta quando o retorno esperado passa de {minimo:.0%}.").replace(",", "."), "",
+          "| Orçamento | Cartela | Chance de 14 | Chance de 13 | Retorno esperado (14 + 13) |", "|---|---|---|---|---|"]
+    for orc, o in info["orc"].items():
+        d, t = ESCADA[orc]
+        md.append(f"| R$ {orc:,} | {14 - d - t}+{d}+{t} | {o['p14']:.2%} | {o['p13']:.1%} | {o['retorno']:.0%} |".replace(",", "."))
+    if alvo:
+        d, t = ESCADA[alvo]
+        md += ["", f"## Recomendação: **apostar R$ {alvo:,}** do cofrinho — cartela {14 - d - t}+{d}+{t}".replace(",", "."), "",
+               f"Semana em que o jogo se paga em média: retorno esperado de {info['orc'][alvo]['retorno']:.0%}."]
+        cart = info["orc"][alvo]["cartela"]
+        os.makedirs(APOSTAS, exist_ok=True)
+        linhas = list(csv.DictReader(open(RECOMENDADAS, encoding="utf-8"))) if os.path.exists(RECOMENDADAS) else []
+        linhas = [x for x in linhas if int(x["concurso"]) != c] + [dict(
+            concurso=c, origem="recomendada", orcamento=alvo, estrutura=f"{14 - d - t}+{d}+{t}",
+            **{f"jogo_{j + 1}": "".join("1X2"[k] for k in sorted(cart[j])) for j in range(14)})]
+        with open(RECOMENDADAS, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=CAMPOS_AP)
+            w.writeheader()
+            w.writerows(sorted(linhas, key=lambda x: int(x["concurso"])))
+    else:
+        motivo = (f"o melhor retorno esperado desta semana é {melhor[1]['retorno']:.0%} (R$ {melhor[0]:,}) — abaixo de {minimo:.0%}"
+                  if melhor[1]["retorno"] < minimo else f"o saldo (R$ {saldo:,.0f}) ainda não cobre a cartela que se paga").replace(",", ".")
+        md += ["", f"## Recomendação: **não apostar — guardar R$ {cfg['deposito_semana']:,.0f}**".replace(",", "."), "",
+               f"Motivo: {motivo}."]
+    md += ["", "Por que assim: com R$ 200 por semana toda semana, nenhuma cartela se paga (retorno esperado 18–27%; "
+               "R$ 144 9+3+2 faz 13 ou 14 cerca de 2 vezes por ano). Guardando e apostando só quando o retorno esperado "
+               "passa de 100% (prêmio acumulado alto), o histórico de 176 concursos teve 4 apostas de R$ 2.592: gasto "
+               "R$ 10.368, prêmios R$ 15.176 (um 14 no 1210). Amostra pequena: é o único caminho que se paga em média, "
+               "não uma garantia."]
     open(os.path.join(SAIDA, f"concurso_{c}_decisao.md"), "w", encoding="utf-8").write("\n".join(md) + "\n")
     print("\n".join(md))
 
