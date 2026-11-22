@@ -121,10 +121,13 @@ jobs:
       - name: Camada 2 - jogo por valor (rateio)
         id: camada2
         continue-on-error: true
-        timeout-minutes: 14
+        timeout-minutes: 26
         run: |
           timeout 420 python motor/camada2.py || echo "camada 2 sem dados suficientes nesta rodada"
           timeout 300 python motor/camada3.py || echo "camada 3 sem dados suficientes nesta rodada"
+          timeout 240 python motor/desdobre.py || echo "desdobre sem dados nesta rodada"
+          timeout 420 python motor/painel_dados.py || echo "painel sem atualizacao nesta rodada"
+          timeout 120 python coleta/ao_vivo.py --forcar || echo "placar indisponivel"
 
       - name: Motor - placar ao vivo
         id: placar
@@ -153,7 +156,7 @@ jobs:
         run: |
           git config user.name "loteca-coleta-bot"
           git config user.email "actions@github.com"
-          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md motor/confronto_sites.md motor/sinal_especialista.md motor/motivacao.md motor/motivacao.json motor/fechamento.md motor/apostas motor/camada3_historico.csv motor/camada3_config.json motor/placar_financeiro.md motor/rodizio.json 2>/dev/null || true
+          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md motor/confronto_sites.md motor/sinal_especialista.md motor/motivacao.md motor/motivacao.json motor/fechamento.md motor/apostas motor/camada3_historico.csv motor/camada3_config.json motor/placar_financeiro.md motor/rodizio.json motor/historico_desdobre.csv docs/dados 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit -m "Coleta semanal de fontes (automatico)"
           for i in 1 2 3; do

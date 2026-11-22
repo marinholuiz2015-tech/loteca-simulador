@@ -1,0 +1,35 @@
+name: Placar ao vivo (painel)
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gravar-repositorio
+  cancel-in-progress: false
+
+jobs:
+  placar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Placar dos jogos do concurso aberto
+        run: |
+          pip install -q requests
+          timeout 180 python coleta/ao_vivo.py || echo "placar indisponivel nesta rodada"
+      - name: Gravar
+        run: |
+          git config user.name "loteca-bot"
+          git config user.email "loteca-bot@users.noreply.github.com"
+          git add docs/dados/ao_vivo.json
+          if git diff --cached --quiet; then echo "sem mudanca"; exit 0; fi
+          git commit -m "Placar ao vivo"
+          for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done

@@ -77,3 +77,10 @@ A escalação real só sai ~1h antes do jogo, depois que a Loteca fecha. O rodí
 
 ### Modo cofrinho (padrão desde 22/11, pedido do Luiz: no máximo R$ 200, o jogo tem que se pagar)
 Guarda R$ 200 por semana e só aposta quando o retorno esperado de alguma cartela que cabe no saldo passa de 100% (`retorno_minimo`). Histórico (176 concursos): apostando R$ 200 toda semana nenhuma cartela se paga (retorno esperado 12–27%; R$ 144 9+3+2 faz 13 ou 14 ~2 vezes por ano); no cofrinho houve 4 apostas de R$ 2.592 (gasto R$ 10.368, prêmios R$ 15.176, um 14 no 1210). Amostra pequena — é o único caminho que se paga em média, não garantia. `"modo": "semanal"` volta ao orçamento mensal.
+
+## Desdobre espalhado (`motor/desdobre.py`)
+Volantes de 1 duplo (mínimo da Caixa) escolhidos para cobrir o máximo de resultados a até 1 erro, numa base 4+4+6. Com R$ 200 no 1284: cartela simples (jogo perfeito 10+0+4, R$ 162) 14 = 2,09% / 13+ = 12,2%; espalhado (50 volantes) 2,57% / 14,6%. O "desdobre com garantia de 13" perde em todo orçamento (a garantia só vale se todos os secos baterem). Gerado toda quinta para o orçamento padrão (R$ 200): `motor/saida/concurso_N_desdobre_R200.{csv,md}`.
+
+## Painel oficial (GitHub Pages, pasta `docs/`)
+Página única que lê `docs/dados/painel.json` (gerado por `motor/painel_dados.py` a cada rodada da coleta) e `docs/dados/ao_vivo.json` (placar da FotMob a cada 15 minutos durante os jogos, `coleta/ao_vivo.py`, workflow `ao_vivo.yml`). Abas: Ao vivo, Jogo da semana (decisão do cofrinho + jogo perfeito + alertas + placar financeiro), Desdobre (volantes + CSV), Histórico (303 concursos, jogo a jogo), Onde erramos (secos por confiança, liga e lado; tipo de erro; tendência; lições automáticas), Sites e KPIs.
+Desdobre espalhado no histórico completo (303 concursos, R$ 200/semana): 13 ou 14 em 14 concursos (previsto 15,0), dois 14 (1123, 1154); jogo perfeito: 7 e nenhum. Prêmios pequenos quando acerta (1154: 14 pagou R$ 2.422) — por isso a regra de quando apostar continua sendo o cofrinho.

@@ -334,6 +334,12 @@ def decidir_cofrinho(c, info, cfg, r, pct, hist_r):
                "R$ 10.368, prêmios R$ 15.176 (um 14 no 1210). Amostra pequena: é o único caminho que se paga em média, "
                "não uma garantia."]
     open(os.path.join(SAIDA, f"concurso_{c}_decisao.md"), "w", encoding="utf-8").write("\n".join(md) + "\n")
+    json.dump({"concurso": c, "modo": "cofrinho", "premio": info["pool14"], "saldo": saldo, "deposito": cfg["deposito_semana"],
+               "retorno_minimo": minimo, "apostar": alvo, "percentil": pct,
+               "orcamentos": [{"valor": o, "estrutura": f"{14 - sum(ESCADA[o])}+{ESCADA[o][0]}+{ESCADA[o][1]}",
+                               "p14": v["p14"], "p13": v["p13"], "retorno": v["retorno"]} for o, v in info["orc"].items()],
+               "motivo": None if alvo else motivo},
+              open(os.path.join(SAIDA, f"concurso_{c}_decisao.json"), "w"), ensure_ascii=False)
     print("\n".join(md))
 
 

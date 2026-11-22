@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loteca Elite Pro — Painel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--verde:#0B6B50;--verde2:#E8F3EF;--txt:#111827;--sub:#4B5563;--borda:#E5E7EB;--fundo:#F4F5F7;--erro:#B42318;--erro2:#FDECEA;--aviso:#7A3E06;--aviso2:#FFF7E6}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--txt);background:var(--fundo)}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 16px 64px;display:flex;flex-direction:column;gap:20px}
+h1{margin:0;font-family:'Space Grotesk',Inter,sans-serif;font-size:32px;letter-spacing:-.02em}
+h2{margin:0 0 12px;font-family:'Space Grotesk',Inter,sans-serif;font-size:20px}
+h3{margin:16px 0 8px;font-size:16px}
+.sub{color:var(--sub);font-size:14px}
+nav{display:flex;flex-wrap:wrap;gap:6px;background:#fff;border:1px solid var(--borda);border-radius:12px;padding:6px;position:sticky;top:8px;z-index:5}
+nav button{min-height:44px;padding:8px 16px;border-radius:8px;border:0;background:transparent;font:inherit;font-size:15px;font-weight:500;color:#374151;cursor:pointer}
+nav button[aria-selected=true]{background:var(--verde);color:#fff;font-weight:600}
+button:focus-visible,a:focus-visible{outline:2px solid var(--verde);outline-offset:2px}
+.card{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.stat{background:#F9FAFB;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:'Space Grotesk',Inter,sans-serif;font-size:28px;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--sub)}
+.decisao{border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:6px}
+.decisao.apostar{background:var(--verde);color:#fff}
+.decisao.guardar{background:#1F2937;color:#fff}
+.decisao b{font-family:'Space Grotesk',Inter,sans-serif;font-size:30px}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--sub);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--borda)}
+td{padding:8px 6px;border-bottom:1px solid #F1F2F4;vertical-align:middle}
+.rolagem{overflow-x:auto}
+.ok{color:var(--verde);font-weight:700}.no{color:var(--erro);font-weight:700}.wait{color:var(--sub)}
+.marca{display:inline-flex;gap:3px}
+.marca i{font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;font-size:12px;font-weight:700;background:#F1F2F4;color:#9CA3AF}
+.marca i.on{background:var(--verde);color:#fff}
+.marca i.res{outline:2px solid var(--erro);color:var(--erro);background:#fff}
+.marca i.on.res{outline:2px solid #111827;background:var(--verde);color:#fff}
+.barra{display:flex;height:20px;border-radius:5px;overflow:hidden;font-size:11px;font-weight:600;min-width:150px}
+.barra span{display:flex;align-items:center;justify-content:center;color:#fff}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.alerta{background:var(--aviso2);color:var(--aviso);border-radius:8px;padding:6px 10px;font-size:13px;margin-top:4px}
+.licao{background:var(--aviso2);border:1px solid #F3D9A4;border-radius:10px;padding:10px 14px;font-size:14px;color:#3B2A12}
+tr.linha{cursor:pointer}tr.linha:hover{background:#F9FAFB}
+.vol td{padding:4px 3px;text-align:center}
+.vol td.d{background:var(--verde);color:#fff;font-weight:700;border-radius:4px}
+.ao{display:inline-flex;align-items:center;gap:6px}.ao::before{content:"";width:8px;height:8px;border-radius:50%;background:#DC2626}
+[hidden]{display:none!important}
+@media (max-width:640px){h1{font-size:24px}.stat b{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1>Loteca Elite Pro</h1>
+<div class="sub" id="gerado">Carregando…</div>
+</header>
+<nav role="tablist" aria-label="Seções">
+<button role="tab" data-aba="vivo" aria-selected="true">Ao vivo</button>
+<button role="tab" data-aba="semana" aria-selected="false">Jogo da semana</button>
+<button role="tab" data-aba="desdobre" aria-selected="false">Desdobre</button>
+<button role="tab" data-aba="historico" aria-selected="false">Histórico</button>
+<button role="tab" data-aba="erros" aria-selected="false">Onde erramos</button>
+<button role="tab" data-aba="kpis" aria-selected="false">Sites e KPIs</button>
+</nav>
+
+<section id="vivo" class="aba"></section>
+<section id="semana" class="aba" hidden></section>
+<section id="desdobre" class="aba" hidden></section>
+<section id="historico" class="aba" hidden></section>
+<section id="erros" class="aba" hidden></section>
+<section id="kpis" class="aba" hidden></section>
+</div>
+<script>
+var D = null, V = null, R = '1X2';
+function pc(v, c) { return v == null ? '—' : (v * 100).toFixed(c == null ? 1 : c).replace('.', ',') + '%'; }
+function brl(v) { return v == null ? '—' : 'R$ ' + Math.round(v).toLocaleString('pt-BR'); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function nome(s) { return esc(String(s || '').split('/')[0].toLowerCase().replace(/(^|\s)\S/g, function (t) { return t.toUpperCase(); })); }
+function marca(sel, res) {
+  return '<span class="marca">' + [0, 1, 2].map(function (k) { var t = R[k], on = sel.indexOf(t) >= 0, r = res === t;
+    return '<i class="' + (on ? 'on' : '') + (r ? ' res' : '') + '">' + t + '</i>'; }).join('') + '</span>';
+}
+function barra(p) {
+  var cor = ['#0B6B50', '#6B7280', '#1D4ED8'];
+  return '<div class="barra" role="img" aria-label="1 ' + pc(p[0], 0) + ', X ' + pc(p[1], 0) + ', 2 ' + pc(p[2], 0) + '">' +
+    p.map(function (x, k) { return '<span style="width:' + (x * 100) + '%;background:' + cor[k] + '">' + (x >= .12 ? Math.round(x * 100) + '%' : '') + '</span>'; }).join('') + '</div>';
+}
+document.querySelectorAll('nav button').forEach(function (b) {
+  b.addEventListener('click', function () {
+    document.querySelectorAll('nav button').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
+    document.querySelectorAll('.aba').forEach(function (s) { s.hidden = s.id !== b.dataset.aba; });
+  });
+});
+
+function semanaJogos() { return D && D.semana ? D.semana.jogos : []; }
+function cartelaSimples() { var d = D.semana && D.semana.desdobre; return d ? d.simples.cartela : null; }
+
+function abaVivo() {
+  var el = document.getElementById('vivo');
+  if (!V || !D || !D.semana || V.concurso !== D.semana.concurso) {
+    el.innerHTML = '<div class="card"><h2>Ao vivo</h2><p class="sub">Os placares aparecem aqui durante os jogos do concurso aberto (atualização a cada 15 minutos).</p></div>'; return;
+  }
+  var simp = cartelaSimples(), vols = D.semana.desdobre ? D.semana.desdobre.espalhado.volantes : [];
+  var res = {}; V.jogos.forEach(function (g) { res[g.jogo] = g; });
+  var ptsS = 0, perdS = 0, linhas = '';
+  semanaJogos().forEach(function (j, i) {
+    var g = res[j.jogo] || {}, r = g.resultado, enc = g.situacao === 'encerrado';
+    var s = simp ? simp[i] : '';
+    var st = r == null ? '<span class="wait">aguardando</span>' : (s.indexOf(r) >= 0 ? '<span class="ok">✓ acertando</span>' : '<span class="no">✗ errando</span>');
+    if (r != null && s.indexOf(r) >= 0) ptsS++; if (r != null && enc && s.indexOf(r) < 0) perdS++;
+    var sit = g.situacao && g.situacao.indexOf('ao vivo') === 0 ? '<span class="ao">' + esc(g.situacao) + '</span>' : esc(g.situacao || '');
+    linhas += '<tr><td>' + j.jogo + '</td><td>' + nome(j.mandante) + ' × ' + nome(j.visitante) + '</td><td><b>' + (g.placar ? g.placar.join(' × ') : '—') + '</b></td><td>' + sit + '</td><td>' + marca(s, r) + '</td><td>' + st + '</td></tr>';
+  });
+  var melhor = 0, n13 = 0;
+  vols.forEach(function (v) { var p = 0; semanaJogos().forEach(function (j, i) { var r = (res[j.jogo] || {}).resultado; if (r != null && v[i].indexOf(r) >= 0) p++; }); if (p > melhor) melhor = p; });
+  var jogados = V.jogos.filter(function (g) { return g.resultado != null; }).length;
+  el.innerHTML = '<div class="card"><h2>Concurso ' + V.concurso + ' — ao vivo</h2><p class="sub">Atualizado ' + esc(V.atualizado_utc.replace('T', ' ').replace('Z', ' UTC')) + ' · ' + jogados + ' de 14 jogos com placar. Verde = nossa marcação; contorno preto = resultado do momento dentro dela; contorno vermelho = fora dela.</p>' +
+    '<div class="grid" style="margin-bottom:12px"><div class="stat"><span>Jogo perfeito (' + (D.semana.desdobre ? esc(D.semana.desdobre.simples.estrutura) : '') + ')</span><b>' + ptsS + ' pts</b><span>' + perdS + ' erro(s) já confirmado(s)</span></div>' +
+    '<div class="stat"><span>Desdobre espalhado — melhor volante</span><b>' + melhor + ' pts</b><span>de ' + jogados + ' jogos com placar</span></div></div>' +
+    '<div class="rolagem"><table><thead><tr><th>#</th><th>Jogo</th><th>Placar</th><th>Situação</th><th>Nossa marcação</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div></div>';
+}
+
+function abaSemana() {
+  var S = D.semana, el = document.getElementById('semana');
+  if (!S) { el.innerHTML = '<div class="card">Sem concurso aberto.</div>'; return; }
+  var d = S.decisao, h = '';
+  if (d) {
+    var ap = d.apostar > 0;
+    h += '<div class="decisao ' + (ap ? 'apostar' : 'guardar') + '"><span>Decisão do concurso ' + S.concurso + '</span><b>' + (ap ? 'Apostar ' + brl(d.apostar) : 'Não apostar — guardar ' + brl(d.deposito)) + '</b><span>' +
+      (ap ? 'Semana em que o jogo se paga em média.' : esc(d.motivo || '')) + ' · Cofrinho: ' + brl(d.saldo) + ' guardados · prêmio estimado ' + brl(d.premio) + '</span></div>';
+    h += '<div class="card"><h2>Como a decisão foi tomada</h2><p class="sub">O sistema guarda ' + brl(d.deposito) + ' por semana e só aposta quando alguma cartela devolve mais do que custa, em média (retorno esperado acima de ' + pc(d.retorno_minimo, 0) + '). Isso acontece quando o prêmio acumula muito. Nas semanas comuns, apostar R$ 200 devolve cerca de 20% em média.</p><div class="rolagem"><table><thead><tr><th>Aposta</th><th>Cartela</th><th>Chance de 14</th><th>Chance de 13 ou 14</th><th>Volta, em média, por R$ 1</th></tr></thead><tbody>' +
+      d.orcamentos.map(function (o) { var b = o.retorno >= d.retorno_minimo; return '<tr' + (o.valor === d.apostar ? ' style="background:var(--verde2)"' : '') + '><td>' + brl(o.valor) + '</td><td>' + esc(o.estrutura) + '</td><td>' + pc(o.p14, 2) + '</td><td>' + pc(o.p13 + o.p14, 1) + '</td><td class="' + (b ? 'ok' : '') + '">R$ ' + o.retorno.toFixed(2).replace('.', ',') + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+  }
+  var simp = cartelaSimples();
+  h += '<div class="card"><h2>Os 14 jogos e o jogo perfeito para R$ 200</h2><p class="sub">Probabilidades do motor (odds sem margem, empate ajustado). O jogo perfeito é a cartela de maior chance de 14 que cabe em R$ 200' + (S.desdobre ? ': ' + esc(S.desdobre.simples.estrutura) + ', ' + brl(S.desdobre.simples.custo) + ', chance de 14 de ' + pc(S.desdobre.simples.p14, 2) : '') + '.</p><div class="rolagem"><table><thead><tr><th>#</th><th>Jogo</th><th>1 · X · 2</th><th>Jogo perfeito</th><th>Alertas</th></tr></thead><tbody>' +
+    S.jogos.map(function (j, i) { return '<tr><td>' + j.jogo + '</td><td>' + nome(j.mandante) + ' × ' + nome(j.visitante) + '</td><td>' + barra(j.p) + '</td><td>' + (simp ? marca(simp[i], null) : '') + '</td><td>' + j.alertas.map(function (a) { return '<div class="alerta">' + esc(a) + '</div>'; }).join('') + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+  var F = D.financeiro || [];
+  if (F.length) {
+    var g = 0, p = 0;
+    h += '<div class="card"><h2>Placar financeiro</h2><div class="rolagem"><table><thead><tr><th>Concurso</th><th>Tipo</th><th>Aposta</th><th>Pontos</th><th>Prêmio</th></tr></thead><tbody>' +
+      F.map(function (x) { g += x.valor; p += x.premio || 0; return '<tr><td>' + x.concurso + '</td><td>' + esc(x.tipo) + '</td><td>' + brl(x.valor) + ' (' + esc(x.estrutura) + ')</td><td>' + (x.pontos == null ? 'aguardando' : x.pontos) + '</td><td>' + (x.premio == null ? '—' : brl(x.premio)) + '</td></tr>'; }).join('') +
+      '</tbody></table></div><p class="sub">Total apostado ' + brl(g) + ' · prêmios ' + brl(p) + ' · saldo ' + brl(p - g) + '</p></div>';
+  }
+  el.innerHTML = h;
+}
+
+function abaDesdobre() {
+  var S = D.semana, el = document.getElementById('desdobre');
+  if (!S || !S.desdobre) { el.innerHTML = '<div class="card">Desdobre ainda não gerado para este concurso.</div>'; return; }
+  var e = S.desdobre.espalhado, s = S.desdobre.simples;
+  var H = D.historico.filter(function (c) { return c.pts_espalhado != null; });
+  var hs13 = H.filter(function (c) { return c.pts_simples >= 13; }).length, he13 = H.filter(function (c) { return c.pts_espalhado >= 13; }).length;
+  var hs14 = H.filter(function (c) { return c.pts_simples === 14; }).length, he14 = H.filter(function (c) { return c.pts_espalhado === 14; }).length;
+  el.innerHTML = '<div class="card"><h2>Desdobre espalhado do concurso ' + S.concurso + ' — ' + brl(e.custo) + '</h2>' +
+    '<p class="sub">' + e.volantes.length + ' volantes de R$ 4, cada um com 1 duplo (o mínimo da Caixa), escolhidos na base ' + esc(e.base) + ' para cobrir o máximo de resultados a até 1 erro. Comparado com o jogo perfeito pelo mesmo dinheiro:</p>' +
+    '<div class="grid"><div class="stat"><span>Jogo perfeito ' + esc(s.estrutura) + ' (' + brl(s.custo) + ')</span><b>' + pc(s.p13, 1) + '</b><span>chance de 13 ou 14 · 14: ' + pc(s.p14, 2) + '</span></div>' +
+    '<div class="stat" style="background:var(--verde2)"><span>Desdobre espalhado (' + brl(e.custo) + ')</span><b>' + pc(e.p13, 1) + '</b><span>chance de 13 ou 14 · 14: ' + pc(e.p14, 2) + '</span></div>' +
+    '<div class="stat"><span>No histórico (' + H.length + ' concursos)</span><b>' + he13 + ' × ' + hs13 + '</b><span>vezes com 13 ou 14 (desdobre × jogo perfeito) · 14: ' + he14 + ' × ' + hs14 + '</span></div></div>' +
+    '<h3>Os volantes (duplo em verde)</h3><div class="rolagem"><table class="vol"><thead><tr><th>Vol.</th>' + S.jogos.map(function (j) { return '<th style="text-align:center">' + j.jogo + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    e.volantes.map(function (v, n) { return '<tr><td>' + (n + 1) + '</td>' + v.map(function (t) { return '<td class="' + (t.length > 1 ? 'd' : '') + '">' + t + '</td>'; }).join('') + '</tr>'; }).join('') +
+    '</tbody></table></div><p class="sub">Arquivo para imprimir: <a href="dados/desdobre.csv" download>desdobre.csv</a>. A "garantia de 13" dos desdobres comuns só vale se todos os secos baterem; o espalhado troca essa garantia por mais chance total.</p></div>';
+}
+
+var aberto = null;
+function abaHistorico() {
+  var el = document.getElementById('historico'), H = D.historico;
+  var n = H.length, m = function (k) { var v = H.filter(function (c) { return c[k] != null; }); return v.length ? (v.reduce(function (a, c) { return a + c[k]; }, 0) / v.length).toFixed(2).replace('.', ',') : '—'; };
+  var h = '<div class="card"><h2>Histórico — ' + n + ' concursos</h2><p class="sub">Cada concurso com os pontos que nossos jogos fariam (só com as odds de antes do jogo). Clique num concurso para ver jogo a jogo onde acertamos e erramos.</p>' +
+    '<div class="grid" style="margin-bottom:12px"><div class="stat"><span>Jogo perfeito (até R$ 200) — pontos médios</span><b>' + m('pts_simples') + '</b></div><div class="stat"><span>Cartela 6+4+4 (R$ 2.592) — pontos médios</span><b>' + m('pts_644') + '</b></div><div class="stat"><span>Desdobre espalhado (R$ 200) — pontos médios</span><b>' + m('pts_espalhado') + '</b></div></div>' +
+    '<div class="rolagem"><table><thead><tr><th>Concurso</th><th>Data</th><th>Jogo perfeito</th><th>6+4+4</th><th>Desdobre</th><th>Zebras (prev.)</th><th>Ganhadores 14</th><th>Prêmio 14</th></tr></thead><tbody>';
+  H.forEach(function (c) {
+    var cor = function (p) { return p == null ? '—' : '<span class="' + (p >= 13 ? 'ok' : '') + '">' + p + '</span>'; };
+    h += '<tr class="linha" data-c="' + c.c + '" tabindex="0" aria-expanded="' + (aberto === c.c) + '"><td><b>' + c.c + '</b></td><td>' + esc(c.data) + '</td><td>' + cor(c.pts_simples) + '</td><td>' + cor(c.pts_644) + '</td><td>' + cor(c.pts_espalhado) + '</td><td>' + c.zebras + ' (' + String(c.esperado_zebras).replace('.', ',') + ')</td><td>' + (c.ganhadores14 == null ? '—' : c.ganhadores14) + '</td><td>' + (c.premio14 ? brl(c.premio14) : '—') + '</td></tr>';
+    if (aberto === c.c) {
+      h += '<tr><td colspan="8" style="background:#F9FAFB"><table><thead><tr><th>#</th><th>Jogo</th><th>Liga</th><th>1 · X · 2</th><th>Resultado</th><th>Jogo perfeito</th><th>6+4+4</th></tr></thead><tbody>' +
+        c.jogos.map(function (g) { return '<tr><td>' + g.j + '</td><td>' + nome(g.m) + ' × ' + nome(g.v) + '</td><td class="sub">' + esc(g.liga) + '</td><td>' + barra(g.p) + '</td><td><b>' + g.res + '</b>' + (g.res !== g.fav ? ' <span class="chip" style="background:var(--aviso2);color:var(--aviso)">zebra</span>' : '') + '</td><td>' + marca(g.s, g.res) + ' ' + (g.s.indexOf(g.res) >= 0 ? '<span class="ok">✓</span>' : '<span class="no">✗</span>') + '</td><td>' + marca(g.q, g.res) + ' ' + (g.q.indexOf(g.res) >= 0 ? '<span class="ok">✓</span>' : '<span class="no">✗</span>') + '</td></tr>'; }).join('') +
+        '</tbody></table></td></tr>';
+    }
+  });
+  el.innerHTML = h + '</tbody></table></div></div>';
+  el.querySelectorAll('tr.linha').forEach(function (tr) {
+    var f = function () { var c = Number(tr.dataset.c); aberto = aberto === c ? null : c; abaHistorico(); var a = el.querySelector('tr[data-c="' + c + '"]'); if (a) a.focus(); };
+    tr.addEventListener('click', f); tr.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } });
+  });
+}
+
+function abaErros() {
+  var A = D.aprendizado, el = document.getElementById('erros'), t = A.tendencia;
+  var tab = function (lista, rot, chave) { return '<div class="rolagem"><table><thead><tr><th>' + rot + '</th><th>Secos</th><th>Acertaram</th><th>O motor previa</th><th>Diferença</th></tr></thead><tbody>' +
+    lista.map(function (x) { var dif = x.real - x.previsto, forte = Math.abs(x.z) >= 2; return '<tr><td>' + esc(x[chave]) + '</td><td>' + x.n + '</td><td>' + pc(x.real) + '</td><td>' + pc(x.previsto) + '</td><td class="' + (forte ? (dif < 0 ? 'no' : 'ok') : '') + '">' + (dif >= 0 ? '+' : '') + (dif * 100).toFixed(1).replace('.', ',') + ' pts' + (forte ? ' ●' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>'; };
+  el.innerHTML = '<div class="card"><h2>Onde erramos e o que aprendemos</h2><p class="sub">Todos os secos do jogo perfeito em ' + D.historico.length + ' concursos, comparando o que aconteceu com o que o motor previa. ● = diferença grande demais para ser acaso (refeito toda semana).</p>' +
+    A.licoes.map(function (l) { return '<div class="licao" style="margin-top:8px">' + esc(l) + '</div>'; }).join('') +
+    '<div class="grid" style="margin-top:14px"><div class="stat"><span>Secos errados que foram empate</span><b>' + pc(A.tipo_erro.empate / A.tipo_erro.total, 0) + '</b><span>' + A.tipo_erro.empate + ' de ' + A.tipo_erro.total + '</span></div>' +
+    '<div class="stat"><span>Últimos ' + t.concursos + ' concursos: secos certos</span><b>' + pc(t.secos_real.real, 1) + '</b><span>previsto ' + pc(t.secos_real.previsto, 1) + '</span></div>' +
+    '<div class="stat"><span>Últimos ' + t.concursos + ': zebras por concurso</span><b>' + String(t.zebras_reais).replace('.', ',') + '</b><span>previsto ' + String(t.zebras_previstas).replace('.', ',') + '</span></div></div>' +
+    '<h3>Pela confiança no favorito</h3>' + tab(A.faixas, 'Favorito com', 'faixa') +
+    '<h3>Por liga</h3>' + tab(A.ligas, 'Liga', 'liga') +
+    '<h3>Por lado do seco</h3>' + tab(A.lado.filter(function (x) { return x.n; }), 'Seco', 'lado') + '</div>';
+}
+
+function abaKpis() {
+  var el = document.getElementById('kpis'), S = D.sites, K = D.kpis;
+  var porComp = {}; S.forEach(function (x) { (porComp[x.comparacao] = porComp[x.comparacao] || []).push(x); });
+  var h = '<div class="card"><h2>Nós × os sites, nos mesmos concursos</h2><p class="sub">Nosso jogo montado com a mesma quantidade de secos, duplos e triplos do site.</p><div class="rolagem"><table><thead><tr><th>Comparação</th><th>Quem</th><th>Pontos por concurso</th><th>13 ou 14</th><th>14</th><th>Secos certos</th></tr></thead><tbody>';
+  Object.keys(porComp).forEach(function (k) { porComp[k].forEach(function (x) { var nosso = /Nosso/.test(x.quem); h += '<tr' + (nosso ? ' style="background:var(--verde2)"' : '') + '><td>' + esc(k) + '</td><td>' + (nosso ? '<b>Nosso</b>' : esc(x.quem)) + '</td><td>' + String(x.pontos).replace('.', ',') + '</td><td>' + x.treze + '</td><td>' + x.catorze + '</td><td>' + String(x.secos).replace('.', ',') + '%</td></tr>'; }); });
+  h += '</tbody></table></div></div>';
+  var prom = K.filter(function (k) { return parseFloat(k.forca) >= 0.5; }).map(function (k) { return k.kpi; });
+  h += '<div class="card"><h2>KPIs — o que importa</h2><div class="licao">Nenhum indicador supera a odd sozinho (é preciso força acima de 2 no teste no tempo). Os mais promissores: ' + esc(prom.join(', ') || '—') + '. Eles aparecem como alertas nos jogos da semana; entram na probabilidade só quando passarem no teste.</div>' +
+    '<div class="rolagem" style="margin-top:12px"><table><thead><tr><th>Grupo</th><th>KPI</th><th>Jogos medidos</th><th>Força</th><th>Leitura</th></tr></thead><tbody>' +
+    K.slice().sort(function (a, b) { return parseFloat(b.forca) - parseFloat(a.forca); }).map(function (k) { var f = parseFloat(k.forca); return '<tr><td class="sub">' + esc(k.grupo) + '</td><td>' + esc(k.kpi) + '</td><td>' + esc(k.jogos) + '</td><td class="' + (f >= 2 ? 'ok' : (f <= -2 ? 'no' : '')) + '">' + esc(k.forca).replace('.', ',') + '</td><td>' + esc(k.leitura) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+  el.innerHTML = h;
+}
+
+function tudo() { abaVivo(); abaSemana(); abaDesdobre(); abaHistorico(); abaErros(); abaKpis(); }
+function carregaVivo() { return fetch('dados/ao_vivo.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (v) { V = v; if (D) abaVivo(); }); }
+fetch('dados/painel.json?t=' + Date.now()).then(function (r) { return r.json(); }).then(function (d) {
+  D = d; document.getElementById('gerado').textContent = 'Dados de ' + d.gerado + ' · concurso aberto ' + (d.semana ? d.semana.concurso : '—');
+  return carregaVivo();
+}).then(tudo).catch(function (e) { document.getElementById('gerado').textContent = 'Não foi possível carregar os dados: ' + e; });
+setInterval(carregaVivo, 60000);
+</script>
+</body>
+</html>
