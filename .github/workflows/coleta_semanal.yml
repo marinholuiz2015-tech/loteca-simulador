@@ -121,9 +121,10 @@ jobs:
       - name: Camada 2 - jogo por valor (rateio)
         id: camada2
         continue-on-error: true
-        timeout-minutes: 8
+        timeout-minutes: 14
         run: |
           timeout 420 python motor/camada2.py || echo "camada 2 sem dados suficientes nesta rodada"
+          timeout 300 python motor/camada3.py || echo "camada 3 sem dados suficientes nesta rodada"
 
       - name: Motor - placar ao vivo
         id: placar
@@ -144,13 +145,14 @@ jobs:
           timeout 300 python motor/sinal_especialista.py > motor/sinal_especialista.md && echo "teste do sinal dos sites atualizado (motor/sinal_especialista.md)"
           timeout 240 python coleta/futebol_data.py historico || echo "football-data historico: incompleto"
           timeout 240 python motor/motivacao.py > /dev/null && echo "teste de motivacao pela tabela atualizado (motor/motivacao.md)"
+          python motor/camada3.py conferir > /dev/null && echo "placar financeiro conferido (motor/placar_financeiro.md)"
           timeout 180 python coleta/pesquisa/fechamento.py > /dev/null && echo "odd de quinta x fechamento atualizado (motor/fechamento.md)"
 
       - name: Gravar dados no repositorio
         run: |
           git config user.name "loteca-coleta-bot"
           git config user.email "actions@github.com"
-          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md motor/confronto_sites.md motor/sinal_especialista.md motor/motivacao.md motor/motivacao.json motor/fechamento.md 2>/dev/null || true
+          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md motor/confronto_sites.md motor/sinal_especialista.md motor/motivacao.md motor/motivacao.json motor/fechamento.md motor/apostas motor/camada3_historico.csv motor/camada3_config.json motor/placar_financeiro.md 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit -m "Coleta semanal de fontes (automatico)"
           for i in 1 2 3; do

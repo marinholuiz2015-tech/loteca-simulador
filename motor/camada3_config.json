@@ -1,0 +1,6 @@
+{
+ "orcamento_mensal": 10368,
+ "minimo_semana": 1296,
+ "teto_semana": 7776,
+ "obs": "orcamento_mensal = dinheiro que pode ser perdido sem fazer falta (retorno esperado < 100% na maioria das semanas)"
+}

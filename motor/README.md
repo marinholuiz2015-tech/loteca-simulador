@@ -65,3 +65,9 @@ Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `mot
 - `coleta/futebol_data.py`: resultados + odds de abertura e fechamento (Pinnacle, Betfair, bet365, média) do Brasileirão e ligas europeias (fora do git, em `coleta/dados/fd/`).
 - `coleta/pesquisa/fechamento.py` → `motor/fechamento.md`: a odd de quinta perde muito pouco para o fechamento (log-loss −0,4%, acerto igual). Por isso a previsão continua saindo na quinta.
 - `motor/motivacao.py` → `motor/motivacao.md`: tabela antes de cada jogo; "sem nada em jogo", luta contra o rebaixamento, briga pelo título. Visitante sem nada em jogo vence menos que a odd indica (21,2% × 24,6%, 1.055 jogos; mesmo sinal em todos os anos), mas ainda não passa na prova no tempo (força +1,2) — entra como **alerta** na previsão; entra na probabilidade só com força > 2.
+
+## Camada 3 — decisão da semana (`motor/camada3.py`)
+- Para cada orçamento (R$ 1.296 a 11.664, cartela cheia): chance de 14, chance de 13 e **retorno esperado** contando a divisão do prêmio. Usa o prêmio estimado pela Caixa (acerta o real com correlação 0,99), a arrecadação prevista **pelo prêmio** (prêmio alto atrai mais apostas) e o modelo de ganhadores com o termo de concentração (lq²; sem ele, 992 previa 13 ganhadores e foram 1.339).
+- Teste (176 concursos, só passado): chance de 14 e de 13 calibradas (R$ 2.592: 5,6 × 6 de 14; 20,3 × 21 de 13). Retorno esperado ~27% numa semana normal; só 4 semanas passaram de 100% (prêmios de R$ 3,5 a 12,5 mi). `motor/camada3.md`.
+- Decisão: semana fraca → mínimo; média → orçamento base; boa/forte/excepcional → sobe até o teto, sempre dentro do orçamento mensal (`motor/camada3_config.json`). Saída `motor/saida/concurso_N_decisao.md`; jogo recomendado em `motor/apostas/recomendadas.csv`.
+- Segunda: `python motor/camada3.py conferir` → `motor/placar_financeiro.md` (recomendadas e, se registradas, `motor/apostas/jogadas.csv`), com o rateio oficial.
