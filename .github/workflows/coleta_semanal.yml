@@ -91,9 +91,10 @@ jobs:
       - name: Sentinela - fatos do concurso aberto (desfalques, descanso, forma, clima)
         id: sentinela
         continue-on-error: true
+        timeout-minutes: 12
         run: |
-          python coleta/sentinela/coletar_sentinela.py aberto
-          python coleta/sentinela/noticias.py
+          timeout 400 python coleta/sentinela/coletar_sentinela.py aberto || echo "sentinela: parou no limite de tempo"
+          timeout 300 python coleta/sentinela/noticias.py || echo "noticias: parou no limite de tempo"
 
       - name: Motor - camada 1 (previsao do concurso aberto - provisoria/oficial/atualizacao)
         id: motor
@@ -107,10 +108,13 @@ jobs:
 
       - name: Sentinela - fatos dos jogos encerrados e novo teste da camada (liga so se superar o mercado)
         id: sentinela_treino
+        # so na rodada de segunda (resultados) ou na mao; tempo limitado para nunca travar o resto
+        if: github.event.schedule == '41 0 * * 2' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
+        timeout-minutes: 20
         run: |
-          python coleta/sentinela/coletar_sentinela.py historico
-          MAX_CLIMA=900 python coleta/sentinela/coletar_sentinela.py clima
+          timeout 420 python coleta/sentinela/coletar_sentinela.py historico || echo "historico: parou no limite de tempo (continua na proxima semana)"
+          CLIMA_PRAZO=300 MAX_CLIMA=600 timeout 360 python coleta/sentinela/coletar_sentinela.py clima || echo "clima: parou no limite de tempo"
           python motor/sentinela.py treinar | tee motor/sentinela_relatorio.txt
 
       - name: Gravar dados no repositorio
