@@ -119,7 +119,7 @@ def dados_ganhadores(odds, massa, rat):
         idx = ["1X2".index(x) for x in res]
         lq = sum(math.log(max(massa[c][j][i], 1e-3)) for j, i in zip(range(1, 15), idx))
         lp = sum(math.log(prob_mercado(odds[c][j])[i]) for j, i in zip(range(1, 15), idx))
-        X.append([1.0, lq, lp])
+        X.append([1.0, lq, lp, lq * lq])
         Y.append(math.log(rat[c]["ganhadores_14"] + 0.5) - math.log(rat[c]["arrecadacao"] / PRECO))
         cs.append(c)
     return np.array(X), np.array(Y), cs
@@ -127,6 +127,13 @@ def dados_ganhadores(odds, massa, rat):
 
 def ajusta_ganhadores(X, Y):
     return np.linalg.lstsq(X, Y, rcond=None)[0]
+
+
+def log_ganhadores(coef, lq, lp):
+    """log(ganhadores por aposta) do resultado. O termo lq^2 capta a concentracao nos resultados
+    populares (todos os favoritos): sem ele o modelo previa 13 ganhadores no 992 (foram 1.339)."""
+    z = coef[0] + coef[1] * lq + coef[2] * lp
+    return z + coef[3] * lq * lq if len(coef) > 3 else z
 
 
 # ------------------------------------------------------------------ universo e selecao
@@ -207,7 +214,7 @@ def escolher(P, Q, coef, pool, apostas, orcamento, criterio="valor"):
     i = np.arange(14)
     lp = np.log(P[i, G]).sum(1)
     lq = np.log(np.clip(Q[i, G], 1e-3, 1)).sum(1)
-    W = np.exp(coef[0] + coef[1] * lq + coef[2] * lp) * apostas
+    W = np.exp(log_ganhadores(coef, lq, lp)) * apostas
     ev = np.exp(lp) * pool / (W + 1)
     ordem = np.argsort(-(ev if criterio == "valor" else lp))
     # cresce o conjunto ate o custo em volantes (R$ 4 cada) atingir o orcamento
@@ -226,7 +233,7 @@ def chance_e_valor(vols, P, Q, coef, pool, apostas):
     i = np.arange(14)
     lp = np.log(P[i, combs]).sum(1)
     lq = np.log(np.clip(Q[i, combs], 1e-3, 1)).sum(1)
-    W = np.exp(coef[0] + coef[1] * lq + coef[2] * lp) * apostas
+    W = np.exp(log_ganhadores(coef, lq, lp)) * apostas
     return float(np.exp(lp).sum()), float((np.exp(lp) * pool / (W + 1)).sum())
 
 

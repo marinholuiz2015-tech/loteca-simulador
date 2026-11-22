@@ -65,3 +65,23 @@ Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `mot
 - `coleta/futebol_data.py`: resultados + odds de abertura e fechamento (Pinnacle, Betfair, bet365, média) do Brasileirão e ligas europeias (fora do git, em `coleta/dados/fd/`).
 - `coleta/pesquisa/fechamento.py` → `motor/fechamento.md`: a odd de quinta perde muito pouco para o fechamento (log-loss −0,4%, acerto igual). Por isso a previsão continua saindo na quinta.
 - `motor/motivacao.py` → `motor/motivacao.md`: tabela antes de cada jogo; "sem nada em jogo", luta contra o rebaixamento, briga pelo título. Visitante sem nada em jogo vence menos que a odd indica (21,2% × 24,6%, 1.055 jogos; mesmo sinal em todos os anos), mas ainda não passa na prova no tempo (força +1,2) — entra como **alerta** na previsão; entra na probabilidade só com força > 2.
+
+## Camada 3 — decisão da semana (`motor/camada3.py`)
+- Para cada orçamento (R$ 1.296 a 11.664, cartela cheia): chance de 14, chance de 13 e **retorno esperado** contando a divisão do prêmio. Usa o prêmio estimado pela Caixa (acerta o real com correlação 0,99), a arrecadação prevista **pelo prêmio** (prêmio alto atrai mais apostas) e o modelo de ganhadores com o termo de concentração (lq²; sem ele, 992 previa 13 ganhadores e foram 1.339).
+- Teste (176 concursos, só passado): chance de 14 e de 13 calibradas (R$ 2.592: 5,6 × 6 de 14; 20,3 × 21 de 13). Retorno esperado ~27% numa semana normal; só 4 semanas passaram de 100% (prêmios de R$ 3,5 a 12,5 mi). `motor/camada3.md`.
+- Decisão: semana fraca → mínimo; média → orçamento base; boa/forte/excepcional → sobe até o teto, sempre dentro do orçamento mensal (`motor/camada3_config.json`). Saída `motor/saida/concurso_N_decisao.md`; jogo recomendado em `motor/apostas/recomendadas.csv`.
+- Segunda: `python motor/camada3.py conferir` → `motor/placar_financeiro.md` (recomendadas e, se registradas, `motor/apostas/jogadas.csv`), com o rateio oficial.
+
+## Rodízio previsto (`motor/rodizio.py`)
+A escalação real só sai ~1h antes do jogo, depois que a Loteca fecha. O rodízio é previsto na quinta pelo descanso, jogos em 14 dias e o costume do time de poupar (AUC 0,70; previsão ≥ 50% → poupou 70%, base 28%). A nuance "visitante poupa e mandante não" tem sempre o mesmo sinal, mas no teste no tempo não melhora a previsão de forma comprovada (rodízio previsto força +0,4; escalação real −0,5) → só alerta (visitante ≥ 45% e mandante < 30%). Reajustado toda segunda.
+
+### Modo cofrinho (padrão desde 22/11, pedido do Luiz: no máximo R$ 200, o jogo tem que se pagar)
+Guarda R$ 200 por semana e só aposta quando o retorno esperado de alguma cartela que cabe no saldo passa de 100% (`retorno_minimo`). Histórico (176 concursos): apostando R$ 200 toda semana nenhuma cartela se paga (retorno esperado 12–27%; R$ 144 9+3+2 faz 13 ou 14 ~2 vezes por ano); no cofrinho houve 4 apostas de R$ 2.592 (gasto R$ 10.368, prêmios R$ 15.176, um 14 no 1210). Amostra pequena — é o único caminho que se paga em média, não garantia. `"modo": "semanal"` volta ao orçamento mensal.
+
+## Desdobre espalhado (`motor/desdobre.py`)
+Volantes de 1 duplo (mínimo da Caixa) escolhidos para cobrir o máximo de resultados a até 1 erro, numa base 4+4+6. Com R$ 200 no 1284: cartela simples (jogo perfeito 10+0+4, R$ 162) 14 = 2,09% / 13+ = 12,2%; espalhado (50 volantes) 2,57% / 14,6%. O "desdobre com garantia de 13" perde em todo orçamento (a garantia só vale se todos os secos baterem). Gerado toda quinta para o orçamento padrão (R$ 200): `motor/saida/concurso_N_desdobre_R200.{csv,md}`.
+
+## Painel oficial (GitHub Pages, pasta `docs/`)
+Página única que lê `docs/dados/painel.json` (gerado por `motor/painel_dados.py` a cada rodada da coleta) e `docs/dados/ao_vivo.json` (placar da FotMob a cada 15 minutos durante os jogos, `coleta/ao_vivo.py`, workflow `ao_vivo.yml`). Abas: Ao vivo, Jogo da semana (decisão do cofrinho + jogo perfeito + alertas + placar financeiro), Desdobre (volantes + CSV), Histórico (303 concursos, jogo a jogo), Onde erramos (secos por confiança, liga e lado; tipo de erro; tendência; lições automáticas), Sites e KPIs.
+Desdobre espalhado no histórico completo (303 concursos, R$ 200/semana): 13 ou 14 em 14 concursos (previsto 15,0), dois 14 (1123, 1154); jogo perfeito: 7 e nenhum. Prêmios pequenos quando acerta (1154: 14 pagou R$ 2.422) — por isso a regra de quando apostar continua sendo o cofrinho.
+Acesso com senha: o painel abre em `/painel/` do app do Render (rotas em `app.py`), com usuário e senha das variáveis de ambiente `PAINEL_USUARIO` (padrão `luiz`) e `PAINEL_SENHA`. Os dados vêm de `docs/dados` no GitHub, com cache de 60 s. O GitHub Pages fica desligado.

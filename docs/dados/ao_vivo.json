@@ -1,0 +1,171 @@
+{
+ "concurso": 1284,
+ "atualizado_utc": "2026-11-22T21:33Z",
+ "jogos": [
+  {
+   "jogo": 1,
+   "mandante": "PALMEIRAS/SP",
+   "visitante": "FLAMENGO/RJ",
+   "inicio_utc": "2026-11-21T19:30Z",
+   "situacao": "encerrado",
+   "placar": [
+    1,
+    1
+   ],
+   "resultado": "X"
+  },
+  {
+   "jogo": 2,
+   "mandante": "ATHLETICO/PR",
+   "visitante": "REMO/PA",
+   "inicio_utc": "2026-11-22T19:00Z",
+   "situacao": "encerrado",
+   "placar": [
+    4,
+    2
+   ],
+   "resultado": "1"
+  },
+  {
+   "jogo": 3,
+   "mandante": "BAHIA/BA",
+   "visitante": "CORITIBA/PR",
+   "inicio_utc": "2026-11-21T20:30Z",
+   "situacao": "encerrado",
+   "placar": [
+    0,
+    1
+   ],
+   "resultado": "2"
+  },
+  {
+   "jogo": 4,
+   "mandante": "ATLÉTICO/MG",
+   "visitante": "BOCA JUNIORS",
+   "inicio_utc": "2026-11-21T22:30Z",
+   "situacao": "encerrado",
+   "placar": [
+    0,
+    2
+   ],
+   "resultado": "2"
+  },
+  {
+   "jogo": 5,
+   "mandante": "CHAPECOENSE/SC",
+   "visitante": "CRUZEIRO/MG",
+   "inicio_utc": "2026-11-22T00:00Z",
+   "situacao": "encerrado",
+   "placar": [
+    1,
+    2
+   ],
+   "resultado": "2"
+  },
+  {
+   "jogo": 6,
+   "mandante": "REAL MADRID",
+   "visitante": "CELTA DE VIGO",
+   "inicio_utc": "2026-11-21T20:00Z",
+   "situacao": "encerrado",
+   "placar": [
+    2,
+    1
+   ],
+   "resultado": "1"
+  },
+  {
+   "jogo": 7,
+   "mandante": "JUVENTUS",
+   "visitante": "VENEZIA",
+   "inicio_utc": "2026-11-22T11:30Z",
+   "situacao": "encerrado",
+   "placar": [
+    4,
+    0
+   ],
+   "resultado": "1"
+  },
+  {
+   "jogo": 8,
+   "mandante": "BARCELONA",
+   "visitante": "VILLARREAL",
+   "inicio_utc": "2026-11-22T13:00Z",
+   "situacao": "encerrado",
+   "placar": [
+    3,
+    2
+   ],
+   "resultado": "1"
+  },
+  {
+   "jogo": 9,
+   "mandante": "LIVERPOOL",
+   "visitante": "MANCHESTER UNITED",
+   "inicio_utc": "2026-11-22T16:30Z",
+   "situacao": "encerrado",
+   "placar": [
+    4,
+    0
+   ],
+   "resultado": "1"
+  },
+  {
+   "jogo": 10,
+   "mandante": "FLUMINENSE/RJ",
+   "visitante": "MIRASSOL/SP",
+   "inicio_utc": "2026-11-22T21:30Z",
+   "situacao": "ao vivo 2‎’‎",
+   "placar": [
+    0,
+    0
+   ],
+   "resultado": "X"
+  },
+  {
+   "jogo": 11,
+   "mandante": "BRAGANTINO/SP",
+   "visitante": "VASCO DA GAMA/RJ",
+   "inicio_utc": "2026-11-22T22:30Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null
+  },
+  {
+   "jogo": 12,
+   "mandante": "OSASUNA",
+   "visitante": "MALAGA",
+   "inicio_utc": "2026-11-22T17:30Z",
+   "situacao": "encerrado",
+   "placar": [
+    1,
+    0
+   ],
+   "resultado": "1"
+  },
+  {
+   "jogo": 13,
+   "mandante": "ATALANTA BERGAMAS",
+   "visitante": "INTER DE MILÃO",
+   "inicio_utc": "2026-11-22T19:45Z",
+   "situacao": "ao vivo 90‎’‎",
+   "placar": [
+    3,
+    4
+   ],
+   "resultado": "2"
+  },
+  {
+   "jogo": 14,
+   "mandante": "GETAFE",
+   "visitante": "ATLÉTICO MADRID",
+   "inicio_utc": "2026-11-22T20:00Z",
+   "situacao": "ao vivo 73‎’‎",
+   "placar": [
+    0,
+    2
+   ],
+   "resultado": "2"
+  }
+ ]
+}

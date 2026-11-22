@@ -313,6 +313,12 @@ def gravar(linhas, fonte_grade, registrar=True):
             al.setdefault(j, []).extend("Tabela: " + x for x in t)
     except Exception as e:
         print("Alertas da tabela indisponiveis:", e)
+    try:
+        import rodizio
+        for j, t in rodizio.alertas(c).items():
+            al.setdefault(j, []).extend("Rodízio previsto: " + x for x in t)
+    except Exception as e:
+        print("Alertas de rodizio indisponiveis:", e)
     if al:
         md += ["", "## Alertas de nuance (onde as odds costumam errar)", "",
                "Nuances confirmadas no período que a busca nunca viu (lista completa: `motor/nuances.md`). "
