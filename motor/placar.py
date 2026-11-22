@@ -19,7 +19,30 @@ from collections import defaultdict
 AQUI = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(AQUI)
 METAS = {14: .56, 10: .60, 8: .62, 6: .65, 4: .70}
-MERCADO = "| Mercado (histórico 998–1283) | 52,9% | 57,6% | 60,6% | 65,0% | 69,8% | — |"
+MERCADO_ACERTO = {14: .529, 10: .576, 8: .606, 6: .650, 4: .698}
+N_HIST = 280  # concursos do teste no tempo (998-1283)
+
+
+def faixa(acertos, n, z=1.96):
+    """Intervalo de Wilson (95%): onde o acerto verdadeiro provavelmente esta."""
+    if not n:
+        return None
+    p = acertos / n
+    d = 1 + z * z / n
+    centro = (p + z * z / (2 * n)) / d
+    meia = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+    return centro - meia, centro + meia
+
+
+def fmt_faixa(f):
+    return "—" if f is None else f"{f[0]:.1%} a {f[1]:.1%}"
+
+
+MERCADO = ("| Mercado (histórico 998–1283) | " +
+           " | ".join(f"{MERCADO_ACERTO[k]:.1%}" for k in METAS) + " | — |")
+MERCADO_FAIXA = ("| Faixa provável do mercado | " +
+                 " | ".join(fmt_faixa(faixa(round(MERCADO_ACERTO[k] * k * N_HIST), k * N_HIST)) for k in METAS) +
+                 " | — |")
 
 
 def resultados(concursos):
@@ -87,7 +110,10 @@ def bloco(titulo, prev, res):
     md += ["", "| | 14 | Top 10 | Top 8 | Top 6 | Top 4 | Chance de 14 (R$4) |", "|---|---|---|---|---|---|---|",
            "| Acerto | " + " | ".join(f"{acum[k][0] / acum[k][1]:.1%}" if acum[k][1] else "—" for k in METAS) +
            (f" | {p14_soma / n_c:.3%} |" if n_c else " | — |"),
-           "| Meta | " + " | ".join(f"{v:.0%}" for v in METAS.values()) + " | — |", MERCADO, ""]
+           "| Faixa provável (95%) | " + " | ".join(fmt_faixa(faixa(*acum[k])) for k in METAS) + " | — |",
+           "| Meta | " + " | ".join(f"{v:.0%}" for v in METAS.values()) + " | — |", MERCADO, MERCADO_FAIXA, "",
+           "Faixa provável: com 95% de confiança o acerto verdadeiro está nesse intervalo. "
+           "Uma melhora só é real quando sai da faixa do mercado; dentro dela pode ser sorte.", ""]
     return md, len(set(prev) & set(res))
 
 
@@ -107,7 +133,7 @@ def main():
     b1, n1 = bloco("Previsão OFICIAL (quinta) — vale para decidir", oficial, res)
     b2, n2 = bloco("Atualização de sábado — mede se esperar melhora", atual, res)
     md += b1 + b2 + [f"Concursos avaliados: {n1} (oficial) / {n2} (atualização). "
-                     "Leitura séria a partir de ~10 concursos."]
+                     "Com 10 concursos a faixa do top 4 ainda vai de ~55% a ~82%; leitura séria a partir de ~50 concursos (cerca de 1 ano)."]
     texto = "\n".join(md) + "\n"
     with open(os.path.join(AQUI, "placar.md"), "w", encoding="utf-8") as f:
         f.write(texto)
