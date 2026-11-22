@@ -43,7 +43,7 @@ CAMPOS = ["concurso", "jogo", "mandante", "visitante", "match_id", "fot_casa", "
           "desf_casa_n", "desf_casa_valor", "desf_casa_lesao", "desf_casa_susp",
           "desf_fora_n", "desf_fora_valor", "desf_fora_lesao", "desf_fora_susp",
           "dias_casa", "dias_fora", "jogos14_casa", "jogos14_fora", "forma5_casa", "forma5_fora",
-          "lat", "lon", "chuva_mm", "temp_c", "altitude_m", "trocas_casa", "trocas_fora", "coletado_em_utc"]
+          "lat", "lon", "chuva_mm", "temp_c", "altitude_m", "trocas_casa", "trocas_fora", "h2h_n", "h2h_saldo", "invicto5_casa", "invicto5_fora", "coletado_em_utc"]
 
 # nomes da Loteca -> nomes usados pela FotMob (so os que o parecido() nao resolve)
 TROCAS = {
@@ -105,6 +105,28 @@ def parecido(a, b):
     if sa == b or (len(sa) >= 4 and (sa in b or b in sa)):
         return 0.92
     return difflib.SequenceMatcher(None, sa, b).ratio()
+
+
+def anexar(arq, campos, linhas):
+    """Acrescenta linhas a um CSV. Se o arquivo antigo tiver outras colunas, reescreve com o cabecalho
+    novo (colunas que faltam ficam vazias), para nenhuma linha ficar desalinhada."""
+    antigas = []
+    if os.path.exists(arq):
+        with open(arq, encoding="utf-8") as f:
+            r = csv.DictReader(f)
+            if r.fieldnames != campos:
+                antigas = list(r)
+                modo = "w"
+            else:
+                modo = "a"
+    else:
+        modo = "w"
+    with open(arq, modo, newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=campos, extrasaction="ignore")
+        if modo == "w":
+            w.writeheader()
+            w.writerows(antigas)
+        w.writerows(linhas)
 
 
 def pegar(url, nome_cache):
@@ -239,6 +261,44 @@ def trocas(d, lado, forma):
     return ""
 
 
+def confronto(d, inicio, id_casa):
+    """Confrontos diretos ANTES do jogo: quantidade e saldo (vitorias do mandante - do visitante)."""
+    n = saldo = 0
+    for m in ((d["content"].get("h2h") or {}).get("matches") or []):
+        try:
+            t = dt.datetime.fromisoformat(m["time"]["utcTime"].replace("Z", "+00:00"))
+            if t >= inicio or not m["status"].get("finished"):
+                continue
+            a, b = (int(x) for x in m["status"]["scoreStr"].replace(" ", "").split("-"))
+        except Exception:
+            continue
+        casa_e_mandante = str(m["home"]["id"]) == str(id_casa)
+        gm, gv = (a, b) if casa_e_mandante else (b, a)
+        n += 1
+        saldo += (gm > gv) - (gv > gm)
+        if n >= 8:
+            break
+    return (n, saldo) if n else ("", "")
+
+
+def invicto(forma, inicio):
+    """Jogos seguidos sem perder (ate 5) antes do jogo."""
+    seq = 0
+    datas = []
+    for g in forma or []:
+        try:
+            t = dt.datetime.fromisoformat(g["date"]["utcTime"].replace("Z", "+00:00"))
+        except Exception:
+            continue
+        if t < inicio:
+            datas.append((t, g.get("result")))
+    for _, r in sorted(datas, reverse=True):
+        if r == -1:
+            break
+        seq += 1
+    return seq if datas else ""
+
+
 def fatos(c, j, mandante, visitante, data, resultado=None, historico=True):
     s, m, lg = achar(mandante, visitante, data)
     linha = {k: "" for k in CAMPOS}
@@ -265,6 +325,9 @@ def fatos(c, j, mandante, visitante, data, resultado=None, historico=True):
     alt = altitude(est.get("lat"), est.get("long"))
     tc = trocas(d, "homeTeam", tf[0] if len(tf) > 0 else [])
     tfo = trocas(d, "awayTeam", tf[1] if len(tf) > 1 else [])
+    hn, hs = confronto(d, inicio, m["home"]["id"])
+    ic = invicto(tf[0] if len(tf) > 0 else [], inicio)
+    ifo = invicto(tf[1] if len(tf) > 1 else [], inicio)
     linha.update(match_id=mid, fot_casa=m["home"]["name"], fot_fora=m["away"]["name"], liga=lg.get("name", ""),
                  liga_id=lg.get("primaryId") or lg.get("id"), rodada=(info.get("Tournament") or {}).get("round", ""),
                  inicio_utc=inicio.strftime("%Y-%m-%dT%H:%MZ"),
@@ -272,7 +335,8 @@ def fatos(c, j, mandante, visitante, data, resultado=None, historico=True):
                  desf_fora_n=df[0], desf_fora_valor=df[1], desf_fora_lesao=df[2], desf_fora_susp=df[3],
                  dias_casa=rc[0], dias_fora=rf[0], jogos14_casa=rc[1], jogos14_fora=rf[1],
                  forma5_casa=rc[2], forma5_fora=rf[2], lat=est.get("lat", ""), lon=est.get("long", ""),
-                 chuva_mm=chuva, temp_c=temp, altitude_m=alt, trocas_casa=tc, trocas_fora=tfo)
+                 chuva_mm=chuva, temp_c=temp, altitude_m=alt, trocas_casa=tc, trocas_fora=tfo,
+                 h2h_n=hn, h2h_saldo=hs, invicto5_casa=ic, invicto5_fora=ifo)
     return linha, "ok"
 
 
@@ -345,22 +409,19 @@ def aberto():
     datas = {j["jogo"]: j.get("data") for j in reg.get("jogos", [])}
     hoje = dt.date.today()
     arq = os.path.join(DADOS, "sentinela_aberto.csv")
-    novo = not os.path.exists(arq)
     ok = 0
-    with open(arq, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=CAMPOS)
-        if novo:
-            w.writeheader()
-        for j in sorted(grade):
-            mand, vis = grade[j]
-            linha, st = None, "nao achado"
-            # jogo da Loteca: entre hoje e os proximos 6 dias
-            for k in range(0, 7):
-                linha, st = fatos(c, j, mand, vis, hoje + dt.timedelta(days=k), None, historico=False)
-                if st == "ok":
-                    break
-            ok += st == "ok"
-            w.writerow(linha)
+    linhas = []
+    for j in sorted(grade):
+        mand, vis = grade[j]
+        linha, st = None, "nao achado"
+        # jogo da Loteca: entre hoje e os proximos 6 dias
+        for k in range(0, 7):
+            linha, st = fatos(c, j, mand, vis, hoje + dt.timedelta(days=k), None, historico=False)
+            if st == "ok":
+                break
+        ok += st == "ok"
+        linhas.append(linha)
+    anexar(arq, CAMPOS, linhas)
     print(f"Concurso {c}: fatos de {ok}/14 jogos -> {arq}")
 
 

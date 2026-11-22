@@ -51,7 +51,7 @@ SECO_MIN = 0.60     # favorito >= 60%: seco (acerta ~67% a 94% conforme a faixa)
 TRIPLO_MAX = 0.70   # dois resultados mais provaveis cobrem < 70%: triplo
 CAMPOS = ["concurso", "jogo", "mandante", "visitante", "p1", "px", "p2", "favorito", "confianca",
           "ordem", "classe", "duplo_sugerido", "cobertura_duplo", "fonte_prob", "odd_1", "odd_x", "odd_2",
-          "bolsa_1", "bolsa_x", "bolsa_2", "gama", "pm1", "pmx", "pm2", "sentinela", "versao", "gerado_em_utc"]
+          "bolsa_1", "bolsa_x", "bolsa_2", "gama", "pm1", "pmx", "pm2", "kpis", "kpis_valores", "versao", "gerado_em_utc"]
 
 
 # ----------------------------------------------------------------- utilidades
@@ -140,7 +140,9 @@ def prever(concurso):
         raise SystemExit("Grade do concurso nao encontrada (Caixa, Guia e Arena).")
     prm = params_calibracao()
     import sentinela
-    mod_sent = sentinela.modelo()
+    import kpis
+    mod_kpi = kpis.modelo()
+    ctx_kpi = kpis.Contexto().carregar(abertos=True)
     fatos = sentinela.fatos_abertos(concurso)
     noticias = noticias_abertas(concurso)
     agora = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -167,12 +169,14 @@ def prever(concurso):
         mand, vis = grade.get(k, ("", ""))
         if k in odds_por_jogo:
             pm = aplica(odds_por_jogo[k], prm)
-            p, usou = sentinela.aplicar(pm, fatos.get(k), mod_sent)
-            p, usou_n = sentinela.aplicar_noticias(p, noticias.get(k), mod_sent)
-            fonte = "odds bet365 (Arena)" + (" + sentinela" if usou else "") + (" + noticias" if usou_n else "")
-            sent = ("ligada" if usou else ("sem fatos" if k not in fatos else "desligada")) if mod_sent else "sem modelo"
+            vals = kpis.valores(fatos.get(k), (int(concurso), k), pm, ctx_kpi)
+            p, contrib, usou = kpis.aplicar(pm, vals, mod_kpi)
+            fonte = "odds bet365 (Arena)" + (" + KPIs" if usou else "")
+            sent = ("ligados (" + ("pesos do Luiz" if mod_kpi.get("usa") == "luiz" else "pesos aprendidos") + ")"
+                    if usou else "desligados (não superaram o mercado)") if mod_kpi else "sem modelo"
         else:
             pm = p = FREQ.copy()
+            vals, contrib = {}, {}
             fonte = "sem odds: frequencia historica"
             sent = "sem odds"
         ordem_res = list(np.argsort(-p))
@@ -196,7 +200,10 @@ def prever(concurso):
                            odd_1=o[0], odd_x=o[1], odd_2=o[2],
                            bolsa_1=b[0] if b else "", bolsa_x=b[1] if b else "", bolsa_2=b[2] if b else "",
                            gama=prm.get("gama", 1.0), pm1=round(float(pm[0]), 4), pmx=round(float(pm[1]), 4),
-                           pm2=round(float(pm[2]), 4), sentinela=sent, gerado_em_utc=agora))
+                           pm2=round(float(pm[2]), 4), kpis=sent,
+                           kpis_valores=json.dumps({n: round(v, 3) for n, v in vals.items() if v is not None},
+                                                   ensure_ascii=False),
+                           gerado_em_utc=agora))
     for pos, l in enumerate(sorted(linhas, key=lambda x: -x["confianca"]), 1):
         l["ordem"] = pos
     return linhas, fonte_grade
@@ -221,6 +228,19 @@ def gravar(linhas, fonte_grade, registrar=True):
     top = sorted(linhas, key=lambda x: x["ordem"])
     md += ["", "Top 4: " + ", ".join(f"jogo {l['jogo']} ({l['favorito']})" for l in top[:4]),
            "Top 8: " + ", ".join(f"jogo {l['jogo']} ({l['favorito']})" for l in top[:8])]
+    if any(l.get("kpis_valores") not in (None, "", "{}") for l in linhas):
+        destaques = {"Rodizio / time reserva": "reservas", "Altitude": "altitude", "Viagem do visitante": "viagem",
+                     "Confronto direto (H2H)": "H2H", "Sequencia sem perder": "invicto", "Desfalques": "desfalques",
+                     "Descanso": "descanso", "Classico / rivalidade local": "clássico", "Massa x mercado (manada)": "massa"}
+        md += ["", f"## KPIs do jogo ({linhas[0].get('kpis', '')})", "",
+               "Notas positivas favorecem o mandante (no clássico, o empate). Placar completo dos KPIs: `motor/kpis.md`.", "",
+               "| Jogo | " + " | ".join(destaques.values()) + " |", "|---|" + "---|" * len(destaques)]
+        for l in linhas:
+            try:
+                v = json.loads(l.get("kpis_valores") or "{}")
+            except ValueError:
+                v = {}
+            md.append(f"| {l['jogo']} | " + " | ".join(f"{v[n]:+.2f}" if n in v else "—" for n in destaques) + " |")
     noticias = noticias_abertas(c)
     if noticias:
         md += ["", "## Notícias da semana (setoristas e imprensa)", "",

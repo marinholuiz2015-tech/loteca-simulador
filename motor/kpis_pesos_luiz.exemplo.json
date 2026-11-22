@@ -1,0 +1,9 @@
+{
+  "_como_usar": "Copie este arquivo para motor/kpis_pesos_luiz.json e ajuste os pesos. Positivo = o KPI pesa a favor do lado que ele indica; 0 = ignora. O sistema testa estes pesos no histórico toda segunda e só usa se acertarem mais que o mercado e que os pesos aprendidos.",
+  "Rodizio / time reserva": 0.15,
+  "Altitude": 0.2,
+  "Viagem do visitante": 0.05,
+  "Confronto direto (H2H)": 0.1,
+  "Noticias: crise": 0.1,
+  "Noticias: tecnico": 0.1
+}
