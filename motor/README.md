@@ -28,3 +28,10 @@ Arquitetura em camadas separadas (cada uma com o seu próprio teste):
 - **Escada** (`escada.py`): chance de 14 da aposta mínima (R$4: 0,039%, 1 em 2.563) até R$8.192 (4,65%), acrescentando o duplo/triplo que mais compra chance por real.
 
 Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `motor/saida/` sem gravar no registro).
+
+## Camada Sentinela (fatos do jogo) — automática
+
+- `coleta/sentinela/coletar_sentinela.py aberto`: antes de cada previsão (terça, quinta, sábado), busca na FotMob cada jogo do concurso aberto e grava desfalques (quantidade, lesão/suspensão, valor de mercado), descanso (dias desde o último jogo, jogos em 14 dias), forma (pontos nos últimos 5) e clima no estádio (Open-Meteo). Arquivo `coleta/dados/sentinela_aberto.csv`, só acrescenta.
+- `coleta/sentinela/coletar_sentinela.py historico`: os mesmos fatos para todos os jogos da base de odds (895 em diante); toda segunda acrescenta os jogos do concurso que acabou. `clima` completa a chuva/temperatura respeitando o limite da Open-Meteo.
+- `motor/sentinela.py treinar` (toda segunda): teste no tempo do ajuste mercado + fatos. **Só liga se melhorar a perda logarítmica com folga (mais de 2 erros-padrão) e não piorar o acerto.** Resultado em `motor/sentinela_modelo.json` e `motor/sentinela_relatorio.txt`.
+- `camada1.py` aplica o ajuste quando ligado e grava as duas probabilidades (`pm1/pmx/pm2` = mercado, `p1/px/p2` = final) e o estado da camada em cada jogo. O placar compara motor × só mercado ao vivo.

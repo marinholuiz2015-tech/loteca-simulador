@@ -51,7 +51,7 @@ SECO_MIN = 0.60     # favorito >= 60%: seco (acerta ~67% a 94% conforme a faixa)
 TRIPLO_MAX = 0.70   # dois resultados mais provaveis cobrem < 70%: triplo
 CAMPOS = ["concurso", "jogo", "mandante", "visitante", "p1", "px", "p2", "favorito", "confianca",
           "ordem", "classe", "duplo_sugerido", "cobertura_duplo", "fonte_prob", "odd_1", "odd_x", "odd_2",
-          "bolsa_1", "bolsa_x", "bolsa_2", "gama", "versao", "gerado_em_utc"]
+          "bolsa_1", "bolsa_x", "bolsa_2", "gama", "pm1", "pmx", "pm2", "sentinela", "versao", "gerado_em_utc"]
 
 
 # ----------------------------------------------------------------- utilidades
@@ -139,6 +139,9 @@ def prever(concurso):
     if not grade:
         raise SystemExit("Grade do concurso nao encontrada (Caixa, Guia e Arena).")
     prm = params_calibracao()
+    import sentinela
+    mod_sent = sentinela.modelo()
+    fatos = sentinela.fatos_abertos(concurso)
     agora = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # casa cada linha da Arena com o jogo da grade (posicao; se nao bater, pelos nomes)
@@ -162,11 +165,14 @@ def prever(concurso):
     for k in range(1, 15):
         mand, vis = grade.get(k, ("", ""))
         if k in odds_por_jogo:
-            p = aplica(odds_por_jogo[k], prm)
-            fonte = "odds bet365 (Arena)"
+            pm = aplica(odds_por_jogo[k], prm)
+            p, usou = sentinela.aplicar(pm, fatos.get(k), mod_sent)
+            fonte = "odds bet365 (Arena)" + (" + sentinela" if usou else "")
+            sent = ("ligada" if usou else ("sem fatos" if k not in fatos else "desligada")) if mod_sent else "sem modelo"
         else:
-            p = FREQ.copy()
+            pm = p = FREQ.copy()
             fonte = "sem odds: frequencia historica"
+            sent = "sem odds"
         ordem_res = list(np.argsort(-p))
         fav = "1X2"[ordem_res[0]]
         duplo = "".join(c for c in "1X2" if c in {"1X2"[ordem_res[0]], "1X2"[ordem_res[1]]})
@@ -187,7 +193,8 @@ def prever(concurso):
                            duplo_sugerido=duplo, cobertura_duplo=round(cobertura, 4), fonte_prob=fonte,
                            odd_1=o[0], odd_x=o[1], odd_2=o[2],
                            bolsa_1=b[0] if b else "", bolsa_x=b[1] if b else "", bolsa_2=b[2] if b else "",
-                           gama=prm.get("gama", 1.0), gerado_em_utc=agora))
+                           gama=prm.get("gama", 1.0), pm1=round(float(pm[0]), 4), pmx=round(float(pm[1]), 4),
+                           pm2=round(float(pm[2]), 4), sentinela=sent, gerado_em_utc=agora))
     for pos, l in enumerate(sorted(linhas, key=lambda x: -x["confianca"]), 1):
         l["ordem"] = pos
     return linhas, fonte_grade

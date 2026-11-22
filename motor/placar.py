@@ -81,11 +81,17 @@ def escolhe(linhas, versoes):
 
 def bloco(titulo, prev, res):
     acum = {k: [0, 0] for k in METAS}
+    merc = [0, 0]  # so o mercado (sem a camada sentinela), mesmos jogos
     p14_soma, n_c = 0.0, 0
     md = [f"## {titulo}", "", "| Concurso | 14 | Top 10 | Top 8 | Top 6 | Top 4 | Chance de 14 (R$4) |",
           "|---|---|---|---|---|---|---|"]
     for c in sorted(set(prev) & set(res)):
         jogos = sorted((l for k, l in prev[c].items() if k in res[c]), key=lambda l: int(l["ordem"]))
+        for l in jogos:
+            if l.get("pm1"):
+                pm = [float(l["pm1"]), float(l["pmx"]), float(l["pm2"])]
+                merc[0] += "1X2"[pm.index(max(pm))] == res[c][int(l["jogo"])]
+                merc[1] += 1
         cel = []
         for k in METAS:
             top = jogos[:k]
@@ -112,6 +118,8 @@ def bloco(titulo, prev, res):
            (f" | {p14_soma / n_c:.3%} |" if n_c else " | — |"),
            "| Faixa provável (95%) | " + " | ".join(fmt_faixa(faixa(*acum[k])) for k in METAS) + " | — |",
            "| Meta | " + " | ".join(f"{v:.0%}" for v in METAS.values()) + " | — |", MERCADO, MERCADO_FAIXA, "",
+           (f"Nos 14 jogos: motor {acum[14][0]}/{acum[14][1]} × só o mercado {merc[0]}/{merc[1]} "
+            "(a diferença mostra o efeito da camada sentinela quando ela está ligada)." if merc[1] else ""), "",
            "Faixa provável: com 95% de confiança o acerto verdadeiro está nesse intervalo. "
            "Uma melhora só é real quando sai da faixa do mercado; dentro dela pode ser sorte.", ""]
     return md, len(set(prev) & set(res))
