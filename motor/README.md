@@ -44,3 +44,8 @@ Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `mot
 - Pesos do Luiz: copiar `motor/kpis_pesos_luiz.exemplo.json` para `motor/kpis_pesos_luiz.json` e ajustar. São testados do mesmo jeito e usados se superarem o mercado e os pesos aprendidos.
 - KPIs sem histórico (notícias, movimento da odd) ficam "coletando" até 20 concursos.
 - A previsão (`motor/saida/concurso_N.md`) mostra a nota de cada KPI por jogo.
+
+## Classe e duplo (correção de 22/11/2026)
+
+- **Classe pela cartela padrão (6+4+4):** os jogos mais incertos viram triplo, os do meio duplo e os mais firmes seco, escolhidos para maximizar a chance de 14 (antes eram limites fixos por jogo, e o jogo mais incerto podia sair como duplo). A cartela padrão muda com `DUPLOS`/`TRIPLOS`.
+- **Duplo = favorito + empate, em qualquer jogo.** Estudo em 5.152 jogos: em todas as faixas de probabilidade, com mandante ou visitante favorito, favorito + empate foi o par que mais acertou, nos três períodos (o 1-2 nunca foi o melhor). Ex.: visitante favorito com 40% a 50%: 76,8% contra 71,2% da regra antiga. Nas cartelas (238 concursos) o acerto dos duplos subiu em todas as estruturas (6+4+4: 76,2% → 77,5%; 8+6+0: 71,1% → 74,4%). O empate é subestimado pelo mercado (27,7% x 25,9%; nos equilibrados 33,7% x 29,3%).

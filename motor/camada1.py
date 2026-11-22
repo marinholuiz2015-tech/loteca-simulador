@@ -26,6 +26,7 @@ Saidas:
 """
 import csv
 import json
+import math
 import os
 import re
 import sys
@@ -47,8 +48,78 @@ API = "https://servicebus2.caixa.gov.br/portaldeloterias/api/loteca/{}"
 HEAD = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/128.0 Safari/537.36",
         "Referer": "https://loterias.caixa.gov.br/Paginas/Programacao-Loteca.aspx"}
 FREQ = np.array([0.472, 0.262, 0.266])  # frequencia historica 1/X/2 (17.602 jogos)
-SECO_MIN = 0.60     # favorito >= 60%: seco (acerta ~67% a 94% conforme a faixa)
-TRIPLO_MAX = 0.70   # dois resultados mais provaveis cobrem < 70%: triplo
+SECO_MIN = 0.60     # (referencia antiga; a classe agora vem da cartela padrao)
+TRIPLO_MAX = 0.70
+# Cartela padrao que define a classe de cada jogo (secos + duplos + triplos = 14).
+# Os jogos mais incertos viram triplo; os do meio, duplo; os mais firmes, seco.
+CARTELA_PADRAO = (int(os.environ.get("DUPLOS", "4")), int(os.environ.get("TRIPLOS", "4")))  # 6+4+4
+
+
+def equilibrado(p):
+    return 0.30 <= p[0] <= 0.45 and 0.30 <= p[2] <= 0.45
+
+
+_FATOR_EMPATE = None
+
+
+def fator_empate():
+    """Jogos equilibrados (casa e fora entre 30% e 45%) empatam mais do que o mercado preve
+    (1.007 jogos: 33,7% real x 29,3% previsto). Fator = real / previsto, aprendido com todo o historico."""
+    global _FATOR_EMPATE
+    if _FATOR_EMPATE is None:
+        from calibracao import sem_margem, ajusta_gama
+        reais, prev = [], []
+        try:
+            with open(os.path.join(DADOS, "arena_odds.csv"), encoding="utf-8") as f:
+                for r in csv.DictReader(f):
+                    if not r["resultado"]:
+                        continue
+                    q = ajusta_gama(sem_margem([float(r["odd_1"]), float(r["odd_x"]), float(r["odd_2"])]), 1.04)
+                    if equilibrado(q):
+                        reais.append(r["resultado"] == "X")
+                        prev.append(q[1])
+            _FATOR_EMPATE = float(np.mean(reais) / np.mean(prev)) if len(reais) >= 200 else 1.0
+        except (OSError, ValueError):
+            _FATOR_EMPATE = 1.0
+    return _FATOR_EMPATE
+
+
+def p_para_duplo(p):
+    """Probabilidades usadas para a cobertura do duplo: empate corrigido (o mercado subestima o empate:
+    27,7% real x 25,9% previsto em 5.152 jogos; nos equilibrados 33,7% x 29,3%)."""
+    q = np.array(p, float)
+    q[1] *= fator_empate() if equilibrado(p) else FATOR_EMPATE_GERAL
+    return q / q.sum()
+
+
+FATOR_EMPATE_GERAL = 1.07
+
+
+def duplo_de(p):
+    """Duplo = favorito + empate, em qualquer tipo de jogo (5.152 jogos: melhor par em todas as faixas de
+    probabilidade, com mandante ou visitante favorito, nos tres periodos testados; o 1-2 nunca foi o melhor).
+    Se o favorito for o proprio empate, cobre o empate + o mais provavel dos outros dois."""
+    fav = int(np.argmax(p))
+    return [fav, 1] if fav != 1 else [1, 0 if p[0] >= p[2] else 2]
+
+
+def classes_da_cartela(linhas, d, t):
+    """Escolhe quais jogos sao seco, duplo e triplo maximizando a chance de 14 da cartela padrao."""
+    dp = {(0, 0): (0.0, [])}
+    for l in linhas:
+        op = [max(l["_p"]), l["cobertura_duplo"], 1.0]
+        nd = {}
+        for (a, b), (v, esc) in dp.items():
+            for k, c in enumerate(op):
+                na, nb = a + (k == 1), b + (k == 2)
+                if na > d or nb > t:
+                    continue
+                nv = v + math.log(max(c, 1e-9))
+                if (na, nb) not in nd or nd[(na, nb)][0] < nv:
+                    nd[(na, nb)] = (nv, esc + [k])
+        dp = nd
+    melhor = max(dp.values(), key=lambda x: x[0])[1]
+    return [("SECO", "DUPLO", "TRIPLO")[k] for k in melhor]
 CAMPOS = ["concurso", "jogo", "mandante", "visitante", "p1", "px", "p2", "favorito", "confianca",
           "ordem", "classe", "duplo_sugerido", "cobertura_duplo", "fonte_prob", "odd_1", "odd_x", "odd_2",
           "bolsa_1", "bolsa_x", "bolsa_2", "gama", "pm1", "pmx", "pm2", "kpis", "kpis_valores", "versao", "gerado_em_utc"]
@@ -181,22 +252,19 @@ def prever(concurso):
             sent = "sem odds"
         ordem_res = list(np.argsort(-p))
         fav = "1X2"[ordem_res[0]]
-        duplo = "".join(c for c in "1X2" if c in {"1X2"[ordem_res[0]], "1X2"[ordem_res[1]]})
-        cobertura = float(p[ordem_res[0]] + p[ordem_res[1]])
-        if fonte.startswith("sem odds"):
-            classe = "TRIPLO"
-        elif p.max() >= SECO_MIN:
-            classe = "SECO"
-        elif cobertura < TRIPLO_MAX:
-            classe = "TRIPLO"
-        else:
-            classe = "DUPLO"
+        pd_ = p_para_duplo(p)
+        od = duplo_de(p)
+        duplo = "".join(c for c in "1X2" if "1X2".index(c) in od)
+        cobertura = float(p[od[0]] + p[od[1]])
+        cobertura_real = float(pd_[od[0]] + pd_[od[1]])  # cobertura com o empate corrigido
+        classe = "TRIPLO" if fonte.startswith("sem odds") else ""
         b = bolsa.get(k)
         o = odds_por_jogo.get(k, ["", "", ""])
         linhas.append(dict(concurso=concurso, jogo=k, mandante=mand, visitante=vis,
                            p1=round(float(p[0]), 4), px=round(float(p[1]), 4), p2=round(float(p[2]), 4),
                            favorito=fav, confianca=round(float(p.max()), 4), ordem=0, classe=classe,
-                           duplo_sugerido=duplo, cobertura_duplo=round(cobertura, 4), fonte_prob=fonte,
+                           duplo_sugerido=duplo, cobertura_duplo=round(cobertura_real, 4), fonte_prob=fonte,
+                           _p=p,
                            odd_1=o[0], odd_x=o[1], odd_2=o[2],
                            bolsa_1=b[0] if b else "", bolsa_x=b[1] if b else "", bolsa_2=b[2] if b else "",
                            gama=prm.get("gama", 1.0), pm1=round(float(pm[0]), 4), pmx=round(float(pm[1]), 4),
@@ -206,6 +274,10 @@ def prever(concurso):
                            gerado_em_utc=agora))
     for pos, l in enumerate(sorted(linhas, key=lambda x: -x["confianca"]), 1):
         l["ordem"] = pos
+    cls = classes_da_cartela(linhas, *CARTELA_PADRAO)
+    for l, c in zip(linhas, cls):
+        l["classe"] = l["classe"] or c
+        l.pop("_p", None)
     return linhas, fonte_grade
 
 
