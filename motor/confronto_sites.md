@@ -13,3 +13,9 @@ Nosso (mesma estrutura)            7.66         0       0         54.7%         
 
 diferenca (nosso - Vovoteca): +0.89 | erro 0.17 | z +5.3 | nosso melhor 56%, empate 22%, Vovo melhor 22%
 jogos em que discordam: 449 | nosso acerta 210 (47%) | Vovo acerta 117 (26%)
+
+=== Boloes da Vovoteca x nosso sistema: 25 boloes em 14 concursos (mesma estrutura) ===
+                           pontos/bolao  13 ou 14  fez 14  secos certos  duplos certos  retorno
+Vovoteca (boloes)                 10.16         2       0         58.2%          74.4%     0.4%
+Nosso (mesma estrutura)           10.44         1       1         61.4%          76.0%     9.0%
+diferenca (nosso - boloes Vovo): +0.28 | erro 0.35 | z +0.8 | nosso melhor 44%, empate 16%, Vovo melhor 40%

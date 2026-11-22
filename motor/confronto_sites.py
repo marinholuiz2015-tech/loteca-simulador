@@ -69,3 +69,28 @@ for c in cs:
         nos=int(np.argmax(P[j])); v=vov[c][j][0]
         if nos!=v: n+=1; a+=res[c][j]==nos; b+=res[c][j]==v
 print(f"jogos em que discordam: {n} | nosso acerta {a} ({100*a/n:.0f}%) | Vovo acerta {b} ({100*b/n:.0f}%)")
+
+# ---- Boloes da Vovoteca: cada bolao x nosso jogo com a mesma estrutura ----
+bol = collections.defaultdict(dict)
+for r in csv.DictReader(open('coleta/dados/vovo_boloes.csv')):
+    bol[(int(r['concurso']), r['bolao'])][int(r['jogo'])] = sorted("1X2".index(x) for x in r['marcas'])
+bol = {k: [v[j] for j in range(1, 15)] for k, v in bol.items() if len(v) == 14}
+ks = [k for k in bol if k[0] in res and len(odds.get(k[0], {})) == 14]
+T = {'Vovoteca (boloes)': [0, 0, 0, 0.0, 0.0, [], []], 'Nosso (mesma estrutura)': [0, 0, 0, 0.0, 0.0, [], []]}
+dif = []
+for k in ks:
+    c = k[0]; A = bol[k]; d = sum(len(x) == 2 for x in A); t = sum(len(x) == 3 for x in A)
+    N = c2.cartela([c2.prob_mercado(odds[c][j]) for j in range(1, 15)], d, t)
+    R = rat.get(c); custo = 2 ** d * 3 ** t * 2
+    pts = {}
+    for quem, cart in (('Vovoteca (boloes)', A), ('Nosso (mesma estrutura)', N)):
+        p_, s13, s14, pr, se, du = avalia(cart, res[c], R); pts[quem] = p_
+        x = T[quem]; x[0] += p_; x[1] += s13; x[2] += s14; x[3] += pr; x[4] += custo if R else 0; x[5] += se; x[6] += du
+    dif.append(pts['Nosso (mesma estrutura)'] - pts['Vovoteca (boloes)'])
+n = len(ks)
+print(f"\n=== Boloes da Vovoteca x nosso sistema: {n} boloes em {len({k[0] for k in ks})} concursos (mesma estrutura) ===")
+print(f"{'':26s} {'pontos/bolao':>12s} {'13 ou 14':>9s} {'fez 14':>7s} {'secos certos':>13s} {'duplos certos':>14s} {'retorno':>8s}")
+for quem, x in T.items():
+    print(f"{quem:26s} {x[0]/n:12.2f} {x[1]:9d} {x[2]:7d} {100*np.mean(x[5]):12.1f}% {100*np.mean(x[6]):13.1f}% {100*x[3]/x[4] if x[4] else 0:7.1f}%")
+dif = np.array(dif); se = dif.std() / math.sqrt(len(dif))
+print(f"diferenca (nosso - boloes Vovo): {dif.mean():+.2f} | erro {se:.2f} | z {dif.mean()/se:+.1f} | nosso melhor {np.mean(dif>0)*100:.0f}%, empate {np.mean(dif==0)*100:.0f}%, Vovo melhor {np.mean(dif<0)*100:.0f}%")
