@@ -273,11 +273,14 @@ function renderVolantes(alvo, vols, titulo, jogos) {
       '</tbody></table></div>';
   }).join('');
   el.innerHTML = '<div class="barraf noprint" style="margin:8px 0 12px"><b>' + vols.length + ' volantes · ' + brl(custo) + '</b>' +
-    '<button class="btn pri" data-a="imp">Imprimir volantes</button><button class="btn" data-a="txt">Baixar TXT (1 volante por linha)</button>' +
+    '<button class="btn pri" data-a="speed">Baixar para o SpeedLoto</button><button class="btn" data-a="imp">Imprimir volantes</button><button class="btn" data-a="txt">Baixar TXT (1 volante por linha)</button>' +
     '<button class="btn" data-a="simples">Baixar TXT (apostas simples)</button><button class="btn" data-a="csv">Baixar planilha (CSV)</button><button class="btn" data-a="cop">Copiar texto</button><span class="sub" data-a="msg"></span></div>' +
-    '<p class="sub noprint">Volante no mesmo desenho do bilhete da Caixa (coluna 1, coluna do meio = empate, coluna 2). Para a lotérica: imprima e copie as marcas. Para programas de loteria: o TXT de 1 volante por linha traz as 14 marcações separadas por espaço (ex.: <code>1X 1 2 ...</code>); o TXT de apostas simples abre cada volante em todas as combinações (uma por linha, 14 letras).</p>' +
+    '<p class="sub noprint"><b>SpeedLoto:</b> arquivo com um volante por linha, os 14 jogos separados por ponto e vírgula e as opções do duplo ou triplo separadas por ponto (ex.: <code>1;2.x;1;1;x;2;...</code>). No SpeedLoto, abra o arquivo pelo ícone da pasta em "Suas apostas". Volante no mesmo desenho do bilhete da Caixa (coluna 1, coluna do meio = empate, coluna 2). Para a lotérica: imprima e copie as marcas. Para programas de loteria: o TXT de 1 volante por linha traz as 14 marcações separadas por espaço (ex.: <code>1X 1 2 ...</code>); o TXT de apostas simples abre cada volante em todas as combinações (uma por linha, 14 letras).</p>' +
     '<div class="vols">' + cartoes + '</div>';
   var txt = vols.map(function (v) { return v.join(' '); }).join('\r\n');
+  // SpeedLoto: 14 jogos separados por ";"; duplo/triplo com as opcoes separadas por "." (ex.: 1;2.x;1;...); empate = x
+  var speed = vols.map(function (v) { return v.map(function (t) { return ['1', '2', 'X'].filter(function (k) { return t.indexOf(k) >= 0; }).map(function (k) { return k === 'X' ? 'x' : k; }).join('.'); }).join(';'); }).join('\r\n');
+  el.querySelector('[data-a=speed]').onclick = function () { baixar(titulo + '_speedloto.txt', speed + '\r\n'); };
   el.querySelector('[data-a=imp]').onclick = function () { document.querySelectorAll('.aba').forEach(function (s) { s.classList.toggle('imprimir', s.id === el.closest('.aba').id); }); window.print(); };
   el.querySelector('[data-a=txt]').onclick = function () { baixar(titulo + '.txt', txt + '\r\n'); };
   el.querySelector('[data-a=simples]').onclick = function () { baixar(titulo + '_simples.txt', vols.map(function (v) { return combinacoes(v).join('\r\n'); }).join('\r\n') + '\r\n'); };
