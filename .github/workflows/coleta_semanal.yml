@@ -114,7 +114,7 @@ jobs:
         timeout-minutes: 20
         run: |
           timeout 420 python coleta/sentinela/coletar_sentinela.py historico || echo "historico: parou no limite de tempo (continua na proxima semana)"
-          CLIMA_PRAZO=300 MAX_CLIMA=600 timeout 360 python coleta/sentinela/coletar_sentinela.py clima || echo "clima: parou no limite de tempo"
+          CLIMA_PRAZO=300 MAX_CLIMA=5000 timeout 360 python coleta/sentinela/coletar_sentinela.py clima || echo "clima: parou no limite de tempo"
           python motor/sentinela.py treinar | tee motor/sentinela_relatorio.txt
 
       - name: Gravar dados no repositorio

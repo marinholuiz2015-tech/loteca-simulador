@@ -6,7 +6,8 @@ nomes dos times e grava, com a hora da coleta:
   - desfalques de cada time (lesao/suspensao), quantidade e valor de mercado;
   - descanso: dias desde o ultimo jogo e jogos nos ultimos 14 dias;
   - forma: pontos nos ultimos 5 jogos (da propria FotMob, antes da partida);
-  - clima no estadio na hora do jogo (Open-Meteo: chuva e temperatura);
+  - clima no estadio no dia do jogo (chuva total do dia e temperatura media;
+    historico pela NASA POWER, concurso aberto pela previsao da Open-Meteo);
   - campeonato e rodada.
 
 Modos:
@@ -184,22 +185,39 @@ def descanso(forma, inicio):
     return round(dias, 1), j14, pts
 
 
+def clima_nasa(lat, lon):
+    """Chuva diaria (mm) e temperatura media de todo o periodo num pedido so (NASA POWER, sem chave)."""
+    fim = (dt.date.today() - dt.timedelta(days=3)).strftime("%Y%m%d")
+    url = (f"https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M&community=AG"
+           f"&longitude={lon:.2f}&latitude={lat:.2f}&start=20180101&end={fim}&format=JSON")
+    d = pegar(url, f"nasa_{lat:.2f}_{lon:.2f}_{fim[:6]}.json")
+    try:
+        return d["properties"]["parameter"]
+    except Exception:
+        return None
+
+
 def clima(lat, lon, inicio, historico):
+    """Chuva do dia do jogo (mm, total do dia) e temperatura media no estadio.
+    Historico: NASA POWER (um pedido por estadio). Concurso aberto: previsao diaria da Open-Meteo."""
     if os.environ.get("CLIMA", "1") == "0" or lat in ("", None) or lon in ("", None):
         return "", ""
     dia = inicio.strftime("%Y-%m-%d")
-    base = "https://archive-api.open-meteo.com/v1/archive" if historico else "https://api.open-meteo.com/v1/forecast"
-    url = (f"{base}?latitude={lat:.3f}&longitude={lon:.3f}&start_date={dia}&end_date={dia}"
-           f"&hourly=precipitation,temperature_2m&timezone=GMT")
-    d = pegar(url, f"clima_{lat:.2f}_{lon:.2f}_{dia}_{int(historico)}.json")
+    if historico:
+        par = clima_nasa(float(lat), float(lon))
+        try:
+            k = inicio.strftime("%Y%m%d")
+            chuva, temp = par["PRECTOTCORR"][k], par["T2M"][k]
+            return ("" if chuva < -900 else round(chuva, 1)), ("" if temp < -900 else round(temp, 1))
+        except Exception:
+            return "", ""
+    url = (f"https://api.open-meteo.com/v1/forecast?latitude={float(lat):.3f}&longitude={float(lon):.3f}"
+           f"&start_date={dia}&end_date={dia}&daily=precipitation_sum,temperature_2m_mean&timezone=GMT")
+    d = pegar(url, f"prev_{float(lat):.2f}_{float(lon):.2f}_{dia}_{dt.date.today():%Y%m%d}.json")
     try:
-        h = d["hourly"]
-        i = min(range(len(h["time"])), key=lambda k: abs(int(h["time"][k][11:13]) - inicio.hour))
-        chuva = sum(x or 0 for x in h["precipitation"][max(0, i - 1):i + 2])
-        return round(chuva, 1), h["temperature_2m"][i]
+        return round(d["daily"]["precipitation_sum"][0] or 0, 1), d["daily"]["temperature_2m_mean"][0]
     except Exception:
         return "", ""
-
 
 def altitude(lat, lon):
     if lat in ("", None) or lon in ("", None):
@@ -306,7 +324,7 @@ def historico():
 
 
 def completar_clima():
-    """Preenche chuva/temperatura das linhas do historico que ainda nao tem (respeita o limite da Open-Meteo)."""
+    """Preenche chuva/temperatura (do dia) das linhas do historico que ainda nao tem. NASA POWER: 1 pedido por estadio."""
     arq = os.path.join(DADOS, "sentinela_jogos.csv")
     with open(arq, encoding="utf-8") as f:
         linhas = list(csv.DictReader(f))
@@ -315,7 +333,7 @@ def completar_clima():
     for l in linhas:
         if time.time() > prazo:
             break
-        if l["match_id"] and l["lat"] and l["chuva_mm"] == "" and l["inicio_utc"]:
+        if l["match_id"] and l["lat"] and l["inicio_utc"] and (l["chuva_mm"] == "" or os.environ.get("REFAZER_CLIMA")):
             inicio = dt.datetime.strptime(l["inicio_utc"], "%Y-%m-%dT%H:%MZ")
             l["chuva_mm"], l["temp_c"] = clima(float(l["lat"]), float(l["lon"]), inicio, True)
             feitos += 1
