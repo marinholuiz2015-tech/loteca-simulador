@@ -2,33 +2,33 @@
  "ligado": false,
  "usa": "mercado",
  "pesos": {
-  "Forma (pontos nos ultimos 5)": -0.0012,
-  "Sequencia sem perder": -0.0465,
-  "Confronto direto (H2H)": 0.0925,
-  "Descanso": -0.0459,
-  "Calendario apertado": -0.0009,
-  "Rodizio / time reserva": 0.0858,
-  "Desfalques": 0.0263,
-  "Altitude": 0.1263,
-  "Viagem do visitante": 0.042,
-  "Classico / rivalidade local": 0.1346,
-  "Chuva forte": 0.2163,
-  "Massa x mercado (manada)": -0.0541,
-  "Especialista (Lotequeiros)": 0.0119,
-  "Noticias: crise": -0.0212,
-  "Noticias: tecnico": 0.0177,
-  "Noticias: reservas": -0.0226,
+  "Forma (pontos nos ultimos 5)": -0.0009,
+  "Sequencia sem perder": -0.0466,
+  "Confronto direto (H2H)": 0.0947,
+  "Descanso": -0.0458,
+  "Calendario apertado": -0.0012,
+  "Rodizio / time reserva": 0.0861,
+  "Desfalques": 0.0258,
+  "Altitude": 0.1267,
+  "Viagem do visitante": 0.0428,
+  "Classico / rivalidade local": 0.1134,
+  "Chuva forte": 0.2182,
+  "Massa x mercado (manada)": -0.0532,
+  "Especialista (Lotequeiros)": 0.0127,
+  "Noticias: crise": -0.0213,
+  "Noticias: tecnico": 0.018,
+  "Noticias: reservas": -0.0228,
   "Noticias: desfalques": 0.0221,
   "Movimento da odd": 0.0
  },
  "pesos_luiz": {},
  "combinado": {
   "jogos": 3484,
-  "ganho": -0.00454,
-  "erro": 0.001739,
-  "forca": -2.61,
+  "ganho": -0.004507,
+  "erro": 0.001828,
+  "forca": -2.47,
   "acerto_mercado": 0.5353,
-  "acerto_modelo": 0.5307
+  "acerto_modelo": 0.5301
  },
  "combinado_luiz": null,
  "por_kpi": {
@@ -123,12 +123,12 @@
    "status": "medido"
   },
   "Chuva forte": {
-   "jogos": 247,
-   "ganho": -0.0,
-   "erro": 0.0,
-   "forca": -0.76,
-   "acerto_mercado": 0.4899,
-   "acerto_modelo": 0.4899,
+   "jogos": 2916,
+   "ganho": 0.000143,
+   "erro": 0.000578,
+   "forca": 0.25,
+   "acerto_mercado": 0.5442,
+   "acerto_modelo": 0.5446,
    "status": "medido"
   },
   "Massa x mercado (manada)": {
@@ -191,5 +191,5 @@
    "concursos": 0
   }
  },
- "treinado_em_utc": "2026-11-22T16:04:23Z"
+ "treinado_em_utc": "2026-11-22T19:18:53Z"
 }

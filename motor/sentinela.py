@@ -63,7 +63,7 @@ def vetor(f):
         if f.get("altitude_m") not in ("", None) else 0.0,                     # mandante na altitude
         (num(f.get("trocas_fora"), 3) - num(f.get("trocas_casa"), 3)) / 5,     # + = visitante mais reserva
     ])
-    chuva = 1.0 if num(f.get("chuva_mm")) >= 3 else 0.0
+    chuva = 1.0 if num(f.get("chuva_mm")) >= 10 else 0.0  # chuva forte: 10 mm ou mais no dia
     return x, np.array([chuva])
 
 

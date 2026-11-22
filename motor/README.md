@@ -60,3 +60,8 @@ Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `mot
 - Ganhadores previstos de cada combinação: `log(ganhadores+0,5) = a + log(apostas) + b·log(chance pela massa) + c·log(chance pelo mercado)`, ajustado com o rateio oficial (`coleta/dados/rateio_caixa.csv`, atualizado toda segunda). Correlação 0,75 (concurso deixado de fora).
 - Para cada orçamento (R$ 1.296, 2.592, 3.888): cartela cheia × jogo por valor (chance × prêmio ÷ ganhadores previstos), com a chance de 14, o retorno esperado e os volantes em CSV (`motor/saida/concurso_N_valor_R<orçamento>.csv`).
 - Teste (145 concursos com enquete e rateio): retorno esperado do 14 por valor 58–66% × cartela cheia 46–52%. Retorno real: cartela cheia na frente por causa de **um** concurso (1152, R$ 124 mil, 1 ganhador). Por isso a camada 2 é mostrada lado a lado; a decisão final fica para a camada 3 e para a prova ao vivo.
+
+## Odd de fechamento e motivação pela tabela (football-data.co.uk)
+- `coleta/futebol_data.py`: resultados + odds de abertura e fechamento (Pinnacle, Betfair, bet365, média) do Brasileirão e ligas europeias (fora do git, em `coleta/dados/fd/`).
+- `coleta/pesquisa/fechamento.py` → `motor/fechamento.md`: a odd de quinta perde muito pouco para o fechamento (log-loss −0,4%, acerto igual). Por isso a previsão continua saindo na quinta.
+- `motor/motivacao.py` → `motor/motivacao.md`: tabela antes de cada jogo; "sem nada em jogo", luta contra o rebaixamento, briga pelo título. Visitante sem nada em jogo vence menos que a odd indica (21,2% × 24,6%, 1.055 jogos; mesmo sinal em todos os anos), mas ainda não passa na prova no tempo (força +1,2) — entra como **alerta** na previsão; entra na probabilidade só com força > 2.
