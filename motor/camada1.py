@@ -300,6 +300,21 @@ def gravar(linhas, fonte_grade, registrar=True):
     top = sorted(linhas, key=lambda x: x["ordem"])
     md += ["", "Top 4: " + ", ".join(f"jogo {l['jogo']} ({l['favorito']})" for l in top[:4]),
            "Top 8: " + ", ".join(f"jogo {l['jogo']} ({l['favorito']})" for l in top[:8])]
+    try:
+        import varredura
+        odds = {l["jogo"]: [l["odd_1"], l["odd_x"], l["odd_2"]] for l in linhas if l.get("odd_1") not in ("", None)}
+        al = varredura.alertas(c, odds)
+    except Exception as e:  # alerta nunca pode derrubar a previsao
+        al = {}
+        print("Alertas de nuance indisponiveis:", e)
+    if al:
+        md += ["", "## Alertas de nuance (onde as odds costumam errar)", "",
+               "Nuances confirmadas no período que a busca nunca viu (lista completa: `motor/nuances.md`). "
+               "Use para escolher o lado do duplo ou subir para triplo.", ""]
+        for j in sorted(al):
+            l = next(x for x in linhas if x["jogo"] == j)
+            for t in al[j]:
+                md.append(f"- **Jogo {j}** ({l['mandante']} x {l['visitante']}): {t}")
     if any(l.get("kpis_valores") not in (None, "", "{}") for l in linhas):
         destaques = {"Rodizio / time reserva": "reservas", "Altitude": "altitude", "Viagem do visitante": "viagem",
                      "Confronto direto (H2H)": "H2H", "Sequencia sem perder": "invicto", "Desfalques": "desfalques",

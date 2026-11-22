@@ -49,3 +49,7 @@ Uso manual: `python motor/camada1.py 1285 --sem-registro` (gera a tabela em `mot
 
 - **Classe pela cartela padrão (6+4+4):** os jogos mais incertos viram triplo, os do meio duplo e os mais firmes seco, escolhidos para maximizar a chance de 14 (antes eram limites fixos por jogo, e o jogo mais incerto podia sair como duplo). A cartela padrão muda com `DUPLOS`/`TRIPLOS`.
 - **Duplo = favorito + empate, em qualquer jogo.** Estudo em 5.152 jogos: em todas as faixas de probabilidade, com mandante ou visitante favorito, favorito + empate foi o par que mais acertou, nos três períodos (o 1-2 nunca foi o melhor). Ex.: visitante favorito com 40% a 50%: 76,8% contra 71,2% da regra antiga. Nas cartelas (238 concursos) o acerto dos duplos subiu em todas as estruturas (6+4+4: 76,2% → 77,5%; 8+6+0: 71,1% → 74,4%). O empate é subestimado pelo mercado (27,7% x 25,9%; nos equilibrados 33,7% x 29,3%).
+
+## Varredura semanal de nuances
+
+`motor/varredura.py` (toda segunda): cruza tipos de jogo com sinais do jogo e compara com as odds. Descobre só nos concursos antigos, exige força e repetição nas duas metades, e **confere no último terço, que a descoberta nunca viu**. Só fica o que se repete. Resultado em `motor/nuances.md`; a previsão mostra "Alertas de nuance" nos jogos da semana em que alguma nuance confirmada se aplica. Nuances novas entram e as que param de funcionar saem sozinhas.

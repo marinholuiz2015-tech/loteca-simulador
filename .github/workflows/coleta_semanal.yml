@@ -116,12 +116,13 @@ jobs:
           timeout 420 python coleta/sentinela/coletar_sentinela.py historico || echo "historico: parou no limite de tempo (continua na proxima semana)"
           CLIMA_PRAZO=300 MAX_CLIMA=600 timeout 360 python coleta/sentinela/coletar_sentinela.py clima || echo "clima: parou no limite de tempo"
           python motor/kpis.py medir > /dev/null && echo "placar de KPIs atualizado (motor/kpis.md)"
+          python motor/varredura.py > /dev/null && echo "varredura de nuances atualizada (motor/nuances.md)"
 
       - name: Gravar dados no repositorio
         run: |
           git config user.name "loteca-coleta-bot"
           git config user.email "actions@github.com"
-          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json 2>/dev/null || true
+          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit -m "Coleta semanal de fontes (automatico)"
           for i in 1 2 3; do
