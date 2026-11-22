@@ -1,21 +1,27 @@
 {
  "ativo": false,
  "pesos": {
-  "desfalques": 0.047834391144315536,
-  "valor_desfalques": -0.046340160438816384,
-  "descanso": -0.03125029967554,
-  "jogos_14d": 0.005320979449055135,
-  "forma5": -0.020329722964667837,
-  "chuva_empate": 0.7472567921259498
+  "desfalques": 0.04032637767809537,
+  "valor_desfalques": -0.05301193724774722,
+  "descanso": -0.047189207097388525,
+  "jogos_14d": -0.002440535646669171,
+  "forma5": -0.01688289502385622,
+  "altitude": 0.09305685507501177,
+  "reservas": 0.08552466339374737,
+  "chuva_empate": 0.7509386481446381
  },
  "metricas": {
   "jogos_teste": 3037,
   "perda_mercado": 0.96089,
-  "perda_sentinela": 0.96254,
-  "melhora_perda": -0.00166,
-  "erro_padrao": 0.00086,
+  "perda_sentinela": 0.96097,
+  "melhora_perda": -8e-05,
+  "erro_padrao": 0.00123,
   "acerto_mercado": 0.542,
   "acerto_sentinela": 0.537
  },
- "treinado_em_utc": "2026-11-22T02:54:01Z"
+ "treinado_em_utc": "2026-11-22T03:34:22Z",
+ "noticias": {
+  "ativo": false,
+  "motivo": "0 de 20 concursos com noticias e resultado"
+ }
 }

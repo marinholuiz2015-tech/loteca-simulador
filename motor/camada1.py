@@ -142,6 +142,7 @@ def prever(concurso):
     import sentinela
     mod_sent = sentinela.modelo()
     fatos = sentinela.fatos_abertos(concurso)
+    noticias = noticias_abertas(concurso)
     agora = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # casa cada linha da Arena com o jogo da grade (posicao; se nao bater, pelos nomes)
@@ -167,7 +168,8 @@ def prever(concurso):
         if k in odds_por_jogo:
             pm = aplica(odds_por_jogo[k], prm)
             p, usou = sentinela.aplicar(pm, fatos.get(k), mod_sent)
-            fonte = "odds bet365 (Arena)" + (" + sentinela" if usou else "")
+            p, usou_n = sentinela.aplicar_noticias(p, noticias.get(k), mod_sent)
+            fonte = "odds bet365 (Arena)" + (" + sentinela" if usou else "") + (" + noticias" if usou_n else "")
             sent = ("ligada" if usou else ("sem fatos" if k not in fatos else "desligada")) if mod_sent else "sem modelo"
         else:
             pm = p = FREQ.copy()
@@ -219,6 +221,18 @@ def gravar(linhas, fonte_grade, registrar=True):
     top = sorted(linhas, key=lambda x: x["ordem"])
     md += ["", "Top 4: " + ", ".join(f"jogo {l['jogo']} ({l['favorito']})" for l in top[:4]),
            "Top 8: " + ", ".join(f"jogo {l['jogo']} ({l['favorito']})" for l in top[:8])]
+    noticias = noticias_abertas(c)
+    if noticias:
+        md += ["", "## Notícias da semana (setoristas e imprensa)", "",
+               "| Jogo | Mandante: desfalque / reservas / crise / retorno | Visitante: desfalque / reservas / crise / retorno | Nota do leitor |",
+               "|---|---|---|---|"]
+        for l in linhas:
+            n = noticias.get(l["jogo"])
+            if not n:
+                continue
+            f = lambda lado: " / ".join(n.get(f"{lado}_{k}", "0") for k in ("desfalque", "reservas", "crise", "reforco"))
+            md.append(f"| {l['jogo']} | {f('casa')} ({n.get('casa_n', 0)} manchetes) | {f('fora')} ({n.get('fora_n', 0)}) | "
+                      f"{n.get('nota_modelo') or '—'} {n.get('motivo_modelo') or ''} |")
     sem = [l["jogo"] for l in linhas if l["fonte_prob"].startswith("sem odds")]
     if sem:
         md.append(f"Jogos sem odds (frequência histórica, triplo): {sem}")
@@ -232,6 +246,20 @@ def gravar(linhas, fonte_grade, registrar=True):
                 w.writeheader()
             w.writerows(linhas)
     return "\n".join(md)
+
+
+def noticias_abertas(c):
+    caminho = os.path.join(DADOS, "noticias_aberto.csv")
+    out = {}
+    if not os.path.exists(caminho):
+        return out
+    with open(caminho, encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            if int(r["concurso"]) == int(c):
+                j = int(r["jogo"])
+                if j not in out or r["coletado_em_utc"] > out[j]["coletado_em_utc"]:
+                    out[j] = r
+    return out
 
 
 def concurso_encerrado(c):

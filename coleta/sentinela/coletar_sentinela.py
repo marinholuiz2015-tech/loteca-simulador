@@ -43,7 +43,7 @@ CAMPOS = ["concurso", "jogo", "mandante", "visitante", "match_id", "fot_casa", "
           "desf_casa_n", "desf_casa_valor", "desf_casa_lesao", "desf_casa_susp",
           "desf_fora_n", "desf_fora_valor", "desf_fora_lesao", "desf_fora_susp",
           "dias_casa", "dias_fora", "jogos14_casa", "jogos14_fora", "forma5_casa", "forma5_fora",
-          "lat", "lon", "chuva_mm", "temp_c", "coletado_em_utc"]
+          "lat", "lon", "chuva_mm", "temp_c", "altitude_m", "trocas_casa", "trocas_fora", "coletado_em_utc"]
 
 # nomes da Loteca -> nomes usados pela FotMob (so os que o parecido() nao resolve)
 TROCAS = {
@@ -201,6 +201,44 @@ def clima(lat, lon, inicio, historico):
         return "", ""
 
 
+def altitude(lat, lon):
+    if lat in ("", None) or lon in ("", None):
+        return ""
+    d = pegar(f"https://api.open-meteo.com/v1/elevation?latitude={lat:.3f}&longitude={lon:.3f}",
+              f"elev_{lat:.3f}_{lon:.3f}.json")
+    try:
+        return round(d["elevation"][0])
+    except Exception:
+        return ""
+
+
+def trocas(d, lado, forma):
+    """Titulares deste jogo que nao foram titulares no jogo anterior do time (rodizio / time reserva).
+    Antes do jogo usa a escalacao provavel da FotMob, quando existe."""
+    lu = d["content"].get("lineup") or {}
+    t = lu.get(lado) or {}
+    atual = {p.get("id") for p in t.get("starters") or [] if p.get("id")}
+    if len(atual) < 11:
+        return ""
+    ant = None
+    for g in reversed(forma or []):
+        m = re.search(r"#(\d+)", g.get("linkToMatch", ""))
+        if m:
+            ant = m.group(1)
+            break
+    if not ant:
+        return ""
+    pd = pegar(f"{FOT}/matchDetails?matchId={ant}", f"md_{ant}.json")
+    if not pd:
+        return ""
+    for s2 in ("homeTeam", "awayTeam"):
+        t2 = (pd["content"].get("lineup") or {}).get(s2) or {}
+        if t2.get("id") == t.get("id"):
+            prev = {p.get("id") for p in t2.get("starters") or [] if p.get("id")}
+            return len(atual - prev) if len(prev) >= 11 else ""
+    return ""
+
+
 def fatos(c, j, mandante, visitante, data, resultado=None, historico=True):
     s, m, lg = achar(mandante, visitante, data)
     linha = {k: "" for k in CAMPOS}
@@ -224,6 +262,9 @@ def fatos(c, j, mandante, visitante, data, resultado=None, historico=True):
     rc = descanso(tf[0] if len(tf) > 0 else [], inicio)
     rf = descanso(tf[1] if len(tf) > 1 else [], inicio)
     chuva, temp = clima(est.get("lat"), est.get("long"), inicio, historico)
+    alt = altitude(est.get("lat"), est.get("long"))
+    tc = trocas(d, "homeTeam", tf[0] if len(tf) > 0 else [])
+    tfo = trocas(d, "awayTeam", tf[1] if len(tf) > 1 else [])
     linha.update(match_id=mid, fot_casa=m["home"]["name"], fot_fora=m["away"]["name"], liga=lg.get("name", ""),
                  liga_id=lg.get("primaryId") or lg.get("id"), rodada=(info.get("Tournament") or {}).get("round", ""),
                  inicio_utc=inicio.strftime("%Y-%m-%dT%H:%MZ"),
@@ -231,7 +272,7 @@ def fatos(c, j, mandante, visitante, data, resultado=None, historico=True):
                  desf_fora_n=df[0], desf_fora_valor=df[1], desf_fora_lesao=df[2], desf_fora_susp=df[3],
                  dias_casa=rc[0], dias_fora=rf[0], jogos14_casa=rc[1], jogos14_fora=rf[1],
                  forma5_casa=rc[2], forma5_fora=rf[2], lat=est.get("lat", ""), lon=est.get("long", ""),
-                 chuva_mm=chuva, temp_c=temp)
+                 chuva_mm=chuva, temp_c=temp, altitude_m=alt, trocas_casa=tc, trocas_fora=tfo)
     return linha, "ok"
 
 
