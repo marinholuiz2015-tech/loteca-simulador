@@ -2,33 +2,33 @@
  "ligado": false,
  "usa": "mercado",
  "pesos": {
-  "Forma (pontos nos ultimos 5)": -0.0004,
-  "Sequencia sem perder": -0.0469,
-  "Confronto direto (H2H)": 0.0926,
-  "Descanso": -0.0452,
-  "Calendario apertado": -0.0019,
-  "Rodizio / time reserva": 0.0884,
-  "Desfalques": 0.0262,
-  "Altitude": 0.1261,
-  "Viagem do visitante": 0.0433,
-  "Classico / rivalidade local": 0.1348,
+  "Forma (pontos nos ultimos 5)": -0.0012,
+  "Sequencia sem perder": -0.0465,
+  "Confronto direto (H2H)": 0.0925,
+  "Descanso": -0.0459,
+  "Calendario apertado": -0.0009,
+  "Rodizio / time reserva": 0.0858,
+  "Desfalques": 0.0263,
+  "Altitude": 0.1263,
+  "Viagem do visitante": 0.042,
+  "Classico / rivalidade local": 0.1346,
   "Chuva forte": 0.2163,
-  "Massa x mercado (manada)": -0.0591,
-  "Especialista (Lotequeiros)": 0.01,
-  "Noticias: crise": 0.0,
-  "Noticias: tecnico": 0.0,
-  "Noticias: reservas": 0.0,
-  "Noticias: desfalques": 0.0,
+  "Massa x mercado (manada)": -0.0541,
+  "Especialista (Lotequeiros)": 0.0119,
+  "Noticias: crise": -0.0212,
+  "Noticias: tecnico": 0.0177,
+  "Noticias: reservas": -0.0226,
+  "Noticias: desfalques": 0.0221,
   "Movimento da odd": 0.0
  },
  "pesos_luiz": {},
  "combinado": {
   "jogos": 3484,
-  "ganho": -0.000427,
-  "erro": 0.001144,
-  "forca": -0.37,
+  "ganho": -0.00454,
+  "erro": 0.001739,
+  "forca": -2.61,
   "acerto_mercado": 0.5353,
-  "acerto_modelo": 0.5299
+  "acerto_modelo": 0.5307
  },
  "combinado_luiz": null,
  "por_kpi": {
@@ -150,24 +150,40 @@
    "status": "medido"
   },
   "Noticias: crise": {
-   "status": "coletando",
-   "jogos": 0,
-   "concursos": 0
+   "jogos": 1820,
+   "ganho": -0.000122,
+   "erro": 0.000358,
+   "forca": -0.34,
+   "acerto_mercado": 0.5423,
+   "acerto_modelo": 0.5407,
+   "status": "medido"
   },
   "Noticias: tecnico": {
-   "status": "coletando",
-   "jogos": 0,
-   "concursos": 0
+   "jogos": 1820,
+   "ganho": -0.000321,
+   "erro": 0.000712,
+   "forca": -0.45,
+   "acerto_mercado": 0.5423,
+   "acerto_modelo": 0.5429,
+   "status": "medido"
   },
   "Noticias: reservas": {
-   "status": "coletando",
-   "jogos": 0,
-   "concursos": 0
+   "jogos": 1820,
+   "ganho": -0.000435,
+   "erro": 0.000262,
+   "forca": -1.66,
+   "acerto_mercado": 0.5423,
+   "acerto_modelo": 0.5407,
+   "status": "medido"
   },
   "Noticias: desfalques": {
-   "status": "coletando",
-   "jogos": 0,
-   "concursos": 0
+   "jogos": 1820,
+   "ganho": -0.000161,
+   "erro": 0.000433,
+   "forca": -0.37,
+   "acerto_mercado": 0.5423,
+   "acerto_modelo": 0.5407,
+   "status": "medido"
   },
   "Movimento da odd": {
    "status": "coletando",
@@ -175,5 +191,5 @@
    "concursos": 0
   }
  },
- "treinado_em_utc": "2026-11-22T15:10:56Z"
+ "treinado_em_utc": "2026-11-22T16:04:23Z"
 }
