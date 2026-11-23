@@ -406,8 +406,86 @@ def concurso_aberto():
     res = {"concurso": conc, "gerado": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "jogos": out,
            "teste": {k: cfg.get(k) for k in ("todos", "por_pilar", "odds", "jogos_modelo")}}
     json.dump(res, open(os.path.join(RAIZ, "docs", "dados", "pilares.json"), "w"), ensure_ascii=False, indent=1)
+    registrar(conc, out)
     print(f"pilares do concurso {conc}: {sum(1 for o in out if o['dados'])} de {len(out)} jogos com dados")
+    placar()
+
+
+REG = os.path.join(AQUI, "pilares_registro.csv")
+VOTOS = [("elo", "Força própria (Elo)"), ("xg_saldo", "Saldo de xG"), ("xgm_saldo", "xG em casa/fora"), ("dom", "Domínio"),
+         ("forma5", "Forma (5 jogos)"), ("descanso", "Descanso")]
+
+
+def registrar(conc, out):
+    """Grava a previsao dos pilares do concurso antes dos jogos (substitui a do mesmo concurso enquanto nao comecou)."""
+    campos = ["concurso", "jogo", "gerado", "p1", "px", "p2"] + [k for k, _ in VOTOS]
+    linhas = list(csv.DictReader(open(REG, encoding="utf-8"))) if os.path.exists(REG) else []
+    linhas = [r for r in linhas if int(r["concurso"]) != conc]
+    agora = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    for o in out:
+        if not o["p"]:
+            continue
+        r = {"concurso": conc, "jogo": o["jogo"], "gerado": agora, "p1": o["p"][0], "px": o["p"][1], "p2": o["p"][2]}
+        r.update({k: o["x"].get(k, "") for k, _ in VOTOS})
+        linhas.append(r)
+    w = csv.DictWriter(open(REG, "w", newline="", encoding="utf-8"), fieldnames=campos)
+    w.writeheader()
+    w.writerows(linhas)
+
+
+def placar():
+    """Acerto de cada vertente nos concursos registrados que ja tem resultado: mercado (camada 1), pilares juntos
+    e o 'voto' de cada pilar (lado que ele favorece). Grava docs/dados/placar_pilares.json."""
+    if not os.path.exists(REG):
+        return
+    res = {}
+    rc = os.path.join(RAIZ, "coleta", "dados", "resultados_caixa.csv")
+    if os.path.exists(rc):
+        for r in csv.DictReader(open(rc, encoding="utf-8")):
+            if r["resultado"] in ("1", "X", "2"):
+                res[(int(r["concurso"]), int(r["jogo"]))] = r["resultado"]
+    av = os.path.join(RAIZ, "docs", "dados", "ao_vivo.json")
+    if os.path.exists(av):
+        d = json.load(open(av))
+        for g in d.get("jogos", []):
+            if g.get("situacao") == "encerrado" and g.get("resultado"):
+                res.setdefault((int(d["concurso"]), int(g["jogo"])), g["resultado"])
+    merc = {}
+    for c in {int(r["concurso"]) for r in csv.DictReader(open(REG, encoding="utf-8"))}:
+        arq = os.path.join(AQUI, "saida", f"concurso_{c}.csv")
+        if os.path.exists(arq):
+            for r in csv.DictReader(open(arq, encoding="utf-8")):
+                merc[(c, int(r["jogo"]))] = [float(r["p1"]), float(r["px"]), float(r["p2"])]
+    tab = collections.defaultdict(lambda: collections.defaultdict(lambda: [0, 0]))
+    for r in csv.DictReader(open(REG, encoding="utf-8")):
+        k = (int(r["concurso"]), int(r["jogo"]))
+        if k not in res:
+            continue
+        y = "1X2".index(res[k])
+        c = k[0]
+        pp = [float(r["p1"]), float(r["px"]), float(r["p2"])]
+        for nome, p in (("Pilares juntos (sem odds)", pp), ("Mercado (odds)", merc.get(k))):
+            if p:
+                t = tab[nome][c]
+                t[0] += 1
+                t[1] += int(max(range(3), key=lambda i: p[i]) == y)
+        for kk, nome in VOTOS:
+            v = f(r.get(kk))
+            if v is None or abs(v) < 1e-9:
+                continue
+            t = tab[nome][c]
+            t[0] += 1
+            t[1] += int((v > 0 and y == 0) or (v < 0 and y == 2))
+    out = {"atualizado": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "vertentes": []}
+    for nome, por in tab.items():
+        n = sum(t[0] for t in por.values())
+        a = sum(t[1] for t in por.values())
+        out["vertentes"].append({"nome": nome, "jogos": n, "acertos": a, "acerto": a / n if n else None,
+                                 "por_concurso": {str(c): t for c, t in sorted(por.items())}})
+    out["vertentes"].sort(key=lambda v: -(v["acerto"] or 0))
+    json.dump(out, open(os.path.join(RAIZ, "docs", "dados", "placar_pilares.json"), "w"), ensure_ascii=False, indent=1)
+    print("placar por pilar:", ", ".join(f"{v['nome']} {v['acertos']}/{v['jogos']}" for v in out["vertentes"]))
 
 
 if __name__ == "__main__":
-    concurso_aberto() if "--aberto" in sys.argv else testar()
+    concurso_aberto() if "--aberto" in sys.argv else (placar() if "--placar" in sys.argv else testar())
