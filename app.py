@@ -2025,7 +2025,7 @@ def painel_pagina():
 def painel_dados(nome):
     if not _painel_autorizado():
         return _painel_pedir_senha()
-    if nome not in ("painel.json", "ao_vivo.json", "desdobre.csv", "pilares.json"):
+    if nome not in ("painel.json", "ao_vivo.json", "desdobre.csv", "pilares.json", "placar_pilares.json"):
         return Response("Nao encontrado.", 404)
     if nome == "ao_vivo.json":
         return _painel_ao_vivo()
