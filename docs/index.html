@@ -63,6 +63,10 @@ tr.linha{cursor:pointer}tr.linha:hover{background:#F9FAFB}
 .cx.m{background:#111827;border-color:#111827;color:#fff}
 .barraf{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 select.sel{min-height:44px;padding:8px 12px;border:1px solid #D1D5DB;border-radius:8px;font:inherit;font-size:15px;background:#fff}
+.jpcard{background:linear-gradient(135deg,#ECFDF5,#F0FDF9);border:1px solid #A7F3D0;border-radius:14px;padding:12px 14px;margin-bottom:16px;display:flex;flex-direction:column;gap:10px}
+.jpk{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.jpk span{background:#fff;border-radius:10px;padding:6px 8px;font-size:11px;color:#6B7280;display:flex;flex-direction:column}.jpk b{font-family:'Space Grotesk',Inter,sans-serif;font-size:17px;color:#0B6B50}
+.jpmini{display:flex;flex-wrap:wrap;gap:4px}.jpm{display:inline-flex;flex-direction:column;align-items:center;min-width:34px;padding:3px 4px;border-radius:7px;background:#fff;border:1px solid #D1FAE5;font-size:10px;color:#6B7280}.jpm b{font-size:12px;color:#111827}.jpm.D{background:#FEF3C7;border-color:#FDE68A}.jpm.T{background:#FEE2E2;border-color:#FECACA}
+@media (max-width:520px){.jpk{grid-template-columns:repeat(2,1fr)}}
 .vtopo{padding:12px 16px}.lb{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
 .vgrid{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:20px;align-items:start}
 .vcard{background:#FFFDF8;border:2px solid #B42318;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(180,35,24,.08)}
@@ -363,15 +367,26 @@ function otimo(P, d, t) {
 function perfeito(P, orc) { var m = null; for (var d = 0; d <= 14; d++) for (var t = 0; t + d <= 14; t++) { var c = Math.pow(2, d) * Math.pow(3, t) * 2; if (c > orc || c < 4) continue; var o = otimo(P, d, t); if (o && (!m || o.p > m.p)) m = { sel: o.sel, p: o.p, custo: c, d: d, t: t }; } return m; }
 function estat(sel, P) { var cv = sel.map(function (s, i) { return cob(s, P[i]); }), comb = 1, p14 = 1; sel.forEach(function (s) { comb *= s.length; }); cv.forEach(function (c) { p14 *= c; });
   var p13 = 0; cv.forEach(function (c) { if (c < 1) p13 += (1 - c) * p14 / c; }); return { comb: comb, custo: comb * 2, p14: p14, p13: p14 + p13, cv: cv }; }
+function melhoresCombos(opts, LP, pot, K) { // as K combinacoes mais provaveis da base, sem enumerar a base inteira (funciona com 14 triplos)
+  var ord = opts.map(function (o, i) { return o.slice().sort(function (a, b) { return LP[i][b] - LP[i][a]; }); });
+  var sc = function (ix) { var s = 0; for (var i = 0; i < 14; i++) s += LP[i][ord[i][ix[i]]]; return s; };
+  var cod = function (ix) { var c = 0; for (var i = 0; i < 14; i++) c += ord[i][ix[i]] * pot[i]; return c; };
+  var heap = [], vis = new Set(), out = [];
+  var push = function (it) { heap.push(it); var k = heap.length - 1; while (k > 0) { var p = (k - 1) >> 1; if (heap[p].s >= heap[k].s) break; var t = heap[p]; heap[p] = heap[k]; heap[k] = t; k = p; } };
+  var pop = function () { var top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; var k = 0; for (;;) { var l = 2 * k + 1, r = l + 1, m = k; if (l < heap.length && heap[l].s > heap[m].s) m = l; if (r < heap.length && heap[r].s > heap[m].s) m = r; if (m === k) break; var t = heap[m]; heap[m] = heap[k]; heap[k] = t; k = m; } } return top; };
+  var z = ord.map(function () { return 0; }); push({ ix: z, s: sc(z) }); vis.add(z.join(','));
+  while (heap.length && out.length < K) { var it = pop(); out.push(cod(it.ix));
+    for (var i = 0; i < 14; i++) if (it.ix[i] + 1 < ord[i].length) { var n = it.ix.slice(); n[i]++; var key = n.join(','); if (!vis.has(key)) { vis.add(key); push({ ix: n, s: sc(n) }); } } }
+  return out;
+}
 // desdobre espalhado: volantes de 1 duplo dentro do jogo, cobrindo o máximo de resultados a até 1 erro
 function espalhado(sel, P, nvol) {
   var pot = [], q = 1; for (var i = 0; i < 14; i++) { pot.push(q); q *= 3; }
   var opts = sel.map(function (s) { return s.split('').map(function (k) { return R.indexOf(k); }); });
-  var N = 1; opts.forEach(function (o) { N *= o.length; }); if (N > 300000) return { erro: 'Jogo grande demais para desdobrar aqui (mais de 300 mil combinações). Tire alguns triplos.' };
+  var N = 1; opts.forEach(function (o) { N *= o.length; });
   var LP = P.map(function (p) { return p.map(Math.log); }), cache = new Map();
   var pr = function (code) { var v = cache.get(code); if (v !== undefined) return v; var x = code, s = 0; for (var i = 0; i < 14; i++) { s += LP[i][x % 3]; x = Math.floor(x / 3); } v = Math.exp(s); cache.set(code, v); return v; };
-  var cand = []; (function rec(i, code) { if (i === 14) { cand.push(code); return; } opts[i].forEach(function (k) { rec(i + 1, code + k * pot[i]); }); })(0, 0);
-  cand.sort(function (a, b) { return pr(b) - pr(a); }); cand = cand.slice(0, 3000);
+  var cand = melhoresCombos(opts, LP, pot, 3000);
   var dig = function (code, i) { return Math.floor(code / pot[i]) % 3; };
   var viz = function (code) { var o = [code]; for (var i = 0; i < 14; i++) { var d = dig(code, i); for (var k = 0; k < 3; k++) if (k !== d) o.push(code + (k - d) * pot[i]); } return o; };
   var un = []; cand.forEach(function (c) { for (var i = 0; i < 14; i++) if (opts[i].length > 1) { var d = dig(c, i); opts[i].forEach(function (k) { if (k > d) un.push([c, c + (k - d) * pot[i]]); }); } });
@@ -649,9 +664,9 @@ function abaVolante() {
     '<div class="vaviso ' + aviso[0] + '">' + aviso[1] + '</div>' +
     '<div class="barraf vbt"><button class="btn" id="vllimpa">Limpar</button><button class="btn" id="vlperf">Jogo perfeito de</button><select id="vlperfo" class="sel">' + [4, 8, 16, 32, 64, 144, 200, 432, 864, 1728].map(function (v) { return '<option value="' + v + '"' + (v === 200 ? ' selected' : '') + '>' + brl(v) + '</option>'; }).join('') + '</select><button class="btn" id="vlforte">Base forte</button>' +
     '<button class="btn" id="vllista"' + (cheio && comb >= 2 && comb <= MAXC ? '' : ' disabled') + '>Pôr na lista</button></div></div>' +
-    '<div class="vpanel card"><h2>Desdobrar este volante</h2><div class="vmodos">' + modos.map(function (m) { return '<button class="vmodo' + (VL.modo === m[0] ? ' on' : '') + '" data-m="' + m[0] + '"><b>' + m[1] + '</b><span>' + m[2] + '</span></button>'; }).join('') + '</div>';
+    '<div class="vpanel card">' + vlCardPerfeito(C, P) + '<h2>Desdobrar este volante</h2><div class="vmodos">' + modos.map(function (m) { return '<button class="vmodo' + (VL.modo === m[0] ? ' on' : '') + '" data-m="' + m[0] + '"><b>' + m[1] + '</b><span>' + m[2] + '</span></button>'; }).join('') + '</div>';
   if (VL.modo === 'espalhado') h += '<div class="barraf"><label class="lb">Quanto quer gastar <select id="vlorc" class="sel">' + orcs + '</select></label></div>';
-  if (VL.modo === 'fechamento') h += '<div class="barraf"><label class="lb">Duplos por volante <input id="vlnd" type="number" min="0" max="9" value="' + VL.nd + '" class="sel" style="width:76px"></label><label class="lb">Triplos <input id="vlnt" type="number" min="0" max="6" value="' + VL.nt + '" class="sel" style="width:76px"></label><label class="lb">Garantia <select id="vlgar" class="sel">' + [13, 12, 11, 10].map(function (g) { return '<option' + (g === VL.gar ? ' selected' : '') + '>' + g + '</option>'; }).join('') + '</select> pontos</label></div>';
+  if (VL.modo === 'fechamento') { var cpv = Math.pow(2, VL.nd) * Math.pow(3, VL.nt); h += '<div class="barraf"><label class="lb">Duplos por volante <input id="vlnd" type="number" min="0" max="14" value="' + VL.nd + '" class="sel" style="width:76px"></label><label class="lb">Triplos por volante <input id="vlnt" type="number" min="0" max="14" value="' + VL.nt + '" class="sel" style="width:76px"></label><label class="lb">Garantia <select id="vlgar" class="sel">' + [13, 12, 11, 10].map(function (g) { return '<option' + (g === VL.gar ? ' selected' : '') + '>' + g + '</option>'; }).join('') + '</select> pontos</label></div><div class="vaviso ' + (cpv > MAXC || cpv < 2 ? 'er' : 'ok') + '" style="margin:6px 0 0">Cada volante: ' + VL.nd + ' duplo(s) + ' + VL.nt + ' triplo(s) = ' + cpv.toLocaleString('pt-BR') + ' combinações, ' + brl(cpv * 2) + ' por volante.' + (cpv > MAXC ? ' A Caixa não aceita mais de 864 combinações num volante (até 9 duplos sem triplo, até 6 triplos sem duplo, ou 5 duplos + 3 triplos). Marque os seus duplos na BASE (o volante da esquerda): ela pode ser do tamanho que quiser, e o desdobre divide em volantes válidos.' : cpv < 2 ? ' Precisa de pelo menos 1 duplo ou triplo.' : '') + '</div>'; }
   if (VL.modo === 'completo') h += '<p class="sub">' + (cheio ? 'A base vira ' + vlDividir(B, P).length + ' volantes válidos, custo ' + brl(comb * 2) + ', mesma chance da base.' : 'Marque a base.') + '</p>';
   h += '<label class="lb sub"><input type="checkbox" id="vlfilt"' + (VL.filtrar ? ' checked' : '') + '> Aplicar os filtros (editar em Lista de apostas → Filtros)</label>' +
     '<div class="barraf" style="margin-top:10px"><button class="btn pri big" id="vlgera"' + (cheio ? '' : ' disabled') + '>Desdobrar</button><span class="sub" id="vlmsg"></span></div><div id="vlres"></div></div></div>' +
@@ -671,11 +686,22 @@ function abaVolante() {
     if (a.vols.length === 1) { VL.base = a.vols[0].slice(); VL.res = null; } else { VL.res = { vols: a.vols.map(function (v) { return v.slice(); }), titulo: a.nome }; } vlSalva(); abaVolante(); };
   el.querySelectorAll('.vmodo').forEach(function (b) { b.onclick = function () { VL.modo = b.dataset.m; VL.res = null; vlSalva(); abaVolante(); }; });
   var o = el.querySelector('#vlorc'); if (o) o.onchange = function () { VL.orc = Number(o.value); vlSalva(); };
-  ['nd', 'nt'].forEach(function (k) { var x = el.querySelector('#vl' + k); if (x) x.onchange = function () { VL[k] = Number(x.value); vlSalva(); }; });
+  ['nd', 'nt'].forEach(function (k) { var x = el.querySelector('#vl' + k); if (x) x.onchange = function () { VL[k] = Math.max(0, Math.min(14, Math.round(Number(x.value) || 0))); vlSalva(); abaVolante(); }; });
   var g = el.querySelector('#vlgar'); if (g) g.onchange = function () { VL.gar = Number(g.value); vlSalva(); };
+  var op = el.querySelector('#vlorcp'); if (op) op.onchange = function () { VL.orcP = Number(op.value); abaVolante(); };
+  var cp = el.querySelector('#vlcarp'); if (cp) cp.onclick = function () { var m = perfeito(P, VL.orcP || 200); if (m) { VL.base = m.sel.slice(); VL.res = null; vlSalva(); abaVolante(); } };
   el.querySelector('#vlfilt').onchange = function (e) { VL.filtrar = e.target.checked; vlSalva(); };
   el.querySelector('#vlgera').onclick = function () { var m = el.querySelector('#vlmsg'); m.textContent = 'Calculando…'; setTimeout(function () { vlGera(B, P, C, m); }, 30); };
   if (VL.res) vlMostra(VL.res, P, C);
+}
+function vlCardPerfeito(C, P) { // jogo perfeito da rodada: melhor cartela de 1 volante para o valor escolhido
+  var orc = VL.orcP || 200, m = perfeito(P, orc); if (!m) return '';
+  var est = estat(m.sel, P), ns = 14 - m.d - m.t;
+  var opts = [16, 32, 64, 144, 200, 288, 432, 576, 864, 1296, 1728].map(function (v) { return '<option value="' + v + '"' + (v === orc ? ' selected' : '') + '>' + brl(v) + '</option>'; }).join('');
+  var mini = m.sel.map(function (t, i) { return '<span class="jpm ' + (t.length === 3 ? 'T' : t.length === 2 ? 'D' : 'S') + '" title="' + esc(nome2(C.jogos[i].m)) + ' × ' + esc(nome2(C.jogos[i].v)) + '">' + (i + 1) + '<b>' + t.replace('X', 'X') + '</b></span>'; }).join('');
+  return '<div class="jpcard"><div class="barraf" style="justify-content:space-between"><b style="font-size:16px">Jogo perfeito da rodada' + (C.aberto ? '' : ' (concurso ' + C.c + ')') + '</b><label class="lb sub">até <select id="vlorcp" class="sel">' + opts + '</select></label></div>' +
+    '<div class="jpk"><span><b>' + ns + '+' + m.d + '+' + m.t + '</b>secos+duplos+triplos</span><span><b>' + brl(m.custo) + '</b>' + (m.custo / 2 > MAXC ? 'vira ' + vlDividir(m.sel, P).length + ' volantes' : '1 volante') + '</span><span><b>' + pc(est.p14, 2) + '</b>chance de 14</span><span><b>' + pc(est.p13, 1) + '</b>13 ou 14</span></div>' +
+    '<div class="jpmini">' + mini + '</div><div class="barraf"><button class="btn pri" id="vlcarp">Carregar no volante</button><span class="sub">a melhor combinação de secos, duplos e triplos para esse valor</span></div></div>';
 }
 function vlGera(B, P, C, m) {
   var r;
