@@ -762,7 +762,7 @@ function cardTermometro() {
   var best = (d.orcamentos || []).reduce(function (a, o) { return !a || o.retorno > a.retorno ? o : a; }, null);
   var hist = { baixo: 'No histórico, semanas assim devolveram 38% a 62% do que se gastou.', medio: 'No histórico, semanas assim devolveram só 10% a 17%: as piores para jogar alto.', alto: 'No histórico, semanas assim devolveram 109% (base 4+4+6) a 203% (6+4+4) — poucos 14, mas é onde o dinheiro aparece.' }[faixa[0]];
   var rec = d.apostar > 0 ? 'Apostar ' + brl(d.apostar) + ' (cofrinho com ' + brl(d.saldo) + ')' : 'Guardar: cofrinho com ' + brl(d.saldo) + '. Jogo pequeno só se quiser (jogo perfeito até R$ 200).';
-  var bol = faixa[0] === 'alto' ? '<div class="sub" style="margin-top:6px"><b>Sugestão:</b> semana boa para um <b>bolão em cotas</b> com cartela grande (R$ 2.592 a R$ 11.664) — monte no desdobre e divida nas cotas abaixo dos volantes.</div>' : '';
+  var bol = faixa[0] === 'alto' ? '<div class="sub" style="margin-top:6px"><b>Sugestão:</b> semana boa para usar o que o cofrinho guardou num <b>desdobre espalhado maior</b> (R$ 400 = 20% de chance de 13+, R$ 800 = 26%, R$ 1.600 = 33%, no 1284).</div>' : '<div class="sub" style="margin-top:6px">Semana fraca: guarde os R$ 200 no cofrinho para uma semana de prêmio alto.</div>';
   var w = Math.round(pct * 100);
   return '<div class="card termo"><div class="barraf" style="justify-content:space-between"><b style="font-size:17px">Termômetro da semana — concurso ' + S.concurso + '</b><span class="chip" style="background:' + faixa[1] + ';color:#fff">' + faixa[2] + '</span></div>' +
     '<div class="tbar"><i style="left:' + w + '%"></i><span>baixo</span><span>médio</span><span>alto</span></div>' +
