@@ -1,6 +1,6 @@
 {
  "concurso": 1284,
- "atualizado_utc": "2026-11-22T21:33Z",
+ "atualizado_utc": "2026-11-23T00:48Z",
  "jogos": [
   {
    "jogo": 1,
@@ -115,21 +115,24 @@
    "mandante": "FLUMINENSE/RJ",
    "visitante": "MIRASSOL/SP",
    "inicio_utc": "2026-11-22T21:30Z",
-   "situacao": "ao vivo 2‎’‎",
+   "situacao": "encerrado",
    "placar": [
-    0,
+    1,
     0
    ],
-   "resultado": "X"
+   "resultado": "1"
   },
   {
    "jogo": 11,
    "mandante": "BRAGANTINO/SP",
    "visitante": "VASCO DA GAMA/RJ",
    "inicio_utc": "2026-11-22T22:30Z",
-   "situacao": "não começou",
-   "placar": null,
-   "resultado": null
+   "situacao": "encerrado",
+   "placar": [
+    1,
+    0
+   ],
+   "resultado": "1"
   },
   {
    "jogo": 12,
@@ -148,22 +151,22 @@
    "mandante": "ATALANTA BERGAMAS",
    "visitante": "INTER DE MILÃO",
    "inicio_utc": "2026-11-22T19:45Z",
-   "situacao": "ao vivo 90‎’‎",
+   "situacao": "encerrado",
    "placar": [
-    3,
+    4,
     4
    ],
-   "resultado": "2"
+   "resultado": "X"
   },
   {
    "jogo": 14,
    "mandante": "GETAFE",
    "visitante": "ATLÉTICO MADRID",
    "inicio_utc": "2026-11-22T20:00Z",
-   "situacao": "ao vivo 73‎’‎",
+   "situacao": "encerrado",
    "placar": [
     0,
-    2
+    3
    ],
    "resultado": "2"
   }
