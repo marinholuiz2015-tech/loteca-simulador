@@ -26,6 +26,15 @@ DESTINO = os.path.join(RAIZ, "docs", "dados", "painel.json")
 R = "1X2"
 
 
+def duplo_regra(r):
+    """Duplo sempre = favorito + empate (validado: em 2.176 jogos indecisos acertou 74,1% contra 67,9% do 1-2;
+    McNemar z=2,33). Recalcula aqui para que previsoes gravadas antes da regra (ex.: 1284) nao mostrem 1-2."""
+    p = [float(r["p1"]), float(r["px"]), float(r["p2"])]
+    f = max(range(3), key=lambda k: p[k])
+    par = [f, 1] if f != 1 else [1, 0 if p[0] >= p[2] else 2]
+    return "".join(c for c in "1X2" if "1X2".index(c) in par)
+
+
 def ler_json(arq):
     try:
         return json.load(open(arq, encoding="utf-8"))
@@ -48,7 +57,7 @@ def semana():
             alertas[int(m.group(1))].append(m.group(2).strip())
     jogos = [{"jogo": int(r["jogo"]), "mandante": r["mandante"], "visitante": r["visitante"],
               "p": [round(float(r["p1"]), 4), round(float(r["px"]), 4), round(float(r["p2"]), 4)],
-              "favorito": r.get("favorito"), "classe": r.get("classe"), "duplo": r.get("duplo_sugerido"),
+              "favorito": r.get("favorito"), "classe": r.get("classe"), "duplo": duplo_regra(r),
               "alertas": alertas.get(int(r["jogo"]), [])} for r in linhas]
     return {"concurso": c, "jogos": jogos,
             "decisao": ler_json(os.path.join(SAIDA, f"concurso_{c}_decisao.json")),
