@@ -1,0 +1,42 @@
+name: Pilares sem odds (xG, dominio, forma...) - coleta e teste
+
+on:
+  schedule:
+    - cron: "13 9 * * 2"     # terca 6h13 de Brasilia: jogos do fim de semana ja encerrados
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gravar-repositorio
+  cancel-in-progress: false
+
+jobs:
+  pilares:
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Dependencias
+        run: pip install -q requests numpy
+      - name: Coleta FotMob (retoma de onde parou; Brasil e Europa)
+        run: |
+          timeout 100m python coleta/fotmob_xg.py || echo "coleta parou no limite (continua na proxima semana)"
+      - name: Base de odds de fechamento (para a comparacao)
+        run: timeout 300 python coleta/futebol_data.py historico || echo "football-data incompleto"
+      - name: Teste dos pilares no tempo
+        run: timeout 30m python motor/pilares.py || echo "teste dos pilares falhou nesta rodada"
+      - name: Pilares do concurso aberto
+        run: timeout 300 python motor/pilares.py --aberto || echo "sem concurso aberto com dados"
+      - name: Gravar
+        run: |
+          git config user.name "loteca-bot"
+          git config user.email "loteca-bot@users.noreply.github.com"
+          git add coleta/dados/fotmob_jogos.csv motor/pilares.md motor/pilares.json docs/dados/pilares.json 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Pilares sem odds (automatico)"
+          for i in 1 2 3; do git pull --rebase -q && git push -q && break; sleep 5; done

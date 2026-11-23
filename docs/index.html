@@ -186,6 +186,25 @@ function abaVivo() {
     '<div class="rolagem"><table><thead><tr><th>#</th><th>Jogo</th><th>Placar</th><th>Situação</th><th>Favorito do modelo</th><th>Jogo perfeito</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div></div>';
 }
 
+var PIL = null;
+function cardPilares() { // opiniao de cada vertente, jogo a jogo, lado a lado
+  if (!PIL || !D.semana || PIL.concurso !== D.semana.concurso) return '<div class="card"><h2>Pilares do jogo</h2><p class="sub">Os pilares sem odds deste concurso ainda não foram calculados.</p></div>';
+  var J = semanaJogos(), por = {}; PIL.jogos.forEach(function (g) { por[g.jogo] = g; });
+  var cor = function (v, a, b) { return v == null ? '<td class="wait">—</td>' : '<td style="color:' + (v > a ? '#0B6B50' : (v < b ? '#B42318' : '#374151')) + ';font-weight:600">' + v + '</td>'; };
+  var sn = function (v, d) { return v == null ? null : (v > 0 ? '+' : '') + v.toFixed(d); };
+  var lin = J.map(function (j) { var g = por[j.jogo] || {}, x = g.x || {}, pm = j.p, pp = g.p;
+    var fm = R[fav(pm)], fp = pp ? R[fav(pp)] : null, briga = pp && fp !== fm, eqp = pp && Math.max.apply(null, pp) < 0.42 && Math.max.apply(null, pm) > 0.55;
+    return '<tr' + (briga || eqp ? ' style="background:#FFF7E6"' : '') + '><td>' + j.jogo + '</td><td>' + esc(nome2(j.mandante)) + ' × ' + esc(nome2(j.visitante)) + '</td><td>' + barra(pm) + '</td><td>' + (pp ? barra(pp) : '<span class="sub">' + (g.jogos_base ? 'sem histórico (' + g.jogos_base.join('/') + ' jogos)' : '—') + '</span>') + '</td>' +
+      cor(x.elo != null ? sn(x.elo * 100, 0) : null, 50, -50).replace('>' + sn(x.elo * 100, 0) + '<', '>' + sn(x.elo * 100, 0) + '<') +
+      cor(sn(x.xg_saldo, 2), 0.3, -0.3) + cor(x.dom != null ? sn(x.dom * 100, 0) : null, 5, -5) + cor(sn(x.forma5, 1), 0.5, -0.5) +
+      cor(sn(x.descanso, 1), 1.5, -1.5) + '<td>' + (x.copa ? (x.copa > 0 ? 'mandante' : 'visitante') : '') + '</td><td>' + (x.viagem != null ? Math.round(x.viagem * 1000) + ' km' : '') + '</td><td>' + (x.sintetico ? 'sim' : '') + '</td>' +
+      '<td>' + (briga ? '<b>discordam</b>' : (eqp ? '<b>pilares: equilibrado</b>' : '')) + '</td></tr>'; }).join('');
+  var t = PIL.teste || {}, tt = t.todos || {}, od = t.odds || {};
+  return '<div class="card"><h2>Pilares do jogo — concurso ' + PIL.concurso + '</h2><p class="sub">Cada vertente separada. "Mercado" = odds; "Pilares" = força própria, xG, domínio, forma, calendário, viagem, gramado e árbitro juntos, <b>sem nenhuma odd</b>. Linha amarela = as vertentes discordam.' +
+    (tt.acerto ? ' No teste (' + (t.jogos_modelo || '') + ' jogos, sempre ajustando só com o passado), os pilares acertaram o favorito ' + pc(tt.acerto, 1) + (od.acerto_odds ? ' e as odds ' + pc(od.acerto_odds, 1) + ' nos mesmos jogos' : '') + '.' : '') + '</p>' +
+    '<div class="rolagem"><table><thead><tr><th>#</th><th>Jogo</th><th>Mercado</th><th>Pilares (sem odds)</th><th>Elo</th><th>Saldo xG</th><th>Domínio</th><th>Forma</th><th>Descanso</th><th>Copa perto</th><th>Viagem</th><th>Sintético</th><th></th></tr></thead><tbody>' + lin + '</tbody></table></div>' +
+    '<p class="sub">Elo, saldo de xG (últimos 8), domínio (pontos % de toques na área), forma (pontos por jogo, últimos 5) e descanso (dias): diferença mandante − visitante; verde favorece o mandante, vermelho o visitante.</p></div>';
+}
 function abaSemana() {
   var S = D.semana, el = document.getElementById('semana');
   if (!S) { el.innerHTML = '<div class="card">Sem concurso aberto.</div>'; return; }
@@ -207,7 +226,7 @@ function abaSemana() {
       F.map(function (x) { g += x.valor; p += x.premio || 0; return '<tr><td>' + x.concurso + '</td><td>' + esc(x.tipo) + '</td><td>' + brl(x.valor) + ' (' + esc(x.estrutura) + ')</td><td>' + (x.pontos == null ? 'aguardando' : x.pontos) + '</td><td>' + (x.premio == null ? '—' : brl(x.premio)) + '</td></tr>'; }).join('') +
       '</tbody></table></div><p class="sub">Total apostado ' + brl(g) + ' · prêmios ' + brl(p) + ' · saldo ' + brl(p - g) + '</p></div>';
   }
-  el.innerHTML = h;
+  h = cardPilares() + h; el.innerHTML = h;
 }
 
 function abaDesdobre() {
@@ -927,7 +946,7 @@ function tudo() { abaVolante(); abaApostas(); abaVivo(); abaSemana(); abaMeuJogo
 function carregaVivo() { return fetch('dados/ao_vivo.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (v) { V = v; if (D) abaVivo(); }); }
 fetch('dados/painel.json?t=' + Date.now()).then(function (r) { return r.json(); }).then(function (d) {
   D = d; document.getElementById('gerado').textContent = 'Dados de ' + d.gerado + ' · concurso aberto ' + (d.semana ? d.semana.concurso : '—');
-  return carregaVivo();
+  return fetch('dados/pilares.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (p) { PIL = p; return carregaVivo(); });
 }).then(function () { tudo(); if (location.hash === '#enviar') telaEnviar(); }).catch(function (e) { document.getElementById('gerado').textContent = 'Não foi possível carregar os dados: ' + e; });
 setInterval(carregaVivo, 60000);
 </script>
