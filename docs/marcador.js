@@ -71,9 +71,9 @@
   const carrega = lista => {
     if (!lista.length) { msg('Não encontrei volantes válidos (cada linha precisa ter 14 jogos).', true); return; }
     if (!st.rep) { const vis = {}; lista = lista.filter(v => vis[v] ? false : (vis[v] = 1)); }
-    const sem = lista.filter(v => combos(v) < 2).length;
+    const sem = lista.filter(v => combos(v) < 2).length, gde = lista.filter(v => combos(v) > 864).length;
     st.vols = lista; st.status = lista.map(() => ''); st.i = 0; salva(); desenha();
-    msg(lista.length + ' volantes carregados.' + (sem ? ' Atenção: ' + sem + ' sem nenhum duplo (a Caixa exige pelo menos 1 duplo).' : ''), !!sem);
+    msg(lista.length + ' volantes carregados.' + (sem ? ' Atenção: ' + sem + ' sem nenhum duplo (a Caixa exige pelo menos 1 duplo).' : '') + (gde ? ' Atenção: ' + gde + ' passam de 864 combinações (limite da Caixa por volante): desdobre no painel antes.' : ''), !!(sem || gde));
   };
   q('[data-a=arq]').onclick = () => q('[data-a=file]').click();
   q('[data-a=file]').onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => carrega(parse(r.result)); r.readAsText(f); e.target.value = ''; };
