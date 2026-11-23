@@ -126,6 +126,7 @@ jobs:
           timeout 420 python motor/camada2.py || echo "camada 2 sem dados suficientes nesta rodada"
           timeout 300 python motor/camada3.py || echo "camada 3 sem dados suficientes nesta rodada"
           timeout 240 python motor/desdobre.py || echo "desdobre sem dados nesta rodada"
+          timeout 300 python motor/pilares.py --aberto || echo "pilares do concurso aberto: sem dados nesta rodada"
           timeout 420 python motor/painel_dados.py || echo "painel sem atualizacao nesta rodada"
           timeout 120 python coleta/ao_vivo.py --forcar || echo "placar indisponivel"
 
