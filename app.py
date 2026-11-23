@@ -1906,6 +1906,7 @@ def historico():
 # Os dados vem do repositorio (docs/dados), buscados na hora com cache de 60 s: o painel fica
 # atualizado sem precisar de novo deploy.
 import hmac as _hmac
+import json
 from flask import Response, redirect
 
 _PAINEL_RAW = "https://raw.githubusercontent.com/marinholuiz2015-tech/loteca-simulador/main/docs/"
@@ -1951,6 +1952,63 @@ def _painel_arquivo(caminho, tipo):
         return Response("Dados indisponiveis no momento.", 502, {"Content-Type": "text/plain; charset=utf-8"})
 
 
+_vivo_cache = {"t": 0, "dados": None}
+
+
+def _placar_fotmob(match_id):
+    d = requests.get("https://www.fotmob.com/api/data/matchDetails", params={"matchId": match_id}, timeout=12,
+                     headers={"User-Agent": "Mozilla/5.0 (painel pessoal; consulta leve)"}).json()
+    st = d.get("header", {}).get("status", {}); tm = d.get("header", {}).get("teams", [])
+    if st.get("cancelled"):
+        return {"situacao": "cancelado"}
+    if not (st.get("started") and len(tm) == 2):
+        return {"situacao": "não começou", "placar": None, "resultado": None}
+    gc, gf = tm[0].get("score"), tm[1].get("score")
+    curto = str((st.get("liveTime") or {}).get("short") or "")
+    curto = "".join(ch for ch in curto if ch.isprintable() and ch not in "\u200e\u200f").strip()
+    return {"placar": [gc, gf], "resultado": "1" if gc > gf else ("X" if gc == gf else "2"),
+            "situacao": "encerrado" if st.get("finished") else ("ao vivo " + curto).strip()}
+
+
+def _painel_ao_vivo():
+    """Placar ao vivo: usa o arquivo do GitHub e, se ele estiver com mais de 4 min e houver jogo na janela,
+    atualiza direto no FotMob (cache de 2 min). Se o FotMob falhar, fica o arquivo do GitHub."""
+    import datetime as _dt
+    base = _painel_arquivo("dados/ao_vivo.json", "application/json; charset=utf-8")
+    if base.status_code != 200:
+        return base
+    agora = time.time()
+    if _vivo_cache["dados"] and agora - _vivo_cache["t"] < 120:
+        return Response(_vivo_cache["dados"], 200, {"Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store"})
+    try:
+        d = json.loads(base.get_data())
+        ag = _dt.datetime.now(_dt.timezone.utc).replace(tzinfo=None)
+        atual = _dt.datetime.strptime(d.get("atualizado_utc", "2000-01-01T00:00Z"), "%Y-%m-%dT%H:%MZ")
+        if (ag - atual).total_seconds() < 240:
+            return base
+        mudou = False
+        for g in d.get("jogos", []):
+            if g.get("situacao") == "encerrado" or not g.get("match_id"):
+                continue
+            try:
+                ini = _dt.datetime.strptime(g["inicio_utc"], "%Y-%m-%dT%H:%MZ")
+            except Exception:
+                continue
+            if not (ini - _dt.timedelta(minutes=15) <= ag <= ini + _dt.timedelta(hours=3, minutes=30)):
+                continue
+            try:
+                g.update(_placar_fotmob(g["match_id"])); mudou = True
+            except Exception:
+                pass
+        if mudou:
+            d["atualizado_utc"] = ag.strftime("%Y-%m-%dT%H:%MZ"); d["fonte"] = "painel (FotMob direto)"
+        corpo = json.dumps(d, ensure_ascii=False).encode("utf-8")
+        _vivo_cache.update(t=agora, dados=corpo)
+        return Response(corpo, 200, {"Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store"})
+    except Exception:
+        return base
+
+
 @app.route("/painel")
 def painel_raiz():
     return redirect("/painel/", code=302)
@@ -1969,6 +2027,8 @@ def painel_dados(nome):
         return _painel_pedir_senha()
     if nome not in ("painel.json", "ao_vivo.json", "desdobre.csv"):
         return Response("Nao encontrado.", 404)
+    if nome == "ao_vivo.json":
+        return _painel_ao_vivo()
     tipo = "text/csv; charset=utf-8" if nome.endswith(".csv") else "application/json; charset=utf-8"
     return _painel_arquivo("dados/" + nome, tipo)
 

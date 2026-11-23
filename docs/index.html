@@ -163,18 +163,23 @@ function abaVivo() {
   semanaJogos().forEach(function (j, i) {
     var g = res[j.jogo] || {}, r = g.resultado, enc = g.situacao === 'encerrado';
     var s = simp ? simp[i] : '';
-    var st = r == null ? '<span class="wait">aguardando</span>' : (s.indexOf(r) >= 0 ? '<span class="ok">✓ acertando</span>' : '<span class="no">✗ errando</span>');
+    var fv = R[fav(j.p)], quase = enc ? '' : ' agora';
+    var st = r == null ? '<span class="wait">aguardando</span>' : (s.indexOf(r) >= 0 ? '<span class="ok">✓ ' + (enc ? 'acertou' : 'acertando agora') + '</span>' : '<span class="no">✗ ' + (enc ? 'errou' : 'errando agora') + '</span>');
+    var stF = r == null ? '' : (fv === r ? '<span class="ok">✓</span>' : '<span class="no">✗</span>');
     if (r != null && s.indexOf(r) >= 0) ptsS++; if (r != null && enc && s.indexOf(r) < 0) perdS++;
     var sit = g.situacao && g.situacao.indexOf('ao vivo') === 0 ? '<span class="ao">' + esc(g.situacao) + '</span>' : esc(g.situacao || '');
-    linhas += '<tr><td>' + j.jogo + '</td><td>' + nome(j.mandante) + ' × ' + nome(j.visitante) + '</td><td><b>' + (g.placar ? g.placar.join(' × ') : '—') + '</b></td><td>' + sit + '</td><td>' + marca(s, r) + '</td><td>' + st + '</td></tr>';
+    linhas += '<tr><td>' + j.jogo + '</td><td>' + nome(j.mandante) + ' × ' + nome(j.visitante) + '</td><td><b>' + (g.placar ? g.placar.join(' × ') : '—') + '</b></td><td>' + sit + '</td><td>' + fv + ' ' + stF + '</td><td>' + marca(s, r) + '</td><td>' + st + '</td></tr>';
   });
   var melhor = 0, n13 = 0;
   vols.forEach(function (v) { var p = 0; semanaJogos().forEach(function (j, i) { var r = (res[j.jogo] || {}).resultado; if (r != null && v[i].indexOf(r) >= 0) p++; }); if (p > melhor) melhor = p; });
   var jogados = V.jogos.filter(function (g) { return g.resultado != null; }).length;
-  el.innerHTML = '<div class="card"><h2>Concurso ' + V.concurso + ' — ao vivo</h2><p class="sub">Atualizado ' + esc(V.atualizado_utc.replace('T', ' ').replace('Z', ' UTC')) + ' · ' + jogados + ' de 14 jogos com placar. Verde = nossa marcação; contorno preto = resultado do momento dentro dela; contorno vermelho = fora dela.</p>' +
+  var tAt = Date.parse(V.atualizado_utc.replace('Z', ':00Z')), minAt = Math.round((Date.now() - tAt) / 60000), pend = V.jogos.some(function (g) { return g.situacao !== 'encerrado' && g.situacao !== 'cancelado'; });
+  var hora = isNaN(tAt) ? esc(V.atualizado_utc) : new Date(tAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  var velho = pend && minAt > 30 ? '<div class="vaviso er" style="margin:8px 0">Placar atrasado: a última atualização foi há ' + minAt + ' min. Os jogos "ao vivo" abaixo podem já ter mudado. O painel tenta atualizar sozinho a cada minuto.</div>' : '';
+  el.innerHTML = '<div class="card"><h2>Concurso ' + V.concurso + ' — ao vivo</h2>' + velho + '<p class="sub">Atualizado ' + hora + ' (horário de Brasília) · ' + jogados + ' de 14 jogos com placar. Verde = nossa marcação; contorno preto = resultado do momento dentro dela; contorno vermelho = fora dela.</p>' +
     '<div class="grid" style="margin-bottom:12px"><div class="stat"><span>Jogo perfeito (' + (D.semana.desdobre ? esc(D.semana.desdobre.simples.estrutura) : '') + ')</span><b>' + ptsS + ' pts</b><span>' + perdS + ' erro(s) já confirmado(s)</span></div>' +
     '<div class="stat"><span>Desdobre espalhado — melhor volante</span><b>' + melhor + ' pts</b><span>de ' + jogados + ' jogos com placar</span></div></div>' +
-    '<div class="rolagem"><table><thead><tr><th>#</th><th>Jogo</th><th>Placar</th><th>Situação</th><th>Nossa marcação</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div></div>';
+    '<div class="rolagem"><table><thead><tr><th>#</th><th>Jogo</th><th>Placar</th><th>Situação</th><th>Favorito do modelo</th><th>Jogo perfeito</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div></div>';
 }
 
 function abaSemana() {
