@@ -6,6 +6,8 @@
 <title>Loteca Elite Pro — Painel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--verde:#0B6B50;--verde2:#E8F3EF;--txt:#111827;--sub:#4B5563;--borda:#E5E7EB;--fundo:#F4F5F7;--erro:#B42318;--erro2:#FDECEA;--aviso:#7A3E06;--aviso2:#FFF7E6}
 *{box-sizing:border-box}
@@ -48,6 +50,51 @@ tr.linha{cursor:pointer}tr.linha:hover{background:#F9FAFB}
 .vol td.d{background:var(--verde);color:#fff;font-weight:700;border-radius:4px}
 .ao{display:inline-flex;align-items:center;gap:6px}.ao::before{content:"";width:8px;height:8px;border-radius:50%;background:#DC2626}
 [hidden]{display:none!important}
+.btn{min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid #D1D5DB;background:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.btn.pri{background:var(--verde);color:#fff;border:0}
+.tg{min-width:40px;min-height:40px;border-radius:8px;font:inherit;font-weight:700;cursor:pointer;background:#fff;color:#6B7280;border:1px solid #D1D5DB}
+.tg.on{background:var(--verde);color:#fff;border:0}
+.graf{position:relative;height:300px}
+.vols{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.volante{border:2px solid #B42318;border-radius:10px;padding:10px;background:#FFFDF8;break-inside:avoid}
+.volante h4{margin:0 0 6px;font-size:13px;color:#B42318;display:flex;justify-content:space-between}
+.volante table{font-size:12px}.volante td{padding:2px 3px;border:0}
+.cx{display:inline-block;width:22px;height:16px;border:1.5px solid #B42318;border-radius:3px;text-align:center;font-size:10px;line-height:14px;color:#B42318}
+.cx.m{background:#111827;border-color:#111827;color:#fff}
+.barraf{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+select.sel{min-height:44px;padding:8px 12px;border:1px solid #D1D5DB;border-radius:8px;font:inherit;font-size:15px;background:#fff}
+.vtopo{padding:12px 16px}.lb{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+.vgrid{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:20px;align-items:start}
+.vcard{background:#FFFDF8;border:2px solid #B42318;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(180,35,24,.08)}
+.vhead{background:#B42318;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+.vhead b{font-family:'Space Grotesk',Inter,sans-serif;font-size:22px;letter-spacing:.08em;margin-right:10px}.vhead span{font-size:13px;opacity:.9}
+.vsum{display:flex;gap:6px}.vsum span{background:rgba(255,255,255,.18);border-radius:999px;padding:2px 10px;font-weight:700;font-size:13px}
+.vcols,.vrow{display:grid;grid-template-columns:26px minmax(0,1fr) 54px 54px 54px minmax(0,1fr) 22px;gap:6px;align-items:center;padding:0 12px}
+.vcols{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#B42318;font-weight:700;padding-top:10px;padding-bottom:4px}.vcols span:nth-child(n+3):nth-child(-n+5){text-align:center}
+.vcols span:nth-child(6){text-align:left}.vcols span:nth-child(2){text-align:right}
+.vrow{padding-top:4px;padding-bottom:4px;border-top:1px dashed #F1C7C2}.vrow:hover{background:#FFF4E5}
+.vrow.acertou{background:#ECFDF5}.vrow.errou{background:#FEF2F2}
+.vn{font-weight:700;color:#B42318;font-size:13px}.vt{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vt.m{text-align:right}
+.vbx{height:44px;border:2px solid #B42318;border-radius:8px;background:#fff;color:#B42318;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;font:inherit;padding:0}
+.vbx b{font-size:15px}.vbx small{font-size:10px;margin-top:2px;opacity:.8}.vbx:hover{background:#FFF1EE}
+.vbx.on{background:#111827;border-color:#111827;color:#fff}.vbx.res{box-shadow:0 0 0 3px #16A34A}
+.vtp{font-size:11px;font-weight:800;text-align:center;border-radius:5px}.vtp.D{background:#FEF3C7;color:#92400E}.vtp.T{background:#FEE2E2;color:#B42318}.vtp.S{color:#9CA3AF}
+.vfoot{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;padding:12px;border-top:2px solid #B42318;margin-top:6px}
+.vk{background:#fff;border:1px solid #F1C7C2;border-radius:10px;padding:8px;text-align:center}.vk span{display:block;font-size:11px;color:#6B7280;text-transform:uppercase}.vk b{font-family:'Space Grotesk',Inter,sans-serif;font-size:19px}
+.vaviso{margin:0 12px 10px;padding:8px 12px;border-radius:10px;font-size:14px;background:#F3F4F6;color:#374151}.vaviso:empty{display:none}
+.vaviso.ok{background:#ECFDF5;color:#065F46}.vaviso.er{background:#FEF2F2;color:#991B1B}.vaviso.info{background:#EFF6FF;color:#1E40AF}
+.vbt{padding:0 12px 14px}
+.vpanel h2{margin-bottom:8px}.vmodos{display:grid;gap:8px;margin-bottom:12px}
+.vmodo{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:2px solid var(--borda);background:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;font:inherit}
+.vmodo b{font-size:15px}.vmodo span{font-size:13px;color:var(--sub)}.vmodo.on{border-color:var(--verde);background:var(--verde2)}
+.btn.big{font-size:16px;padding:10px 26px}.btn:disabled{opacity:.45;cursor:default}
+#vlvols{margin-top:4px}
+@media (min-width:981px){.vpanel{position:sticky;top:84px}}
+@media (max-width:980px){.vgrid{grid-template-columns:1fr}}
+@media (max-width:700px){nav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}nav button{white-space:nowrap;flex:none}.vhead b{font-size:18px}.vsum span{padding:2px 7px;font-size:12px}.vhead{flex-wrap:wrap;gap:6px}}
+@media (max-width:520px){.vcols,.vrow{grid-template-columns:22px minmax(0,1fr) 44px 44px 44px minmax(0,1fr);gap:4px;padding:0 8px}.vtp,.vcols span:last-child{display:none}.vt{font-size:12px}.vbx{height:42px}}
+@media print{body{background:#fff}nav,header,.noprint,.aba:not(.imprimir){display:none!important}.imprimir{display:block!important}.card{border:0;padding:0}.vols{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:900px){.ap-grid{grid-template-columns:1fr!important}}
 @media (max-width:640px){h1{font-size:24px}.stat b{font-size:22px}}
 </style>
 </head>
@@ -58,17 +105,23 @@ tr.linha{cursor:pointer}tr.linha:hover{background:#F9FAFB}
 <div class="sub" id="gerado">Carregando…</div>
 </header>
 <nav role="tablist" aria-label="Seções">
-<button role="tab" data-aba="vivo" aria-selected="true">Ao vivo</button>
-<button role="tab" data-aba="semana" aria-selected="false">Jogo da semana</button>
-<button role="tab" data-aba="desdobre" aria-selected="false">Desdobre</button>
+<button role="tab" data-aba="volante" aria-selected="true">Volante</button>
+<button role="tab" data-aba="apostas" aria-selected="false">Lista de apostas</button>
+<button role="tab" data-aba="vivo" aria-selected="false">Ao vivo</button>
+<button role="tab" data-aba="semana" aria-selected="false">Análise da semana</button>
 <button role="tab" data-aba="historico" aria-selected="false">Histórico</button>
 <button role="tab" data-aba="erros" aria-selected="false">Onde erramos</button>
+<button role="tab" data-aba="financeiro" aria-selected="false">Financeiro</button>
 <button role="tab" data-aba="kpis" aria-selected="false">Sites e KPIs</button>
 </nav>
 
-<section id="vivo" class="aba"></section>
+<section id="volante" class="aba"></section>
+<section id="vivo" class="aba" hidden></section>
 <section id="semana" class="aba" hidden></section>
+<section id="apostas" class="aba" hidden></section>
+<section id="meujogo" class="aba" hidden></section>
 <section id="desdobre" class="aba" hidden></section>
+<section id="financeiro" class="aba" hidden></section>
 <section id="historico" class="aba" hidden></section>
 <section id="erros" class="aba" hidden></section>
 <section id="kpis" class="aba" hidden></section>
@@ -92,6 +145,7 @@ document.querySelectorAll('nav button').forEach(function (b) {
   b.addEventListener('click', function () {
     document.querySelectorAll('nav button').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
     document.querySelectorAll('.aba').forEach(function (s) { s.hidden = s.id !== b.dataset.aba; });
+    if (D) { var f = { financeiro: abaFinanceiro, historico: abaHistorico, erros: abaErros }[b.dataset.aba]; if (f) f(); }
   });
 });
 
@@ -159,9 +213,8 @@ function abaDesdobre() {
     '<div class="grid"><div class="stat"><span>Jogo perfeito ' + esc(s.estrutura) + ' (' + brl(s.custo) + ')</span><b>' + pc(s.p13, 1) + '</b><span>chance de 13 ou 14 · 14: ' + pc(s.p14, 2) + '</span></div>' +
     '<div class="stat" style="background:var(--verde2)"><span>Desdobre espalhado (' + brl(e.custo) + ')</span><b>' + pc(e.p13, 1) + '</b><span>chance de 13 ou 14 · 14: ' + pc(e.p14, 2) + '</span></div>' +
     '<div class="stat"><span>No histórico (' + H.length + ' concursos)</span><b>' + he13 + ' × ' + hs13 + '</b><span>vezes com 13 ou 14 (desdobre × jogo perfeito) · 14: ' + he14 + ' × ' + hs14 + '</span></div></div>' +
-    '<h3>Os volantes (duplo em verde)</h3><div class="rolagem"><table class="vol"><thead><tr><th>Vol.</th>' + S.jogos.map(function (j) { return '<th style="text-align:center">' + j.jogo + '</th>'; }).join('') + '</tr></thead><tbody>' +
-    e.volantes.map(function (v, n) { return '<tr><td>' + (n + 1) + '</td>' + v.map(function (t) { return '<td class="' + (t.length > 1 ? 'd' : '') + '">' + t + '</td>'; }).join('') + '</tr>'; }).join('') +
-    '</tbody></table></div><p class="sub">Arquivo para imprimir: <a href="dados/desdobre.csv" download>desdobre.csv</a>. A "garantia de 13" dos desdobres comuns só vale se todos os secos baterem; o espalhado troca essa garantia por mais chance total.</p></div>';
+    '<h3>Volantes para jogar</h3><div id="dvols"></div></div>';
+  renderVolantes('dvols', e.volantes, 'loteca_' + S.concurso + '_desdobre', S.jogos);
 }
 
 var aberto = null;
@@ -170,6 +223,7 @@ function abaHistorico() {
   var n = H.length, m = function (k) { var v = H.filter(function (c) { return c[k] != null; }); return v.length ? (v.reduce(function (a, c) { return a + c[k]; }, 0) / v.length).toFixed(2).replace('.', ',') : '—'; };
   var h = '<div class="card"><h2>Histórico — ' + n + ' concursos</h2><p class="sub">Cada concurso com os pontos que nossos jogos fariam (só com as odds de antes do jogo). Clique num concurso para ver jogo a jogo onde acertamos e erramos.</p>' +
     '<div class="grid" style="margin-bottom:12px"><div class="stat"><span>Jogo perfeito (até R$ 200) — pontos médios</span><b>' + m('pts_simples') + '</b></div><div class="stat"><span>Cartela 6+4+4 (R$ 2.592) — pontos médios</span><b>' + m('pts_644') + '</b></div><div class="stat"><span>Desdobre espalhado (R$ 200) — pontos médios</span><b>' + m('pts_espalhado') + '</b></div></div>' +
+    '<div class="graf" style="margin-bottom:12px"><canvas id="ghist"></canvas></div>' +
     '<div class="rolagem"><table><thead><tr><th>Concurso</th><th>Data</th><th>Jogo perfeito</th><th>6+4+4</th><th>Desdobre</th><th>Zebras (prev.)</th><th>Ganhadores 14</th><th>Prêmio 14</th></tr></thead><tbody>';
   H.forEach(function (c) {
     var cor = function (p) { return p == null ? '—' : '<span class="' + (p >= 13 ? 'ok' : '') + '">' + p + '</span>'; };
@@ -181,6 +235,13 @@ function abaHistorico() {
     }
   });
   el.innerHTML = h + '</tbody></table></div></div>';
+  var Hc = H.slice(0, 120).reverse(), med = function (k) { var o = []; Hc.forEach(function (c, i) { var w = Hc.slice(Math.max(0, i - 9), i + 1).filter(function (x) { return x[k] != null; }); o.push(w.length ? w.reduce(function (a, x) { return a + x[k]; }, 0) / w.length : null); }); return o; };
+  grafico('ghist', { type: 'line', data: { labels: Hc.map(function (c) { return c.c; }), datasets: [
+    { label: 'Desdobre R$ 200 (pontos)', data: Hc.map(function (c) { return c.pts_espalhado; }), borderColor: '#1D4ED8', backgroundColor: '#1D4ED8', showLine: false, pointRadius: 3 },
+    { label: 'Jogo perfeito (pontos)', data: Hc.map(function (c) { return c.pts_simples; }), borderColor: '#9CA3AF', backgroundColor: '#9CA3AF', showLine: false, pointRadius: 2 },
+    { label: 'Média de 10 concursos — desdobre', data: med('pts_espalhado'), borderColor: '#0B6B50', pointRadius: 0, borderWidth: 3 },
+    { label: '13 pontos', data: Hc.map(function () { return 13; }), borderColor: '#B42318', borderDash: [6, 4], pointRadius: 0, borderWidth: 1 }] },
+    options: { scales: { y: { min: 5, max: 14, ticks: { stepSize: 1 } } } } });
   el.querySelectorAll('tr.linha').forEach(function (tr) {
     var f = function () { var c = Number(tr.dataset.c); aberto = aberto === c ? null : c; abaHistorico(); var a = el.querySelector('tr[data-c="' + c + '"]'); if (a) a.focus(); };
     tr.addEventListener('click', f); tr.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } });
@@ -196,9 +257,13 @@ function abaErros() {
     '<div class="grid" style="margin-top:14px"><div class="stat"><span>Secos errados que foram empate</span><b>' + pc(A.tipo_erro.empate / A.tipo_erro.total, 0) + '</b><span>' + A.tipo_erro.empate + ' de ' + A.tipo_erro.total + '</span></div>' +
     '<div class="stat"><span>Últimos ' + t.concursos + ' concursos: secos certos</span><b>' + pc(t.secos_real.real, 1) + '</b><span>previsto ' + pc(t.secos_real.previsto, 1) + '</span></div>' +
     '<div class="stat"><span>Últimos ' + t.concursos + ': zebras por concurso</span><b>' + String(t.zebras_reais).replace('.', ',') + '</b><span>previsto ' + String(t.zebras_previstas).replace('.', ',') + '</span></div></div>' +
-    '<h3>Pela confiança no favorito</h3>' + tab(A.faixas, 'Favorito com', 'faixa') +
+    '<h3>Pela confiança no favorito</h3><div class="graf" style="height:240px"><canvas id="gerr"></canvas></div>' + tab(A.faixas, 'Favorito com', 'faixa') +
     '<h3>Por liga</h3>' + tab(A.ligas, 'Liga', 'liga') +
     '<h3>Por lado do seco</h3>' + tab(A.lado.filter(function (x) { return x.n; }), 'Seco', 'lado') + '</div>';
+  grafico('gerr', { type: 'bar', data: { labels: A.faixas.map(function (x) { return x.faixa; }), datasets: [
+    { label: 'Acertaram', data: A.faixas.map(function (x) { return +(x.real * 100).toFixed(1); }), backgroundColor: '#0B6B50' },
+    { label: 'O motor previa', data: A.faixas.map(function (x) { return +(x.previsto * 100).toFixed(1); }), backgroundColor: '#C9CDD3' }] },
+    options: { scales: { y: { min: 0, max: 100, ticks: { callback: function (v) { return v + '%'; } } } } } });
 }
 
 function abaKpis() {
@@ -214,12 +279,625 @@ function abaKpis() {
   el.innerHTML = h;
 }
 
-function tudo() { abaVivo(); abaSemana(); abaDesdobre(); abaHistorico(); abaErros(); abaKpis(); }
+// ---------------------------------------------------------------- gráficos
+var GRAFS = {};
+function grafico(id, cfg) {
+  if (typeof Chart === 'undefined') return;
+  if (GRAFS[id]) GRAFS[id].destroy();
+  var el = document.getElementById(id); if (!el) return;
+  cfg.options = Object.assign({ responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Inter' } } } } }, cfg.options || {});
+  GRAFS[id] = new Chart(el, cfg);
+}
+
+// ---------------------------------------------------------------- volantes jogáveis
+function baixar(nome, texto, tipo) {
+  var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([texto], { type: tipo || 'text/plain;charset=utf-8' }));
+  a.download = nome; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function combinacoes(v) { var r = ['']; v.forEach(function (t) { var n = []; r.forEach(function (p) { t.split('').forEach(function (k) { n.push(p + k); }); }); r = n; }); return r; }
+function renderVolantes(alvo, vols, titulo, jogos) {
+  var el = document.getElementById(alvo); if (!el) return;
+  var nome = function (j) { return j ? nome2(j.mandante) + ' × ' + nome2(j.visitante) : ''; };
+  var custo = vols.reduce(function (a, v) { return a + combinacoes(v).length * 2; }, 0);
+  var cartoes = vols.map(function (v, n) {
+    return '<div class="volante"><h4><span>LOTECA · Volante ' + (n + 1) + '</span><span>' + brl(combinacoes(v).length * 2) + '</span></h4><table><tbody>' +
+      v.map(function (t, i) { var b = function (k, r) { return '<span class="cx' + (t.indexOf(k) >= 0 ? ' m' : '') + '">' + r + '</span>'; };
+        return '<tr><td style="width:18px;color:#6B7280">' + (i + 1) + '</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + nome(jogos[i]) + '</td><td>' + b('1', '1') + ' ' + b('X', 'X') + ' ' + b('2', '2') + '</td></tr>'; }).join('') +
+      '</tbody></table></div>';
+  }).join('');
+  el.innerHTML = '<div class="barraf noprint" style="margin:8px 0 12px"><b>' + vols.length + ' volantes · ' + brl(custo) + '</b>' +
+    '<button class="btn" data-a="lista">Levar para Apostas</button><button class="btn pri" data-a="caixa">Enviar para a Caixa</button><button class="btn" data-a="speed">Baixar para o SpeedLoto</button><button class="btn" data-a="imp">Imprimir volantes</button><button class="btn" data-a="txt">Baixar TXT (1 volante por linha)</button>' +
+    '<button class="btn" data-a="simples">Baixar TXT (apostas simples)</button><button class="btn" data-a="csv">Baixar planilha (CSV)</button><button class="btn" data-a="cop">Copiar texto</button><span class="sub" data-a="msg"></span></div>' +
+    '<p class="sub noprint"><b>SpeedLoto:</b> arquivo com um volante por linha, os 14 jogos separados por ponto e vírgula e as opções do duplo ou triplo separadas por ponto (ex.: <code>1;2.x;1;1;x;2;...</code>). No SpeedLoto, abra o arquivo pelo ícone da pasta em "Suas apostas". Volante no mesmo desenho do bilhete da Caixa (coluna 1, coluna do meio = empate, coluna 2). Para a lotérica: imprima e copie as marcas. Para programas de loteria: o TXT de 1 volante por linha traz as 14 marcações separadas por espaço (ex.: <code>1X 1 2 ...</code>); o TXT de apostas simples abre cada volante em todas as combinações (uma por linha, 14 letras).</p>' +
+    '<div class="vols">' + cartoes + '</div>';
+  var txt = vols.map(function (v) { return v.join(' '); }).join('\r\n');
+  // SpeedLoto: 14 jogos separados por ";"; duplo/triplo com as opcoes separadas por "." (ex.: 1;2.x;1;...); empate = x
+  var speed = vols.map(function (v) { return v.map(function (t) { return ['1', '2', 'X'].filter(function (k) { return t.indexOf(k) >= 0; }).map(function (k) { return k === 'X' ? 'x' : k; }).join('.'); }).join(';'); }).join('\r\n');
+  el.querySelector('[data-a=speed]').onclick = function () { baixar(titulo + '_speedloto.txt', speed + '\r\n'); };
+  el.querySelector('[data-a=caixa]').onclick = function () { mostraCaixa(el, speed, vols.length); };
+  var bl = el.querySelector('[data-a=lista]'); if (bl) bl.onclick = function () { if (alvo === 'apvols') { alert('Estes volantes já são a sua lista.'); return; } AP.lista = AP.lista.concat(vols.map(function (v) { return v.slice(); })); apSalva(); abaApostas(); el.querySelector('[data-a=msg]').textContent = vols.length + ' volantes levados para a aba Apostas ✓'; };
+  el.querySelector('[data-a=imp]').onclick = function () { document.querySelectorAll('.aba').forEach(function (s) { s.classList.toggle('imprimir', s.id === el.closest('.aba').id); }); window.print(); };
+  el.querySelector('[data-a=txt]').onclick = function () { baixar(titulo + '.txt', txt + '\r\n'); };
+  el.querySelector('[data-a=simples]').onclick = function () { baixar(titulo + '_simples.txt', vols.map(function (v) { return combinacoes(v).join('\r\n'); }).join('\r\n') + '\r\n'); };
+  el.querySelector('[data-a=csv]').onclick = function () { baixar(titulo + '.csv', 'volante;' + jogos.map(function (j, i) { return 'jogo_' + (i + 1); }).join(';') + ';valor\r\n' + vols.map(function (v, n) { return (n + 1) + ';' + v.join(';') + ';' + combinacoes(v).length * 2; }).join('\r\n') + '\r\n', 'text/csv;charset=utf-8'); };
+  el.querySelector('[data-a=cop]').onclick = function () { var m = el.querySelector('[data-a=msg]'); try { navigator.clipboard.writeText(txt).then(function () { m.textContent = 'Copiado ✓'; }); } catch (e) { m.textContent = 'Não foi possível copiar'; } };
+}
+var MARCADOR = "javascript:(() => {%0A  const TESTE = window.__LOTECA_TESTE;%0A  if (!TESTE && (!/loteriasonline%5C.caixa%5C.gov%5C.br/.test(location.host) || !/loteca/i.test(location.href))) { alert('Abra a Loteca nas Loterias Online da Caixa (ja logado) e clique de novo no Marcador Loteca.'); return; }%0A  const ant = document.getElementById('lep-marcador'); if (ant) { ant.remove(); return; }%0A  const PAINEL = 'https://loteca-simulador.onrender.com';%0A  const KEY = 'lep_marcador';%0A  const sleep = ms => new Promise(r => setTimeout(r, ms));%0A  let st = { vols: [], status: [], i: 0, ms: 120, rep: false };%0A  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.vols) st = Object.assign(st, s); } catch (e) {}%0A  const salva = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} };%0A  let rodando = false, pausar = false;%0A  const norm = t => { t = String(t || '').toUpperCase().replace(/[^12X]/g, ''); return ['1', 'X', '2'].filter(k => t.indexOf(k) >= 0).map(k => k === 'X' ? 'x' : k).join('.'); };%0A  const parse = txt => String(txt || '').split(/%5Cr?%5Cn/).map(l => l.trim()).filter(Boolean).map(l => {%0A    let p = l.split(/[;%5Ct,|]/).map(norm).filter(Boolean);%0A    if (p.length !== 14 && /^[12x]{14}$/i.test(l.replace(/%5Cs/g, ''))) p = l.replace(/%5Cs/g, '').split('').map(norm);%0A    if (p.length === 15) p = p.slice(1);%0A    return p.length === 14 ? p.join(';') : null;%0A  }).filter(Boolean);%0A  const combos = v => v.split(';').reduce((a, t) => a * t.split('.').length, 1);%0A  const custo = v => combos(v) * 2;%0A  const brl = n => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });%0A  const css = %60%23lep-marcador{position:fixed;top:12px;right:12px;bottom:12px;width:380px;z-index:2147483647;background:%23fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);font:14px/1.4 system-ui,Segoe UI,Roboto,sans-serif;color:%231f2937;display:flex;flex-direction:column;overflow:hidden}%0A%23lep-marcador *{box-sizing:border-box;font-family:inherit}%0A%23lep-marcador .hd{background:linear-gradient(135deg,%230B6B50,%230E8F6B);color:%23fff;padding:14px 16px;display:flex;align-items:center;gap:10px}%0A%23lep-marcador .hd b{font-size:17px;flex:1}%23lep-marcador .hd span{font-size:12px;opacity:.85}%0A%23lep-marcador .x{background:rgba(255,255,255,.2);border:0;color:%23fff;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:16px}%0A%23lep-marcador .bd{padding:12px 16px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:10px}%0A%23lep-marcador .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}%0A%23lep-marcador button.b{border:1px solid %23d1d5db;background:%23fff;border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:600;font-size:13px}%0A%23lep-marcador button.b:hover{background:%23f3f4f6}%23lep-marcador button.p{background:%230B6B50;color:%23fff;border-color:%230B6B50}%23lep-marcador button.p:hover{background:%23095a43}%0A%23lep-marcador button.w{background:%23F59E0B;color:%23fff;border-color:%23F59E0B}%23lep-marcador button:disabled{opacity:.45;cursor:default}%0A%23lep-marcador .kp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}%0A%23lep-marcador .k{background:%23f3f7f5;border-radius:12px;padding:8px;text-align:center}%23lep-marcador .k b{display:block;font-size:22px;color:%230B6B50}%23lep-marcador .k span{font-size:11px;color:%236b7280;text-transform:uppercase}%0A%23lep-marcador .k.er b{color:%23dc2626}%0A%23lep-marcador .bar{height:8px;background:%23e5e7eb;border-radius:9px;overflow:hidden}%23lep-marcador .bar i{display:block;height:100%25;background:%230E8F6B;width:0;transition:width .3s}%0A%23lep-marcador label{font-size:13px;color:%23374151;display:flex;align-items:center;gap:6px}%0A%23lep-marcador input[type=number]{width:72px;padding:5px 8px;border:1px solid %23d1d5db;border-radius:8px}%0A%23lep-marcador .ls{flex:1;min-height:120px;overflow:auto;border:1px solid %23e5e7eb;border-radius:12px;font:12px/1.5 ui-monospace,Consolas,monospace}%0A%23lep-marcador .ls div{padding:4px 8px;border-bottom:1px solid %23f3f4f6;display:flex;gap:8px;align-items:center}%0A%23lep-marcador .ls div.at{background:%23FEF3C7}%23lep-marcador .ls div.ok{color:%23047857}%23lep-marcador .ls div.er{color:%23dc2626;background:%23FEF2F2}%0A%23lep-marcador .ls em{font-style:normal;width:18px;text-align:center}%23lep-marcador .ls s{text-decoration:none;color:%239ca3af;margin-left:auto}%0A%23lep-marcador .msg{font-size:13px;border-radius:10px;padding:8px 10px;background:%23ECFDF5;color:%23065F46}%23lep-marcador .msg.er{background:%23FEF2F2;color:%23991B1B}%0A%23lep-marcador .ft{padding:12px 16px;border-top:1px solid %23e5e7eb;display:flex;gap:8px}%23lep-marcador .ft button{flex:1}%0A%23lep-marcador textarea{width:100%25;height:110px;border:1px solid %23d1d5db;border-radius:10px;padding:8px;font:12px ui-monospace,Consolas,monospace}%60;%0A  const el = document.createElement('div'); el.id = 'lep-marcador';%0A  el.innerHTML = %60<style>${css}</style><div class=%22hd%22><div style=%22flex:1%22><b>Marcador Loteca</b><br><span>Loteca Elite Pro %C2%B7 marca e p%C3%B5e no carrinho %C2%B7 nunca paga</span></div><button class=%22x%22 data-a=%22min%22 title=%22Recolher%22>%E2%80%93</button><button class=%22x%22 data-a=%22fecha%22 title=%22Fechar%22>%E2%9C%95</button></div>%0A<div class=%22bd%22><div class=%22row%22><button class=%22b p%22 data-a=%22painel%22>Puxar do meu painel</button><button class=%22b%22 data-a=%22arq%22>Importar arquivo</button><button class=%22b%22 data-a=%22colar%22>Colar</button><input type=%22file%22 accept=%22.txt,.csv%22 hidden data-a=%22file%22></div>%0A<div data-a=%22cola%22 hidden><textarea placeholder=%22Cole os volantes (formato SpeedLoto: 1;2.x;1;... um por linha)%22></textarea><div class=%22row%22 style=%22margin-top:6px%22><button class=%22b p%22 data-a=%22colaok%22>Carregar</button><button class=%22b%22 data-a=%22colanao%22>Cancelar</button></div></div>%0A<div class=%22kp%22><div class=%22k%22><b data-k=%22reg%22>0</b><span>A registrar</span></div><div class=%22k%22><b data-k=%22ok%22>0</b><span>No carrinho</span></div><div class=%22k er%22><b data-k=%22er%22>0</b><span>Com erro</span></div></div>%0A<div class=%22bar%22><i></i></div><div class=%22row%22 style=%22justify-content:space-between;font-size:13px%22><span data-k=%22custo%22></span><span data-k=%22conc%22></span></div>%0A<div class=%22row%22><label>Intervalo <input type=%22number%22 min=%2240%22 max=%222000%22 step=%2220%22 data-a=%22ms%22> ms</label><label><input type=%22checkbox%22 data-a=%22rep%22> Permitir repetidas</label></div>%0A<div data-a=%22msg%22></div><div class=%22ls%22></div></div>%0A<div class=%22ft%22><button class=%22b p%22 data-a=%22enviar%22>ENVIAR</button><button class=%22b w%22 data-a=%22pausa%22 disabled>Pausar</button><button class=%22b%22 data-a=%22apagar%22>Apagar</button></div>%60;%0A  document.body.appendChild(el);%0A  const q = s => el.querySelector(s);%0A  q('[data-a=ms]').value = st.ms; q('[data-a=rep]').checked = st.rep;%0A  const msg = (t, er) => { const m = q('[data-a=msg]'); m.className = t ? ('msg' + (er ? ' er' : '')) : ''; m.textContent = t || ''; };%0A  const conc = () => { const t = document.body.innerText.match(/Concurso%5Cs*(?:n[%C2%BAo%C2%B0]%5Cs*)?(%5Cd{3,5})/i); return t ? 'Concurso ' + t[1] : ''; };%0A  const desenha = () => {%0A    const ok = st.status.filter(s => s === 'ok').length, er = st.status.filter(s => s === 'er').length;%0A    q('[data-k=reg]').textContent = st.vols.length - ok; q('[data-k=ok]').textContent = ok; q('[data-k=er]').textContent = er;%0A    q('.bar i').style.width = (st.vols.length ? 100 * ok / st.vols.length : 0) + '%25';%0A    const tot = st.vols.reduce((a, v) => a + custo(v), 0), noc = st.vols.reduce((a, v, n) => a + (st.status[n] === 'ok' ? custo(v) : 0), 0);%0A    q('[data-k=custo]').textContent = st.vols.length ? ('Total ' + brl(tot) + (noc ? ' %C2%B7 no carrinho ' + brl(noc) : '')) : 'Nenhum volante carregado';%0A    q('[data-k=conc]').textContent = conc();%0A    q('.ls').innerHTML = st.vols.map((v, n) => %60<div class=%22${st.status[n] || ''}${n === st.i && rodando ? ' at' : ''}%22><em>${st.status[n] === 'ok' ? '%E2%9C%93' : st.status[n] === 'er' ? '%E2%9C%95' : (n + 1)}</em>${v}<s>${brl(custo(v))}</s></div>%60).join('');%0A    const a = q('.ls .at'); if (a) a.scrollIntoView({ block: 'nearest' });%0A    q('[data-a=enviar]').disabled = rodando || !st.vols.length; q('[data-a=pausa]').disabled = !rodando; q('[data-a=apagar]').disabled = rodando;%0A    q('[data-a=enviar]').textContent = st.status.some(s => s === 'ok' || s === 'er') && st.status.some(s => s !== 'ok') ? 'CONTINUAR' : 'ENVIAR';%0A  };%0A  const carrega = lista => {%0A    if (!lista.length) { msg('N%C3%A3o encontrei volantes v%C3%A1lidos (cada linha precisa ter 14 jogos).', true); return; }%0A    if (!st.rep) { const vis = {}; lista = lista.filter(v => vis[v] ? false : (vis[v] = 1)); }%0A    const sem = lista.filter(v => combos(v) < 2).length, gde = lista.filter(v => combos(v) > 864).length;%0A    st.vols = lista; st.status = lista.map(() => ''); st.i = 0; salva(); desenha();%0A    msg(lista.length + ' volantes carregados.' + (sem ? ' Aten%C3%A7%C3%A3o: ' + sem + ' sem nenhum duplo (a Caixa exige pelo menos 1 duplo).' : '') + (gde ? ' Aten%C3%A7%C3%A3o: ' + gde + ' passam de 864 combina%C3%A7%C3%B5es (limite da Caixa por volante): desdobre no painel antes.' : ''), !!(sem || gde));%0A  };%0A  q('[data-a=arq]').onclick = () => q('[data-a=file]').click();%0A  q('[data-a=file]').onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => carrega(parse(r.result)); r.readAsText(f); e.target.value = ''; };%0A  q('[data-a=colar]').onclick = () => { q('[data-a=cola]').hidden = false; q('textarea').focus(); };%0A  q('[data-a=colanao]').onclick = () => { q('[data-a=cola]').hidden = true; };%0A  q('[data-a=colaok]').onclick = () => { carrega(parse(q('textarea').value)); q('[data-a=cola]').hidden = true; q('textarea').value = ''; };%0A  q('[data-a=painel]').onclick = () => {%0A    const w = window.open(PAINEL + '/painel/%23enviar', 'lep_painel', 'width=560,height=720');%0A    if (!w) { msg('O navegador bloqueou a janela do painel. Libere pop-ups para este site e clique de novo.', true); return; }%0A    msg('Escolha na janela do painel quais volantes enviar.');%0A  };%0A  window.addEventListener('message', e => {%0A    if (e.origin !== PAINEL && !(TESTE && e.origin === location.origin)) return;%0A    if (!e.data || e.data.tipo !== 'loteca-volantes' || !Array.isArray(e.data.vols)) return;%0A    carrega(parse(e.data.vols.join('%5Cn'))); if (e.data.nome) msg(st.vols.length + ' volantes de %22' + e.data.nome + '%22 carregados.');%0A  });%0A  q('[data-a=ms]').onchange = e => { st.ms = Math.max(40, Number(e.target.value) || 120); salva(); };%0A  q('[data-a=rep]').onchange = e => { st.rep = e.target.checked; salva(); };%0A  q('[data-a=apagar]').onclick = () => { if (st.vols.length && !confirm('Apagar a lista do marcador?')) return; st.vols = []; st.status = []; st.i = 0; salva(); msg(''); desenha(); };%0A  q('[data-a=fecha]').onclick = () => { if (rodando && !confirm('A marca%C3%A7%C3%A3o est%C3%A1 rodando. Fechar mesmo assim?')) return; pausar = true; el.remove(); };%0A  q('[data-a=min]').onclick = () => { const bd = q('.bd'), ft = q('.ft'); const h = bd.style.display === 'none'; bd.style.display = ft.style.display = h ? '' : 'none'; el.style.bottom = h ? '12px' : 'auto'; };%0A  q('[data-a=pausa]').onclick = () => { pausar = true; msg('Pausando depois deste volante%E2%80%A6'); };%0A  const modal = () => [...document.querySelectorAll('.modal')].find(x => getComputedStyle(x).display !== 'none' && x.innerText.trim());%0A  const ordem = s => s.split('.').sort((a, b) => '1x2'.indexOf(a) - '1x2'.indexOf(b)).join('.');%0A  const marcaUm = async v => {%0A    const m = v.split(';');%0A    const lim = document.getElementById('limparvolante'); if (lim) lim.click(); await sleep(Math.max(250, st.ms * 2));%0A    const md0 = modal(); if (md0) return 'A Caixa mostrou: ' + md0.innerText.trim().slice(0, 160);%0A    const L = [...document.querySelectorAll('tr[ng-repeat*=%22partida in vm.partidas%22]')];%0A    if (L.length !== 14) return 'N%C3%A3o encontrei os 14 jogos na p%C3%A1gina (o concurso est%C3%A1 aberto?).';%0A    for (let i = 0; i < 14; i++) { const a = L[i].querySelectorAll('a.loteca_palpite'); for (const o of m[i].split('.')) { a[o === '1' ? 0 : (o === 'x' ? 1 : 2)].click(); await sleep(st.ms); } }%0A    await sleep(Math.max(250, st.ms * 2));%0A    const md = modal(); if (md) return 'A Caixa mostrou: ' + md.innerText.trim().slice(0, 160);%0A    const lido = L.map(tr => [...tr.querySelectorAll('a.loteca_palpite')].map((a, k) => a.classList.contains('loteca_palpite_selecionado') ? ['1', 'x', '2'][k] : '').filter(Boolean).join('.'));%0A    if (lido.join(';') !== m.map(ordem).join(';')) return 'A marca%C3%A7%C3%A3o na tela n%C3%A3o conferiu com o volante.';%0A    const bt = document.getElementById('colocarnocarrinho'); if (!bt) return 'N%C3%A3o achei o bot%C3%A3o %22Colocar no carrinho%22.';%0A    bt.click(); await sleep(1500 + st.ms * 2);%0A    const md2 = modal();%0A    if (md2 && /erro|aten[c%C3%A7]|n[a%C3%A3]o foi|inv[a%C3%A1]lid|limite|indispon/i.test(md2.innerText)) return 'A Caixa mostrou: ' + md2.innerText.trim().slice(0, 160);%0A    if (md2) { const f = md2.querySelector('%23fecharModalAlerta,button'); if (f) f.click(); await sleep(400); }%0A    return null;%0A  };%0A  q('[data-a=enviar]').onclick = async () => {%0A    const pend = st.vols.map((v, n) => n).filter(n => st.status[n] !== 'ok');%0A    if (!pend.length) { msg('Todos j%C3%A1 est%C3%A3o no carrinho.'); return; }%0A    const tot = pend.reduce((a, n) => a + custo(st.vols[n]), 0);%0A    if (!confirm(pend.length + ' volantes (' + brl(tot) + ') ser%C3%A3o marcados e colocados no carrinho. O pagamento continua sendo seu. Come%C3%A7ar?')) return;%0A    rodando = true; pausar = false; msg('Marcando%E2%80%A6 n%C3%A3o mexa nesta aba at%C3%A9 terminar.'); desenha();%0A    const m0 = modal(); if (m0) { const f0 = m0.querySelector('%23fecharModalAlerta,button'); if (f0) f0.click(); await sleep(400); }%0A    for (const n of pend) {%0A      if (pausar) break;%0A      st.i = n; desenha();%0A      const erro = await marcaUm(st.vols[n]);%0A      if (erro) { st.status[n] = 'er'; salva(); rodando = false; desenha(); msg('Parei no volante ' + (n + 1) + ': ' + erro + ' Corrija e clique em CONTINUAR (ele refaz os que faltam).', true); return; }%0A      st.status[n] = 'ok'; salva(); document.title = 'Loteca ' + st.status.filter(s => s === 'ok').length + '/' + st.vols.length;%0A    }%0A    rodando = false; desenha();%0A    const ok = st.status.filter(s => s === 'ok').length;%0A    msg(pausar ? ('Pausado. ' + ok + ' de ' + st.vols.length + ' no carrinho. Clique em CONTINUAR quando quiser.') : ('Pronto: ' + ok + ' volantes no carrinho. Confira o carrinho e fa%C3%A7a o pagamento voc%C3%AA mesmo.'));%0A  };%0A  desenha();%0A  if (st.vols.length && st.status.some(s => s !== 'ok')) msg('Lista anterior recuperada: ' + st.status.filter(s => s === 'ok').length + ' de ' + st.vols.length + ' j%C3%A1 estavam no carrinho.');%0A})();";
+function mostraCaixa(el, speed, n) {
+  var box = el.querySelector('.caixa-box'); if (box) { box.remove(); return; }
+  box = document.createElement('div'); box.className = 'card caixa-box noprint'; box.style.margin = '12px 0'; box.style.border = '2px solid #F59E0B';
+  box.innerHTML = '<h2>Enviar ' + n + ' volantes para a Caixa — Marcador Loteca</h2><ol style="line-height:1.7;font-size:15px">' +
+    '<li><b>Só na primeira vez:</b> arraste o botão <a class="btn pri" style="display:inline-block;text-decoration:none" href="' + MARCADOR.replace(/"/g, '&quot;') + '">Marcador Loteca</a> para a barra de favoritos do Chrome (se ela não aparecer: Ctrl+Shift+B).</li>' +
+    '<li>Se for mandar esta lista, salve antes: <button class="btn" data-a="salvacx">Salvar em Meus arquivos</button> <span class="sub" data-a="msgsv"></span></li>' +
+    '<li>Abra <a href="https://www.loteriasonline.caixa.gov.br/silce-web/#/loteca" target="_blank" rel="noopener">a Loteca nas Loterias Online</a> e <b>entre na sua conta</b> (login e senha são só seus).</li>' +
+    '<li>Clique no favorito <b>Marcador Loteca</b>: abre um painel ao lado, igual ao SpeedLoto. Clique em <b>Puxar do meu painel</b> e escolha a lista (ou <b>Importar arquivo</b> com o TXT, ou <b>Colar</b>).</li>' +
+    '<li>Clique em <b>ENVIAR</b>. Ele marca cada volante, confere na tela e põe no carrinho, mostrando ✓ em cada um. Dá para <b>pausar e continuar</b>; se a Caixa avisar algo, ele para no volante e continua de onde parou.</li>' +
+    '<li><b>Você confere o carrinho e faz o pagamento.</b> O marcador nunca paga nada.</li></ol>' +
+    '<p class="sub">Alternativa: <button class="btn" data-a="copcx">Copiar volantes</button> e usar Colar no marcador. <span data-a="msgcx"></span></p>';
+  el.insertBefore(box, el.querySelector('.vols'));
+  box.querySelector('[data-a=salvacx]').onclick = function () { var nm = prompt('Nome do arquivo:', 'Loteca ' + (AP.conc || (D.semana && D.semana.concurso) || '') + ' - ' + n + ' volantes'); if (!nm) return; var vs = speed.split(/\r?\n/).map(apParse).filter(Boolean); if (arqSalvar(nm, AP.conc || (D.semana && D.semana.concurso), vs)) box.querySelector('[data-a=msgsv]').textContent = 'Salvo ✓'; };
+  box.querySelector('[data-a=copcx]').onclick = function () { var m = box.querySelector('[data-a=msgcx]'); try { navigator.clipboard.writeText(speed).then(function () { m.textContent = 'Copiado ✓ (' + n + ' volantes)'; }, function () { m.textContent = 'Não copiou: use Baixar para o SpeedLoto e copie o texto do arquivo'; }); } catch (e) { m.textContent = 'Não copiou'; } };
+}
+function nome2(s) { return String(s || '').split('/')[0].toLowerCase().replace(/(^|\s)\S/g, function (t) { return t.toUpperCase(); }); }
+
+// ---------------------------------------------------------------- meu jogo (montador)
+var MJ = { orc: 200, sel: null, vols: null, orcD: 200 };
+function mjP() { return semanaJogos().map(function (j) { return j.p; }); }
+function fav(p) { return p[0] >= p[1] && p[0] >= p[2] ? 0 : (p[1] >= p[2] ? 1 : 2); }
+function duploDe(p) { var f = fav(p); return f !== 1 ? [f, 1] : [1, p[0] >= p[2] ? 0 : 2]; }
+function selTipo(tp, p) { if (tp === 3) return '1X2'; if (tp === 2) return duploDe(p).sort().map(function (k) { return R[k]; }).join(''); return R[fav(p)]; }
+function cob(s, p) { var t = 0; for (var k = 0; k < 3; k++) if (s.indexOf(R[k]) >= 0) t += p[k]; return t; }
+function otimo(P, d, t) {
+  var best = {}; best['0,0'] = { v: 0, ch: [] };
+  P.forEach(function (p) { var nb = {}; Object.keys(best).forEach(function (key) { var ab = key.split(',').map(Number), cur = best[key];
+    [1, 2, 3].forEach(function (tp) { var a = ab[0] + (tp === 2), b = ab[1] + (tp === 3); if (a > d || b > t) return; var v = cur.v + Math.log(cob(selTipo(tp, p), p)), k2 = a + ',' + b;
+      if (!nb[k2] || v > nb[k2].v) nb[k2] = { v: v, ch: cur.ch.concat([selTipo(tp, p)]) }; }); }); best = nb; });
+  var r = best[d + ',' + t]; return r ? { sel: r.ch, p: Math.exp(r.v) } : null;
+}
+function perfeito(P, orc) { var m = null; for (var d = 0; d <= 14; d++) for (var t = 0; t + d <= 14; t++) { var c = Math.pow(2, d) * Math.pow(3, t) * 2; if (c > orc || c < 4) continue; var o = otimo(P, d, t); if (o && (!m || o.p > m.p)) m = { sel: o.sel, p: o.p, custo: c, d: d, t: t }; } return m; }
+function estat(sel, P) { var cv = sel.map(function (s, i) { return cob(s, P[i]); }), comb = 1, p14 = 1; sel.forEach(function (s) { comb *= s.length; }); cv.forEach(function (c) { p14 *= c; });
+  var p13 = 0; cv.forEach(function (c) { if (c < 1) p13 += (1 - c) * p14 / c; }); return { comb: comb, custo: comb * 2, p14: p14, p13: p14 + p13, cv: cv }; }
+// desdobre espalhado: volantes de 1 duplo dentro do jogo, cobrindo o máximo de resultados a até 1 erro
+function espalhado(sel, P, nvol) {
+  var pot = [], q = 1; for (var i = 0; i < 14; i++) { pot.push(q); q *= 3; }
+  var opts = sel.map(function (s) { return s.split('').map(function (k) { return R.indexOf(k); }); });
+  var N = 1; opts.forEach(function (o) { N *= o.length; }); if (N > 300000) return { erro: 'Jogo grande demais para desdobrar aqui (mais de 300 mil combinações). Tire alguns triplos.' };
+  var LP = P.map(function (p) { return p.map(Math.log); }), cache = new Map();
+  var pr = function (code) { var v = cache.get(code); if (v !== undefined) return v; var x = code, s = 0; for (var i = 0; i < 14; i++) { s += LP[i][x % 3]; x = Math.floor(x / 3); } v = Math.exp(s); cache.set(code, v); return v; };
+  var cand = []; (function rec(i, code) { if (i === 14) { cand.push(code); return; } opts[i].forEach(function (k) { rec(i + 1, code + k * pot[i]); }); })(0, 0);
+  cand.sort(function (a, b) { return pr(b) - pr(a); }); cand = cand.slice(0, 3000);
+  var dig = function (code, i) { return Math.floor(code / pot[i]) % 3; };
+  var viz = function (code) { var o = [code]; for (var i = 0; i < 14; i++) { var d = dig(code, i); for (var k = 0; k < 3; k++) if (k !== d) o.push(code + (k - d) * pot[i]); } return o; };
+  var un = []; cand.forEach(function (c) { for (var i = 0; i < 14; i++) if (opts[i].length > 1) { var d = dig(c, i); opts[i].forEach(function (k) { if (k > d) un.push([c, c + (k - d) * pot[i]]); }); } });
+  if (!un.length) return { erro: 'Marque ao menos um duplo ou triplo para desdobrar.' };
+  if (nvol * 2 >= N) return { erro: 'Seu jogo inteiro custa ' + brl(N * 2) + ' e já cabe no valor do desdobre: jogue o jogo inteiro, ou clique em "Base forte para desdobre" para o desdobre escolher as melhores partes de um jogo maior.' };
+  var coberto = new Set(), esc = [];
+  var ganho = function (u) { var g = 0, vis = new Set(); [u[0], u[1]].forEach(function (c) { viz(c).forEach(function (v) { if (!coberto.has(v) && !vis.has(v)) { vis.add(v); g += pr(v); } }); }); return g; };
+  var heap = un.map(function (u, n) { return [ganho(u), n]; }); heap.sort(function (a, b) { return b[0] - a[0]; });
+  while (esc.length < nvol && heap.length) {
+    var topo = heap.shift(), g = ganho(un[topo[1]]);
+    if (heap.length && heap[0][0] > g + 1e-15) { topo[0] = g; var lo = 0, hi = heap.length; while (lo < hi) { var mid = (lo + hi) >> 1; if (heap[mid][0] > g) lo = mid + 1; else hi = mid; } heap.splice(lo, 0, topo); continue; }
+    var u = un[topo[1]]; esc.push(u); [u[0], u[1]].forEach(function (c) { viz(c).forEach(function (v) { coberto.add(v); }); });
+  }
+  var combos = new Set(); esc.forEach(function (u) { combos.add(u[0]); combos.add(u[1]); });
+  var p14 = 0; combos.forEach(function (c) { p14 += pr(c); }); var p13 = 0; coberto.forEach(function (c) { p13 += pr(c); });
+  var vols = esc.map(function (u) { var v = []; for (var i = 0; i < 14; i++) { var a = dig(u[0], i), b = dig(u[1], i); v.push(a === b ? R[a] : [a, b].sort().map(function (k) { return R[k]; }).join('')); } return v; });
+  return { vols: vols, p14: p14, p13: p13 };
+}
+function abaMeuJogo() {
+  var el = document.getElementById('meujogo'), J = semanaJogos(); if (!J.length) { el.innerHTML = '<div class="card">Sem concurso aberto.</div>'; return; }
+  var P = mjP(); if (!MJ.sel) MJ.sel = perfeito(P, MJ.orc).sel;
+  var e = estat(MJ.sel, P), nd = MJ.sel.filter(function (s) { return s.length === 2; }).length, nt = MJ.sel.filter(function (s) { return s.length === 3; }).length;
+  var orcs = [100, 150, 200, 300, 500, 1000, 2592, 5000];
+  var h = '<div class="card"><h2>Monte o seu jogo — concurso ' + D.semana.concurso + '</h2><p class="sub">Começa com o jogo perfeito para o orçamento. Clique em 1, X ou 2 para marcar ou desmarcar; custo e chances mudam na hora. Depois gere o desdobre do seu jogo e baixe ou imprima os volantes.</p>' +
+    '<div class="barraf"><label for="mjorc"><b>Orçamento</b></label><select id="mjorc" class="sel">' + orcs.map(function (o) { return '<option value="' + o + '"' + (o === MJ.orc ? ' selected' : '') + '>' + brl(o) + '</option>'; }).join('') + '</select>' +
+    '<button class="btn pri" id="mjperf">Montar o jogo perfeito</button></div>' +
+    '<div class="grid" style="margin-top:12px"><div class="stat"><span>Custo</span><b>' + brl(e.custo) + '</b><span>' + e.comb.toLocaleString('pt-BR') + ' combinações</span></div>' +
+    '<div class="stat"><span>Chance de 14</span><b>' + pc(e.p14, 2) + '</b><span>1 em ' + Math.round(1 / e.p14).toLocaleString('pt-BR') + '</span></div>' +
+    '<div class="stat"><span>Chance de 13 ou 14</span><b>' + pc(e.p13, 1) + '</b><span>1 em ' + Math.round(1 / e.p13).toLocaleString('pt-BR') + '</span></div>' +
+    '<div class="stat"><span>Estrutura</span><b>' + (14 - nd - nt) + '+' + nd + '+' + nt + '</b><span>secos + duplos + triplos</span></div></div>' +
+    '<div class="rolagem" style="margin-top:12px"><table><thead><tr><th>#</th><th>Jogo</th><th>1 · X · 2</th><th>Sua marcação</th><th>Acerta</th><th>Alerta</th></tr></thead><tbody>' +
+    J.map(function (j, i) { var s = MJ.sel[i]; return '<tr><td>' + j.jogo + '</td><td>' + nome(j.mandante) + ' × ' + nome(j.visitante) + '</td><td>' + barra(j.p) + '</td><td>' +
+      ['1', 'X', '2'].map(function (k) { return '<button class="tg' + (s.indexOf(k) >= 0 ? ' on' : '') + '" data-i="' + i + '" data-k="' + k + '" aria-pressed="' + (s.indexOf(k) >= 0) + '">' + k + '</button>'; }).join(' ') +
+      '</td><td><b>' + pc(e.cv[i], 0) + '</b></td><td>' + (j.alertas.length ? '<span class="chip" style="background:var(--aviso2);color:var(--aviso)" title="' + esc(j.alertas.join(' | ')) + '">alerta</span>' : '') + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+  // trocas sugeridas
+  var tr = [];
+  MJ.sel.forEach(function (s, i) { var p = P[i];
+    if (s.length > 1) { var pior = s.split('').sort(function (a, b) { return p[R.indexOf(a)] - p[R.indexOf(b)]; })[0]; var ns = s.replace(pior, ''); tr.push({ i: i, ns: ns, txt: (s.length === 3 ? 'triplo → duplo' : 'duplo → seco') + ' (tira o ' + pior + ')', t: 'b' }); }
+    if (s.length < 3) { var fora = R.split('').filter(function (k) { return s.indexOf(k) < 0; }).sort(function (a, b) { return p[R.indexOf(b)] - p[R.indexOf(a)]; })[0]; var ns2 = R.split('').filter(function (k) { return s.indexOf(k) >= 0 || k === fora; }).join(''); tr.push({ i: i, ns: ns2, txt: (s.length === 1 ? 'seco → duplo' : 'duplo → triplo') + ' (põe o ' + fora + ')', t: 'r' }); } });
+  tr.forEach(function (t) { var ns = MJ.sel.slice(); ns[t.i] = t.ns; var e2 = estat(ns, P); t.e2 = e2; t.ef = t.t === 'b' ? (1 - e2.p14 / e.p14) / ((e.custo - e2.custo) || 1) : (e2.p14 / e.p14 - 1) / ((e2.custo - e.custo) || 1); });
+  var lista = function (tipo, n) { return tr.filter(function (t) { return t.t === tipo; }).sort(function (a, b) { return tipo === 'b' ? a.ef - b.ef : b.ef - a.ef; }).slice(0, n).map(function (t) {
+    return '<tr><td>Jogo ' + (t.i + 1) + ': ' + t.txt + '</td><td>' + brl(e.custo) + ' → ' + brl(t.e2.custo) + '</td><td>' + pc(e.p14, 2) + ' → ' + pc(t.e2.p14, 2) + '</td><td><button class="btn" data-ap="' + t.i + '" data-ns="' + t.ns + '">Aplicar</button></td></tr>'; }).join(''); };
+  h += '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(420px,1fr))"><div class="card"><h2>Para baratear</h2><p class="sub">Perde menos chance por real economizado.</p><div class="rolagem"><table><tbody>' + lista('b', 5) + '</tbody></table></div></div>' +
+    '<div class="card"><h2>Para reforçar</h2><p class="sub">Mais chance por real a mais.</p><div class="rolagem"><table><tbody>' + lista('r', 5) + '</tbody></table></div></div></div>';
+  // desdobre do meu jogo
+  h += '<div class="card"><h2>Desdobrar o meu jogo</h2><p class="sub">Marque uma base maior que o seu bolso (ou use a base forte) e o desdobre escolhe, dentro dela, volantes de 1 duplo (o mínimo da Caixa, R$ 4 cada) que cobrem o máximo de resultados a até 1 erro. É o mesmo método que no histórico fez 13 ou 14 em 14 de 303 concursos com R$ 200.</p>' +
+    '<div class="barraf"><label for="mjorcd"><b>Gastar no desdobre</b></label><select id="mjorcd" class="sel">' + [40, 80, 100, 160, 200, 300, 400].map(function (o) { return '<option value="' + o + '"' + (o === MJ.orcD ? ' selected' : '') + '>' + brl(o) + ' (' + (o / 4) + ' volantes)</option>'; }).join('') + '</select>' +
+    '<button class="btn" id="mjbase">Base forte para desdobre (4 secos, 4 duplos, 6 triplos)</button><button class="btn pri" id="mjdesd">Gerar desdobre</button><span class="sub" id="mjmsg"></span></div><div id="mjres"></div><div id="mjvols"></div></div>';
+  el.innerHTML = h;
+  el.querySelector('#mjorc').onchange = function () { MJ.orc = Number(this.value); MJ.sel = perfeito(P, MJ.orc).sel; MJ.vols = null; abaMeuJogo(); };
+  el.querySelector('#mjperf').onclick = function () { MJ.sel = perfeito(P, MJ.orc).sel; MJ.vols = null; abaMeuJogo(); };
+  el.querySelector('#mjorcd').onchange = function () { MJ.orcD = Number(this.value); };
+  el.querySelector('#mjbase').onclick = function () { MJ.sel = otimo(P, 4, 6).sel; MJ.vols = null; abaMeuJogo(); document.getElementById('mjdesd').scrollIntoView({ block: 'center' }); };
+  el.querySelectorAll('.tg').forEach(function (b) { b.onclick = function () { var i = Number(b.dataset.i), k = b.dataset.k, s = MJ.sel[i];
+    var ns = s.indexOf(k) >= 0 ? s.replace(k, '') : R.split('').filter(function (x) { return s.indexOf(x) >= 0 || x === k; }).join(''); if (!ns) return; MJ.sel[i] = ns; MJ.vols = null; abaMeuJogo(); }; });
+  el.querySelectorAll('[data-ap]').forEach(function (b) { b.onclick = function () { MJ.sel[Number(b.dataset.ap)] = b.dataset.ns; MJ.vols = null; abaMeuJogo(); }; });
+  el.querySelector('#mjdesd').onclick = function () { var m = el.querySelector('#mjmsg'); m.textContent = 'Calculando…'; setTimeout(function () { var r = espalhado(MJ.sel, P, MJ.orcD / 4); if (r.erro) { m.textContent = r.erro; return; } MJ.vols = r; m.textContent = ''; mostra(); }, 30); };
+  function mostra() { if (!MJ.vols) return; var r = MJ.vols;
+    el.querySelector('#mjres').innerHTML = '<div class="grid" style="margin:12px 0"><div class="stat"><span>Seu jogo completo</span><b>' + pc(e.p13, 1) + '</b><span>13 ou 14 · 14: ' + pc(e.p14, 2) + ' · ' + brl(e.custo) + '</span></div>' +
+      '<div class="stat" style="background:var(--verde2)"><span>Desdobre (' + brl(r.vols.length * 4) + ')</span><b>' + pc(r.p13, 1) + '</b><span>13 ou 14 · 14: ' + pc(r.p14, 2) + '</span></div></div>';
+    renderVolantes('mjvols', r.vols, 'loteca_' + D.semana.concurso + '_meu_desdobre', J); }
+  mostra();
+}
+
+// ---------------------------------------------------------------- financeiro
+function abaFinanceiro() {
+  var el = document.getElementById('financeiro'), F = D.financeiro_historico || [], A = D.financeiro || [];
+  var acum = function (k1, k2) { var s = 0; return F.map(function (x) { s += (x[k2] || 0) - (x[k1] || 0); return Math.round(s); }); };
+  var tot = function (k) { return F.reduce(function (a, x) { return a + (x[k] || 0); }, 0); };
+  var linhas = [
+    { n: 'Jogo perfeito toda semana (até R$ 200)', g: tot('custo_s'), p: tot('premio_s') },
+    { n: 'Desdobre espalhado toda semana (R$ 200)', g: tot('custo_e'), p: tot('premio_e') },
+    { n: 'Cofrinho (só aposta quando se paga)', g: tot('cofrinho_aposta'), p: tot('cofrinho_premio') }];
+  var guardado = 200 * F.length - tot('cofrinho_aposta') + tot('cofrinho_premio');
+  var gj = A.reduce(function (a, x) { return a + x.valor; }, 0), pj = A.reduce(function (a, x) { return a + (x.premio || 0); }, 0);
+  el.innerHTML = '<div class="card"><h2>Financeiro — o seu dinheiro</h2>' +
+    '<div class="grid"><div class="stat"><span>Apostado (concursos conferidos)</span><b>' + brl(gj) + '</b><span>' + A.length + ' aposta(s) registrada(s)</span></div><div class="stat"><span>Prêmios</span><b>' + brl(pj) + '</b></div>' +
+    '<div class="stat" style="background:' + (pj - gj >= 0 ? 'var(--verde2)' : 'var(--erro2)') + '"><span>Lucro ou prejuízo</span><b class="' + (pj - gj >= 0 ? 'ok' : 'no') + '">' + brl(pj - gj) + '</b></div></div>' +
+    (A.length ? '<div class="rolagem" style="margin-top:12px"><table><thead><tr><th>Concurso</th><th>Tipo</th><th>Aposta</th><th>Pontos</th><th>Prêmio</th><th>Resultado</th></tr></thead><tbody>' + A.map(function (x) { var r = x.premio == null ? null : x.premio - x.valor;
+      return '<tr><td>' + x.concurso + '</td><td>' + esc(x.tipo) + '</td><td>' + brl(x.valor) + ' (' + esc(x.estrutura) + ')</td><td>' + (x.pontos == null ? 'aguardando' : x.pontos) + '</td><td>' + (x.premio == null ? '—' : brl(x.premio)) + '</td><td class="' + (r == null ? '' : (r >= 0 ? 'ok' : 'no')) + '">' + (r == null ? '—' : brl(r)) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="sub">Nenhuma aposta registrada ainda. O cofrinho guarda R$ 200 por semana e só aposta quando o jogo se paga em média.</p>') + '</div>' +
+    '<div class="card"><h2>Se tivesse jogado — ' + F.length + ' concursos com rateio oficial</h2><p class="sub">Saldo acumulado (prêmios menos o que foi gasto) de cada estratégia, só com informação de antes de cada concurso.</p><div class="graf"><canvas id="gfin"></canvas></div>' +
+    '<div class="rolagem" style="margin-top:12px"><table><thead><tr><th>Estratégia</th><th>Gasto</th><th>Prêmios</th><th>Lucro ou prejuízo</th><th>Volta por R$ 1</th></tr></thead><tbody>' +
+    linhas.map(function (l) { return '<tr><td>' + l.n + '</td><td>' + brl(l.g) + '</td><td>' + brl(l.p) + '</td><td class="' + (l.p - l.g >= 0 ? 'ok' : 'no') + '">' + brl(l.p - l.g) + '</td><td>' + (l.g ? 'R$ ' + (l.p / l.g).toFixed(2).replace('.', ',') : '—') + '</td></tr>'; }).join('') +
+    '</tbody></table></div><div class="licao" style="margin-top:10px">No cofrinho, além do lucro das apostas, ficariam guardados ' + brl(guardado) + ' (R$ 200 por semana que não foram gastos). Apostar toda semana perde dinheiro em qualquer estratégia: quando a gente acerta, o resultado provável é dividido com muita gente. Prêmio do desdobre em 13 pontos conta 1 combinação (valor mínimo).</div></div>';
+  grafico('gfin', { type: 'line', data: { labels: F.map(function (x) { return x.c; }), datasets: [
+    { label: 'Jogo perfeito toda semana', data: acum('custo_s', 'premio_s'), borderColor: '#9CA3AF', pointRadius: 0, borderWidth: 2 },
+    { label: 'Desdobre toda semana', data: acum('custo_e', 'premio_e'), borderColor: '#1D4ED8', pointRadius: 0, borderWidth: 2 },
+    { label: 'Cofrinho (apostas)', data: acum('cofrinho_aposta', 'cofrinho_premio'), borderColor: '#0B6B50', pointRadius: 0, borderWidth: 3 }] },
+    options: { scales: { y: { ticks: { callback: function (v) { return 'R$ ' + (v / 1000).toFixed(0) + ' mil'; } } } } } });
+}
+
+// ================================================================ ABA APOSTAS (estilo SpeedLoto)
+var AP = { lista: [], quadro: null, conc: null, ini: null, fim: null, sel: -1, filtro: { zmax: 14, emin: 0, emax: 14, fmin: 0, fmax: 14, cmin: 0, cmax: 14 }, sub: 'apostas', soPremiados: false, modo: 'faixa' };
+try { AP.lista = JSON.parse(localStorage.getItem('loteca_apostas') || '[]'); } catch (e) { AP.lista = []; }
+function apSalva() { try { localStorage.setItem('loteca_apostas', JSON.stringify(AP.lista)); } catch (e) {} }
+function apNorm(tok) { // aceita 1, x, 2, 1x, 1.x, x2, 1-2, 1/x/2, 12 ...
+  tok = String(tok || '').toUpperCase().replace(/[^12X]/g, ''); var o = ''; ['1', 'X', '2'].forEach(function (k) { if (tok.indexOf(k) >= 0) o += k; }); return o;
+}
+function apParse(linha) {
+  linha = String(linha).trim(); if (!linha) return null;
+  var p = linha.split(/[;\t,|]/).map(apNorm).filter(function (x) { return x; });
+  if (p.length !== 14 && /^[12X\s]{14,}$/i.test(linha.replace(/\s/g, '')) && linha.replace(/\s/g, '').length === 14) p = linha.replace(/\s/g, '').toUpperCase().split('');
+  if (p.length === 15) p = p.slice(1); // primeira coluna = sequencial
+  return p.length === 14 ? p : null;
+}
+function apSpeed(v) { return v.map(function (t) { return ['1', '2', 'X'].filter(function (k) { return t.indexOf(k) >= 0; }).map(function (k) { return k === 'X' ? 'x' : k; }).join('.'); }).join(';'); }
+function apCombos(v) { var n = 1; v.forEach(function (t) { n *= t.length; }); return n; }
+function apConcursos() { var L = []; if (D.semana) L.push({ c: D.semana.concurso, aberto: true, jogos: D.semana.jogos.map(function (j) { return { m: j.mandante, v: j.visitante, p: j.p, res: null }; }) });
+  D.historico.forEach(function (h) { L.push({ c: h.c, aberto: false, data: h.data, h: h, jogos: h.jogos.map(function (g) { return { m: g.m, v: g.v, p: g.p, res: g.res }; }) }); }); return L; }
+function apConc(c) { return apConcursos().filter(function (x) { return x.c === c; })[0]; }
+function apP() { return apConc(AP.conc).jogos.map(function (j) { return j.p; }); }
+function apFavs(P) { return P.map(function (p) { return R[fav(p)]; }); }
+var FD = [ // filtros no estilo LoteriaSoft + os nossos (zebras pelo mercado)
+  { k: 'c1', g: 'Jogos por coluna', n: 'Coluna 1 (mandante)', max: 14 }, { k: 'cX', g: 'Jogos por coluna', n: 'Coluna X (empate)', max: 14 }, { k: 'c2', g: 'Jogos por coluna', n: 'Coluna 2 (visitante)', max: 14 },
+  { k: 's1', g: 'Sequência na coluna (maior repetição seguida)', n: 'Coluna 1', max: 14 }, { k: 'sX', g: 'Sequência na coluna (maior repetição seguida)', n: 'Coluna X', max: 14 }, { k: 's2', g: 'Sequência na coluna (maior repetição seguida)', n: 'Coluna 2', max: 14 },
+  { k: 'i1', g: 'Intervalo na coluna (maior trecho sem a coluna)', n: 'Coluna 1', max: 14 }, { k: 'iX', g: 'Intervalo na coluna (maior trecho sem a coluna)', n: 'Coluna X', max: 14 }, { k: 'i2', g: 'Intervalo na coluna (maior trecho sem a coluna)', n: 'Coluna 2', max: 14 },
+  { k: 'tr', g: 'Trocas de coluna', n: 'Trocas entre jogos seguidos', max: 13 },
+  { k: 'zb', g: 'Exclusivo nosso: mercado', n: 'Zebras (fora do favorito)', max: 14 }, { k: 'zf', g: 'Exclusivo nosso: mercado', n: 'Zebras fortes (resultado com menos de 25%)', max: 14 }];
+function apFiltroPadrao() { var f = {}; FD.forEach(function (d) { f[d.k] = { on: false, mn: 0, mx: d.max }; }); return f; }
+(function () { var f0 = null; try { f0 = JSON.parse(localStorage.getItem('loteca_filtros2') || 'null'); } catch (e) {} var f = apFiltroPadrao(); if (f0) FD.forEach(function (d) { if (f0[d.k]) f[d.k] = f0[d.k]; }); AP.filtro = f; })();
+function apFiltroSalva() { try { localStorage.setItem('loteca_filtros2', JSON.stringify(AP.filtro)); } catch (e) {} }
+function apFeat(v, P) { // valores de cada filtro para uma aposta (volante: avalia a combinacao mais provavel dele)
+  var F = apFavs(P), s = v.map(function (t, i) { return t.length === 1 ? t : t.split('').sort(function (a, b) { return P[i][R.indexOf(b)] - P[i][R.indexOf(a)]; })[0]; });
+  var o = { c1: 0, cX: 0, c2: 0, s1: 0, sX: 0, s2: 0, i1: 0, iX: 0, i2: 0, tr: 0, zb: 0, zf: 0 };
+  R.split('').forEach(function (k) { var run = 0, gap = 0, mr = 0, mg = 0; s.forEach(function (x) { if (x === k) { run++; gap = 0; } else { gap++; run = 0; } if (run > mr) mr = run; if (gap > mg) mg = gap; }); o['c' + k] = s.filter(function (x) { return x === k; }).length; o['s' + k] = mr; o['i' + k] = mg; });
+  for (var i = 1; i < 14; i++) if (s[i] !== s[i - 1]) o.tr++;
+  s.forEach(function (x, i) { if (x !== F[i]) o.zb++; if (P[i][R.indexOf(x)] < 0.25) o.zf++; });
+  return o;
+}
+function apFalha(v, P) { var f = AP.filtro, o = apFeat(v, P); for (var n = 0; n < FD.length; n++) { var d = FD[n], c = f[d.k]; if (c.on && (o[d.k] < c.mn || o[d.k] > c.mx)) return d; } return null; }
+function apPassa(v, P) { return !apFalha(v, P); }
+var MC = {}; // amostras da semana pelo modelo (para medir quanto de chance cada filtro joga fora)
+function apAmostra(P, n) { var key = AP.conc + '|' + n; if (MC[key]) return MC[key]; var out = [], seed = 12345, rnd = function () { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  for (var a = 0; a < n; a++) { var v = []; for (var i = 0; i < 14; i++) { var u = rnd(), p = P[i]; v.push(u < p[0] ? '1' : (u < p[0] + p[1] ? 'X' : '2')); } out.push(apFeat(v, P)); } MC[key] = out; return out; }
+function apFiltroResumo(P) { // historico (resultados reais) e chance da semana mantida
+  var f = AP.filtro, ok = function (o) { return FD.every(function (d) { var c = f[d.k]; return !c.on || (o[d.k] >= c.mn && o[d.k] <= c.mx); }); };
+  var Hs = D.historico.map(function (h2) { return apFeat(h2.jogos.map(function (g) { return g.res; }), h2.jogos.map(function (g) { return g.p; })); });
+  var S = apAmostra(P, 20000); return { hist: Hs, sem: S, passaH: Hs.filter(ok).length, passaS: S.filter(ok).length / S.length };
+}
+function apFaixaSegura(S, k, massa) { // menor faixa [mn,mx] que guarda 'massa' da chance da semana
+  var c = {}; S.forEach(function (o) { c[o[k]] = (c[o[k]] || 0) + 1; }); var vals = Object.keys(c).map(Number).sort(function (a, b) { return a - b; }), mn = vals[0], mx = vals[vals.length - 1], tot = S.length, fora = 0;
+  while (mn < mx) { var cm = c[mn] || 0, cx = c[mx] || 0, men = Math.min(cm, cx); if ((fora + men) / tot > 1 - massa) break; if (cm <= cx) { mn++; } else { mx--; } fora += men; }
+  return [mn, mx];
+}
+function apChance(lista, P) { // chance de 14 e de 13+ da lista inteira (uniao das combinacoes)
+  var pot = [], q = 1; for (var i = 0; i < 14; i++) { pot.push(q); q *= 3; }
+  var set = new Set(), tot = 0; lista.forEach(function (v) { tot += apCombos(v); }); if (tot > 400000) return null;
+  lista.forEach(function (v) { (function rec(i, code) { if (i === 14) { set.add(code); return; } v[i].split('').forEach(function (k) { rec(i + 1, code + R.indexOf(k) * pot[i]); }); })(0, 0); });
+  var LP = P.map(function (p) { return p.map(Math.log); }), pr = function (c) { var s = 0; for (var i = 0; i < 14; i++) { s += LP[i][c % 3]; c = Math.floor(c / 3); } return Math.exp(s); };
+  var p14 = 0, cov = new Set(); set.forEach(function (c) { p14 += pr(c); cov.add(c); for (var i = 0; i < 14; i++) { var d = Math.floor(c / pot[i]) % 3; for (var k = 0; k < 3; k++) if (k !== d) cov.add(c + (k - d) * pot[i]); } });
+  var p13 = 0; cov.forEach(function (c) { p13 += pr(c); }); return { p14: p14, p13: p13, combos: set.size };
+}
+function apConfere(v, res, Rt) { // pontos e premio de um volante num concurso (rateio oficial)
+  var er = []; for (var i = 0; i < 14; i++) if (v[i].indexOf(res[i]) < 0) er.push(i);
+  var pr = 0; if (Rt) { if (!er.length) pr = (Rt.premio14 || 0) + v.reduce(function (a, t) { return a + t.length - 1; }, 0) * (Rt.premio13 || 0); else if (er.length === 1) pr = v[er[0]].length * (Rt.premio13 || 0); }
+  return { pts: 14 - er.length, premio: pr };
+}
+function apCartesiana() { var out = []; AP.lista.forEach(function (v) { combinacoes(v).forEach(function (c) { out.push(c.split('')); }); }); return out; }
+function apUnifica(lista) { // junta apostas que diferem em um so jogo (simples -> duplo -> triplo), repetindo enquanto der
+  var L = lista.map(function (v) { return v.slice(); }), mudou = true;
+  while (mudou) { mudou = false; var mapa = {};
+    for (var a = 0; a < L.length && !mudou; a++) for (var i = 0; i < 14 && !mudou; i++) { var chave = L[a].map(function (t, k) { return k === i ? '*' : t; }).join(';');
+      if (mapa[chave] !== undefined && mapa[chave] !== a) { var b = mapa[chave], u = R.split('').filter(function (k) { return L[a][i].indexOf(k) >= 0 || L[b][i].indexOf(k) >= 0; }).join('');
+        if (u.length <= 3 && L[a][i] !== L[b][i] && !L[a][i].split('').some(function (k) { return L[b][i].indexOf(k) >= 0; })) { L[b][i] = u; L.splice(a, 1); mudou = true; } }
+      else mapa[chave] = a; } }
+  return L;
+}
+function apGerar(qtd, nd, nt, modo, filtrar) {
+  var P = apP(), out = [], tent = 0, F = apFavs(P);
+  var amostra = function (p) { var r = Math.random() * (p[0] + p[1] + p[2]); return r < p[0] ? '1' : (r < p[0] + p[1] ? 'X' : '2'); };
+  while (out.length < qtd && tent < qtd * 400) { tent++;
+    var base = P.map(function (p) { return modo === 'aleatoria' ? R[Math.floor(Math.random() * 3)] : amostra(p); });
+    var ordem = P.map(function (p, i) { return [i, Math.max.apply(null, p) + Math.random() * 0.15]; }).sort(function (a, b) { return a[1] - b[1]; }).map(function (x) { return x[0]; });
+    var v = base.slice(); ordem.slice(0, nt).forEach(function (i) { v[i] = '1X2'; });
+    ordem.slice(nt, nt + nd).forEach(function (i) { var outro = modo === 'aleatoria' ? R.split('').filter(function (k) { return k !== base[i]; })[Math.floor(Math.random() * 2)] : (base[i] === F[i] ? (F[i] === 'X' ? (P[i][0] >= P[i][2] ? '1' : '2') : 'X') : F[i]);
+      v[i] = R.split('').filter(function (k) { return k === base[i] || k === outro; }).join(''); });
+    if (filtrar && !apPassa(v, P)) continue;
+    var s = v.join(';'); if (AP.lista.some(function (x) { return x.join(';') === s; }) || out.some(function (x) { return x.join(';') === s; })) continue;
+    out.push(v); }
+  return out;
+}
+function apImporta(texto) { var n = 0, ruins = 0; texto.split(/\r?\n/).forEach(function (l) { if (!l.trim()) return; var v = apParse(l); if (v) { AP.lista.push(v); n++; } else ruins++; }); apSalva(); return { n: n, ruins: ruins }; }
+function abaApostas() {
+  var el = document.getElementById('apostas'); if (!el) return;
+  var CS = apConcursos(); if (!CS.length) { el.innerHTML = '<div class="card">Sem concursos.</div>'; return; }
+  if (AP.conc == null) AP.conc = CS[0].c; if (AP.ini == null) { AP.fim = CS.filter(function (x) { return !x.aberto; })[0].c; AP.ini = Math.max(CS[CS.length - 1].c, AP.fim - 19); }
+  var C = apConc(AP.conc) || CS[0], P = C.jogos.map(function (j) { return j.p; });
+  if (!AP.quadro) AP.quadro = P.map(function () { return ''; });
+  var q = AP.quadro, cont = [0, 0, 0], nd = 0, nt = 0; q.forEach(function (t) { R.split('').forEach(function (k, i) { if (t.indexOf(k) >= 0) cont[i]++; }); if (t.length === 2) nd++; if (t.length === 3) nt++; });
+  var preenchido = q.every(function (t) { return t; });
+  var tot = AP.lista.reduce(function (a, v) { return a + apCombos(v) * 2; }, 0);
+  var h = '<div class="card noprint"><div class="barraf">' +
+    '<label><b>Concurso</b> <select class="sel" id="apconc">' + CS.slice(0, 400).map(function (x) { return '<option value="' + x.c + '"' + (x.c === AP.conc ? ' selected' : '') + '>' + x.c + (x.aberto ? ' (aberto)' : ' · ' + esc(x.data || '')) + '</option>'; }).join('') + '</select></label>' +
+    '<label><b>Faixa para conferir</b> do <input id="apini" type="number" class="sel" style="width:100px" value="' + AP.ini + '"> ao <input id="apfim" type="number" class="sel" style="width:100px" value="' + AP.fim + '"></label>' +
+    '<button class="btn pri" id="apconf">CONFERIR</button><label class="sub"><input type="checkbox" id="apsop"' + (AP.soPremiados ? ' checked' : '') + '> só premiados</label>' +
+    '<label class="btn" style="display:inline-flex;align-items:center">Importar arquivo (TXT, CSV, Excel)<input id="apfile" type="file" accept=".txt,.csv,.xlsx,.xls" hidden></label>' +
+    '<button class="btn" id="apcolar">Colar apostas</button></div></div>';
+  // quadro
+  h += '<div style="display:grid;grid-template-columns:minmax(330px,420px) 1fr;gap:16px;align-items:start" class="ap-grid"><div class="card noprint"><h2>Quadro de apostas</h2><div class="rolagem"><table><thead><tr><th>#</th><th>Jogo</th><th style="text-align:center">1</th><th style="text-align:center">X</th><th style="text-align:center">2</th><th>D</th><th>T</th></tr></thead><tbody>' +
+    C.jogos.map(function (j, i) { var t = q[i]; return '<tr><td>' + (i + 1) + '</td><td style="font-size:12px;max-width:140px">' + esc(nome2(j.m)) + ' × ' + esc(nome2(j.v)) + (j.res ? ' <b title="resultado">(' + j.res + ')</b>' : '') + '</td>' +
+      R.split('').map(function (k, n) { return '<td style="text-align:center"><button class="tg' + (t.indexOf(k) >= 0 ? ' on' : '') + '" style="min-width:44px" data-q="' + i + '" data-k="' + k + '" aria-pressed="' + (t.indexOf(k) >= 0) + '">' + Math.round(j.p[n] * 100) + '%</button></td>'; }).join('') +
+      '<td>' + (t.length === 2 ? '■' : '') + '</td><td>' + (t.length === 3 ? '■' : '') + '</td></tr>'; }).join('') +
+    '<tr><td></td><td class="sub">Marcações</td>' + cont.map(function (n) { return '<td style="text-align:center"><b>' + n + '</b></td>'; }).join('') + '<td><b>' + nd + '</b></td><td><b>' + nt + '</b></td></tr></tbody></table></div>' +
+    '<p class="sub">O número em cada botão é a chance do resultado. ' + (preenchido ? 'Volante: ' + brl(apCombos(q) * 2) + ' · chance de 14 ' + pc(estat(q, P).p14, 2) : 'Marque os 14 jogos.') + '</p>' +
+    '<div class="barraf"><button class="btn" id="aplimpa">Limpar jogos</button><button class="btn pri" id="apinc"' + (preenchido ? '' : ' disabled') + '>Incluir aposta</button><button class="btn" id="apperf">Jogo perfeito</button>' +
+    '<select class="sel" id="apperforc">' + [16, 32, 64, 100, 162, 200].map(function (o) { return '<option value="' + o + '">' + brl(o) + '</option>'; }).join('') + '</select></div>' +
+    '<div class="barraf" style="margin-top:8px"><button class="btn" id="apdesd">Desdobrar o quadro em volantes de 1 duplo</button><select class="sel" id="apdesdorc">' + [40, 80, 100, 160, 200, 300].map(function (o) { return '<option value="' + o + '"' + (o === 200 ? ' selected' : '') + '>' + brl(o) + '</option>'; }).join('') + '</select><span class="sub" id="apdesdmsg"></span></div></div>';
+  // subabas
+  var subs = [['apostas', 'Apostas'], ['arq', 'Meus arquivos'], ['fech', 'Fechamento (garantia)'], ['estat', 'Estatísticas rápidas'], ['filtros', 'Filtros'], ['cart', 'Combinação cartesiana'], ['unif', 'Unificação linear'], ['conf', 'Conferência'], ['res', 'Resultados para conferência']];
+  h += '<div class="card"><div class="barraf noprint" role="tablist">' + subs.map(function (s) { return '<button class="btn' + (AP.sub === s[0] ? ' pri' : '') + '" data-sub="' + s[0] + '">' + s[1] + '</button>'; }).join('') + '</div><div id="apsub" style="margin-top:14px"></div></div></div>';
+  el.innerHTML = h;
+  // eventos topo e quadro
+  el.querySelector('#apconc').onchange = function () { AP.conc = Number(this.value); AP.quadro = null; abaApostas(); };
+  el.querySelector('#apini').onchange = function () { AP.ini = Number(this.value); };
+  el.querySelector('#apfim').onchange = function () { AP.fim = Number(this.value); };
+  el.querySelector('#apsop').onchange = function () { AP.soPremiados = this.checked; };
+  el.querySelector('#apconf').onclick = function () { AP.sub = 'conf'; abaApostas(); };
+  el.querySelector('#apfile').onchange = function () { var f = this.files[0]; if (!f) return; var fim = function (txt) { var r = apImporta(txt); alert(r.n + ' apostas importadas' + (r.ruins ? ' · ' + r.ruins + ' linha(s) ignorada(s) (sem 14 jogos)' : '')); AP.sub = 'apostas'; abaApostas(); };
+    if (/\.xlsx?$/i.test(f.name)) { var rd = new FileReader(); rd.onload = function () { if (typeof XLSX === 'undefined') { alert('Leitor de Excel não carregou; salve como CSV e importe.'); return; } var wb = XLSX.read(new Uint8Array(rd.result), { type: 'array' }); var ws = wb.Sheets[wb.SheetNames[0]]; fim(XLSX.utils.sheet_to_csv(ws, { FS: ';' })); }; rd.readAsArrayBuffer(f); }
+    else { var rt = new FileReader(); rt.onload = function () { fim(String(rt.result)); }; rt.readAsText(f); } };
+  el.querySelector('#apcolar').onclick = function () { var t = prompt('Cole as apostas (uma por linha; aceita 1;2.x;1;... , 1X 1 2 ... ou 14 letras):'); if (!t) return; var r = apImporta(t); alert(r.n + ' apostas incluídas' + (r.ruins ? ' · ' + r.ruins + ' ignorada(s)' : '')); abaApostas(); };
+  el.querySelectorAll('[data-q]').forEach(function (b) { b.onclick = function () { var i = Number(b.dataset.q), k = b.dataset.k, t = AP.quadro[i];
+    AP.quadro[i] = t.indexOf(k) >= 0 ? t.replace(k, '') : R.split('').filter(function (x) { return t.indexOf(x) >= 0 || x === k; }).join(''); abaApostas(); }; });
+  el.querySelector('#aplimpa').onclick = function () { AP.quadro = null; abaApostas(); };
+  el.querySelector('#apinc').onclick = function () { var s = AP.quadro.join(';'); if (AP.lista.some(function (x) { return x.join(';') === s; })) { alert('Essa aposta já está na lista.'); return; } AP.lista.push(AP.quadro.slice()); apSalva(); AP.sub = 'apostas'; abaApostas(); };
+  el.querySelector('#apperf').onclick = function () { AP.quadro = perfeito(P, Number(el.querySelector('#apperforc').value)).sel.slice(); abaApostas(); };
+  el.querySelector('#apdesd').onclick = function () { var m = el.querySelector('#apdesdmsg'); if (!preenchido) { m.textContent = 'Marque os 14 jogos (uma base maior que o valor).'; return; } m.textContent = 'Calculando…';
+    setTimeout(function () { var r = espalhado(AP.quadro, P, Number(el.querySelector('#apdesdorc').value) / 4); if (r.erro) { m.textContent = r.erro; return; } AP.lista = AP.lista.concat(r.vols); apSalva(); m.textContent = r.vols.length + ' volantes incluídos (13 ou 14: ' + pc(r.p13, 1) + ')'; AP.sub = 'apostas'; abaApostasSub(); }, 30); };
+  el.querySelectorAll('[data-sub]').forEach(function (b) { b.onclick = function () { AP.sub = b.dataset.sub; abaApostas(); }; });
+  abaApostasSub();
+}
+// ================================================================ VOLANTE (tela principal, logica LoteriaSoft: volante-base na frente, desdobre dentro)
+var MAXC = 864; // regra da Caixa: um volante tem no maximo 864 combinacoes (R$ 1.728) e no minimo 1 duplo
+var VL = { conc: null, base: null, modo: 'espalhado', orc: 200, nd: 1, nt: 0, gar: 13, chances: true, res: null, filtrar: false };
+try { var vl0 = JSON.parse(localStorage.getItem('loteca_volante') || 'null'); if (vl0) { ['modo', 'orc', 'nd', 'nt', 'gar', 'chances', 'filtrar'].forEach(function (k) { if (vl0[k] != null) VL[k] = vl0[k]; }); if (vl0.base && vl0.conc) { VL.base = vl0.base; VL.conc = vl0.conc; } } } catch (e) {}
+function vlSalva() { try { localStorage.setItem('loteca_volante', JSON.stringify({ conc: VL.conc, base: VL.base, modo: VL.modo, orc: VL.orc, nd: VL.nd, nt: VL.nt, gar: VL.gar, chances: VL.chances, filtrar: VL.filtrar })); } catch (e) {} }
+function vlValido(v) { var c = apCombos(v); return c >= 2 && c <= MAXC; }
+function vlDividir(v, P) { // divide uma base grande em volantes validos (<= 864 combinacoes) sem perder nenhuma combinacao
+  if (apCombos(v) <= MAXC) return [v.slice()];
+  var i = -1, best = -1; v.forEach(function (t, n) { if (t.length > best) { best = t.length; i = n; } }); // abre o jogo com mais opcoes
+  var o = v[i].split('').sort(function (a, b) { return P[i][R.indexOf(b)] - P[i][R.indexOf(a)]; });
+  var g = o.length === 3 ? [o.slice(0, 2).sort(function (a, b) { return R.indexOf(a) - R.indexOf(b); }).join(''), o[2]] : [o[0], o[1]];
+  var out = []; g.forEach(function (op) { var w = v.slice(); w[i] = op; out = out.concat(vlDividir(w, P)); }); return out;
+}
+function vlAjustaMin(vols, P) { // volante sem duplo nao existe na Caixa: completa com o 2o resultado mais provavel do jogo mais duvidoso
+  return vols.map(function (v) { if (apCombos(v) >= 2) return v; var w = v.slice(), i = -1, m = 2; P.forEach(function (p, n) { var s = p.slice().sort(function (a, b) { return b - a; }); var d = s[0] - s[1]; if (d < m) { m = d; i = n; } });
+    var seg = R.split('').filter(function (k) { return w[i].indexOf(k) < 0; }).sort(function (a, b) { return P[i][R.indexOf(b)] - P[i][R.indexOf(a)]; })[0]; w[i] = R.split('').filter(function (k) { return w[i].indexOf(k) >= 0 || k === seg; }).join(''); return w; });
+}
+function abaVolante() {
+  var el = document.getElementById('volante'); if (!D) return;
+  var Ls = apConcursos(); if (!VL.conc || !apConc(VL.conc)) { VL.conc = Ls[0].c; VL.base = null; }
+  var C = apConc(VL.conc), P = C.jogos.map(function (j) { return j.p; });
+  if (!VL.base || VL.base.length !== 14) VL.base = C.jogos.map(function () { return ''; });
+  var B = VL.base, cheio = B.every(function (t) { return t.length; }), comb = cheio ? apCombos(B) : 0;
+  var nd = B.filter(function (t) { return t.length === 2; }).length, nt = B.filter(function (t) { return t.length === 3; }).length, ns = B.filter(function (t) { return t.length === 1; }).length;
+  var st = cheio ? estat(B, P) : null, fechado = !C.aberto, res = fechado ? C.jogos.map(function (j) { return j.res; }) : null;
+  var ac = fechado && cheio ? B.filter(function (t, i) { return t.indexOf(res[i]) >= 0; }).length : null;
+  var aviso = !cheio ? ['', 'Marque os 14 jogos (' + B.filter(function (t) { return t.length; }).length + ' de 14).'] : comb < 2 ? ['er', 'A Caixa exige pelo menos 1 duplo por volante.'] : comb > MAXC ? ['info', 'Base com ' + comb.toLocaleString('pt-BR') + ' combinações (' + brl(comb * 2) + '): não cabe em 1 volante (máx. 864). Desdobre ao lado.'] : ['ok', 'Cabe em 1 volante: ' + brl(comb * 2) + '.'];
+  var caixa = function (i, k) { var on = B[i].indexOf(k) >= 0, p = P[i][R.indexOf(k)], r = fechado && res[i] === k;
+    return '<button class="vbx' + (on ? ' on' : '') + (r ? ' res' : '') + '" data-i="' + i + '" data-k="' + k + '" aria-pressed="' + on + '" title="' + (k === 'X' ? 'Empate' : 'Coluna ' + k) + ': ' + pc(p, 0) + '"><b>' + (k === 'X' ? 'X' : k) + '</b>' + (VL.chances ? '<small>' + pc(p, 0) + '</small>' : '') + '</button>'; };
+  var linhas = C.jogos.map(function (j, i) { var t = B[i], tipo = t.length === 3 ? 'T' : t.length === 2 ? 'D' : t.length === 1 ? 'S' : '';
+    var cls = fechado && t ? (t.indexOf(res[i]) >= 0 ? ' acertou' : ' errou') : '';
+    return '<div class="vrow' + cls + '"><span class="vn">' + (i + 1 < 10 ? '0' : '') + (i + 1) + '</span><span class="vt m">' + esc(nome2(j.m)) + '</span>' + caixa(i, '1') + caixa(i, 'X') + caixa(i, '2') + '<span class="vt v">' + esc(nome2(j.v)) + '</span><span class="vtp ' + tipo + '">' + tipo + '</span></div>'; }).join('');
+  var conc = '<select id="vlconc" class="sel">' + Ls.slice(0, 60).map(function (x) { return '<option value="' + x.c + '"' + (x.c === VL.conc ? ' selected' : '') + '>' + x.c + (x.aberto ? ' — aberto' : ' — ' + (x.data || 'encerrado')) + '</option>'; }).join('') + '</select>';
+  var orcs = [40, 60, 100, 144, 200, 300, 500, 1000, 2000].map(function (v) { return '<option value="' + v + '"' + (v === VL.orc ? ' selected' : '') + '>' + brl(v) + '</option>'; }).join('');
+  var modos = [['espalhado', 'Desdobre espalhado', 'Mais chance de 13/14 pelo dinheiro: volantes de 1 duplo dentro da base.'], ['completo', 'Base completa', 'Todas as combinações da base, divididas em volantes válidos da Caixa.'], ['fechamento', 'Fechamento com garantia', 'Garante 13 (ou 12...) pontos se o resultado cair dentro da base.']];
+  var h = '<div class="vtopo card"><div class="barraf"><label class="lb">Concurso ' + conc + '</label>' +
+    '<button class="btn" id="vlnovo">Novo volante</button><button class="btn" id="vlabrir">Abrir arquivo</button><button class="btn" id="vlsalvar"' + (cheio ? '' : ' disabled') + '>Salvar</button>' +
+    '<label class="lb sub"><input type="checkbox" id="vlch"' + (VL.chances ? ' checked' : '') + '> Mostrar chances</label></div></div>' +
+    '<div class="vgrid">' +
+    '<div class="vcard"><div class="vhead"><div><b>LOTECA</b><span>Concurso ' + C.c + (C.aberto ? ' · aberto' : ' · resultado conferido') + '</span></div><div class="vsum"><span>' + ns + ' S</span><span>' + nd + ' D</span><span>' + nt + ' T</span></div></div>' +
+    '<div class="vcols"><span></span><span>Mandante</span><span>Col. 1</span><span>Empate</span><span>Col. 2</span><span>Visitante</span><span></span></div>' + linhas +
+    '<div class="vfoot"><div class="vk"><span>Combinações</span><b>' + (cheio ? comb.toLocaleString('pt-BR') : '—') + '</b></div><div class="vk"><span>Valor</span><b>' + (cheio ? brl(comb * 2) : '—') + '</b></div>' +
+    '<div class="vk"><span>Chance de 14</span><b>' + (st ? pc(st.p14, 2) : '—') + '</b></div><div class="vk"><span>13 ou 14</span><b>' + (st ? pc(st.p13, 1) : '—') + '</b></div>' + (ac != null ? '<div class="vk"><span>Acertos</span><b>' + ac + '/14</b></div>' : '') + '</div>' +
+    '<div class="vaviso ' + aviso[0] + '">' + aviso[1] + '</div>' +
+    '<div class="barraf vbt"><button class="btn" id="vllimpa">Limpar</button><button class="btn" id="vlperf">Jogo perfeito de</button><select id="vlperfo" class="sel">' + [4, 8, 16, 32, 64, 144, 200, 432, 864, 1728].map(function (v) { return '<option value="' + v + '"' + (v === 200 ? ' selected' : '') + '>' + brl(v) + '</option>'; }).join('') + '</select><button class="btn" id="vlforte">Base forte</button>' +
+    '<button class="btn" id="vllista"' + (cheio && comb >= 2 && comb <= MAXC ? '' : ' disabled') + '>Pôr na lista</button></div></div>' +
+    '<div class="vpanel card"><h2>Desdobrar este volante</h2><div class="vmodos">' + modos.map(function (m) { return '<button class="vmodo' + (VL.modo === m[0] ? ' on' : '') + '" data-m="' + m[0] + '"><b>' + m[1] + '</b><span>' + m[2] + '</span></button>'; }).join('') + '</div>';
+  if (VL.modo === 'espalhado') h += '<div class="barraf"><label class="lb">Quanto quer gastar <select id="vlorc" class="sel">' + orcs + '</select></label></div>';
+  if (VL.modo === 'fechamento') h += '<div class="barraf"><label class="lb">Duplos por volante <input id="vlnd" type="number" min="0" max="9" value="' + VL.nd + '" class="sel" style="width:76px"></label><label class="lb">Triplos <input id="vlnt" type="number" min="0" max="6" value="' + VL.nt + '" class="sel" style="width:76px"></label><label class="lb">Garantia <select id="vlgar" class="sel">' + [13, 12, 11, 10].map(function (g) { return '<option' + (g === VL.gar ? ' selected' : '') + '>' + g + '</option>'; }).join('') + '</select> pontos</label></div>';
+  if (VL.modo === 'completo') h += '<p class="sub">' + (cheio ? 'A base vira ' + vlDividir(B, P).length + ' volantes válidos, custo ' + brl(comb * 2) + ', mesma chance da base.' : 'Marque a base.') + '</p>';
+  h += '<label class="lb sub"><input type="checkbox" id="vlfilt"' + (VL.filtrar ? ' checked' : '') + '> Aplicar os filtros (editar em Lista de apostas → Filtros)</label>' +
+    '<div class="barraf" style="margin-top:10px"><button class="btn pri big" id="vlgera"' + (cheio ? '' : ' disabled') + '>Desdobrar</button><span class="sub" id="vlmsg"></span></div><div id="vlres"></div></div></div>' +
+    '<div id="vlvols"></div>';
+  el.innerHTML = h;
+  // eventos
+  el.querySelectorAll('.vbx').forEach(function (b) { b.onclick = function () { var i = Number(b.dataset.i), k = b.dataset.k, t = B[i];
+    B[i] = t.indexOf(k) >= 0 ? t.replace(k, '') : R.split('').filter(function (x) { return t.indexOf(x) >= 0 || x === k; }).join(''); VL.res = null; vlSalva(); abaVolante(); }; });
+  el.querySelector('#vlconc').onchange = function (e) { VL.conc = Number(e.target.value); VL.res = null; var C2 = apConc(VL.conc); if (VL.base && C2 && !C2.aberto) {} else VL.base = null; vlSalva(); abaVolante(); };
+  el.querySelector('#vlch').onchange = function (e) { VL.chances = e.target.checked; vlSalva(); abaVolante(); };
+  el.querySelector('#vlnovo').onclick = el.querySelector('#vllimpa').onclick = function () { VL.base = null; VL.res = null; vlSalva(); abaVolante(); };
+  el.querySelector('#vlperf').onclick = function () { var m = perfeito(P, Number(el.querySelector('#vlperfo').value)); if (m) { VL.base = m.sel.slice(); VL.res = null; vlSalva(); abaVolante(); } };
+  el.querySelector('#vlforte').onclick = function () { VL.base = otimo(P, 4, 6).sel.slice(); VL.modo = 'espalhado'; VL.res = null; vlSalva(); abaVolante(); };
+  el.querySelector('#vllista').onclick = function () { AP.lista.push(B.slice()); apSalva(); abaApostas(); el.querySelector('#vlmsg').textContent = 'Volante posto na Lista de apostas ✓'; };
+  el.querySelector('#vlsalvar').onclick = function () { var nm = prompt('Nome do arquivo:', 'Volante ' + C.c); if (nm && arqSalvar(nm, C.c, [B.slice()])) el.querySelector('#vlmsg').textContent = 'Salvo em Meus arquivos ✓'; };
+  el.querySelector('#vlabrir').onclick = function () { var L = arqLista(); if (!L.length) { alert('Nenhum arquivo salvo ainda.'); return; } var n = prompt('Qual arquivo abrir?\n' + L.map(function (a, i) { return (i + 1) + ') ' + a.nome + ' — ' + a.vols.length + ' volante(s)'; }).join('\n'), '1'); var a = L[Number(n) - 1]; if (!a) return;
+    if (a.vols.length === 1) { VL.base = a.vols[0].slice(); VL.res = null; } else { VL.res = { vols: a.vols.map(function (v) { return v.slice(); }), titulo: a.nome }; } vlSalva(); abaVolante(); };
+  el.querySelectorAll('.vmodo').forEach(function (b) { b.onclick = function () { VL.modo = b.dataset.m; VL.res = null; vlSalva(); abaVolante(); }; });
+  var o = el.querySelector('#vlorc'); if (o) o.onchange = function () { VL.orc = Number(o.value); vlSalva(); };
+  ['nd', 'nt'].forEach(function (k) { var x = el.querySelector('#vl' + k); if (x) x.onchange = function () { VL[k] = Number(x.value); vlSalva(); }; });
+  var g = el.querySelector('#vlgar'); if (g) g.onchange = function () { VL.gar = Number(g.value); vlSalva(); };
+  el.querySelector('#vlfilt').onchange = function (e) { VL.filtrar = e.target.checked; vlSalva(); };
+  el.querySelector('#vlgera').onclick = function () { var m = el.querySelector('#vlmsg'); m.textContent = 'Calculando…'; setTimeout(function () { vlGera(B, P, C, m); }, 30); };
+  if (VL.res) vlMostra(VL.res, P, C);
+}
+function vlGera(B, P, C, m) {
+  var r;
+  if (VL.modo === 'espalhado') { r = espalhado(B, P, Math.floor(VL.orc / 4)); if (r.erro) { m.textContent = r.erro; return; } }
+  else if (VL.modo === 'completo') { var vs = vlDividir(B, P); if (apCombos(B) < 2) vs = vlAjustaMin(vs, P); r = { vols: vs }; }
+  else { if (Math.pow(2, VL.nd) * Math.pow(3, VL.nt) > MAXC) { m.textContent = 'Esse formato passa de 864 combinações por volante (limite da Caixa).'; return; } r = fechamento(B, P, VL.nd, VL.nt, VL.gar); if (r.erro) { m.textContent = r.erro; return; } r = { vols: vlAjustaMin(r.vols, P), garantia: VL.gar }; }
+  var vols = r.vols, antes = vols.length; if (VL.filtrar) vols = vols.filter(function (v) { return apPassa(v, P); });
+  VL.res = { vols: vols, titulo: 'loteca_' + C.c + '_' + VL.modo, filtradas: antes - vols.length, garantia: r.garantia }; m.textContent = ''; vlMostra(VL.res, P, C);
+}
+function vlMostra(res, P, C) {
+  var el = document.getElementById('vlres'); if (!el) return; var vols = res.vols, custo = arqCusto(vols), ch = apChance(vols, P), inval = vols.filter(function (v) { return !vlValido(v); }).length;
+  var mesmo = null; if (VL.modo !== 'espalhado' && custo >= 8) { var e = espalhado(VL.base, P, Math.floor(custo / 4)); if (!e.erro) mesmo = e; }
+  var fech = !C.aberto, res2 = fech ? C.jogos.map(function (j) { return j.res; }) : null, pts = fech ? vols.map(function (v) { return v.filter(function (t, i) { return t.indexOf(res2[i]) >= 0; }).length; }) : null;
+  el.innerHTML = '<div class="grid" style="margin-top:12px"><div class="stat"><span>Volantes</span><b>' + vols.length + '</b><span>' + brl(custo) + (res.filtradas ? ' · ' + res.filtradas + ' cortados pelos filtros' : '') + '</span></div>' +
+    '<div class="stat" style="background:var(--verde2)"><span>Chance de 13 ou 14</span><b>' + (ch ? pc(ch.p13, 1) : '—') + '</b><span>14: ' + (ch ? pc(ch.p14, 2) : '—') + (res.garantia ? ' · garante ' + res.garantia + ' se cair na base' : '') + '</span></div>' +
+    (mesmo ? '<div class="stat"><span>Espalhado pelo mesmo valor</span><b>' + pc(mesmo.p13, 1) + '</b><span>14: ' + pc(mesmo.p14, 2) + '</span></div>' : '') +
+    (pts ? '<div class="stat"><span>Conferido</span><b>' + Math.max.apply(null, pts.concat([0])) + ' pts</b><span>melhor volante · ' + pts.filter(function (p) { return p >= 13; }).length + ' com 13+</span></div>' : '') + '</div>' +
+    (inval ? '<div class="vaviso er">' + inval + ' volante(s) fora da regra da Caixa (mín. 1 duplo, máx. 864 combinações).</div>' : '') +
+    '<div class="barraf" style="margin-top:10px"><button class="btn" id="vlsv">Salvar em Meus arquivos</button><button class="btn" id="vlls">Levar para a Lista de apostas</button></div>';
+  el.querySelector('#vlsv').onclick = function () { var nm = prompt('Nome do arquivo:', 'Loteca ' + C.c + ' - ' + vols.length + ' volantes'); if (nm && arqSalvar(nm, C.c, vols)) document.getElementById('vlmsg').textContent = 'Salvo ✓'; };
+  el.querySelector('#vlls').onclick = function () { AP.lista = AP.lista.concat(vols.map(function (v) { return v.slice(); })); apSalva(); abaApostas(); document.getElementById('vlmsg').textContent = vols.length + ' volantes na Lista de apostas ✓'; };
+  renderVolantes('vlvols', vols, res.titulo || ('loteca_' + C.c), C.jogos.map(function (j) { return { mandante: j.m, visitante: j.v }; }));
+}
+// ---------------------------------------------------------------- meus arquivos (salvar/abrir jogos) e envio ao Marcador
+function arqLista() { try { return JSON.parse(localStorage.getItem('loteca_arquivos') || '[]'); } catch (e) { return []; } }
+function arqGrava(L) { try { localStorage.setItem('loteca_arquivos', JSON.stringify(L)); return true; } catch (e) { alert('Não consegui salvar (memória do navegador cheia).'); return false; } }
+function arqSalvar(nome, conc, vols) { var L = arqLista().filter(function (a) { return a.nome !== nome; }); L.unshift({ nome: nome, conc: conc, data: new Date().toLocaleString('pt-BR'), vols: vols }); return arqGrava(L); }
+function arqCusto(vols) { return vols.reduce(function (a, v) { return a + apCombos(v) * 2; }, 0); }
+function arqFontes() { // tudo que pode ir para o Marcador
+  var F = []; if (AP.lista.length) F.push({ nome: 'Suas apostas (aba Apostas)', vols: AP.lista });
+  var S = D && D.semana; if (S && S.desdobre && S.desdobre.espalhado) F.push({ nome: 'Desdobre espalhado do ' + S.concurso, vols: S.desdobre.espalhado.volantes });
+  arqLista().forEach(function (a) { F.push({ nome: a.nome + ' (salvo em ' + a.data + ')', vols: a.vols }); }); return F;
+}
+function telaEnviar() { // janela aberta pelo Marcador Loteca dentro do site da Caixa
+  var F = arqFontes(), ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:#F3F7F5;z-index:9999;overflow:auto;padding:18px';
+  ov.innerHTML = '<div class="card" style="max-width:520px;margin:0 auto"><h2 style="margin-top:0">Enviar para o Marcador Loteca</h2><p class="sub">Escolha o que vai para a Caixa. Os volantes aparecem na lista do marcador; nada é marcado até você clicar em ENVIAR lá.</p>' +
+    (F.length ? F.map(function (f, n) { return '<button class="btn" data-f="' + n + '" style="display:block;width:100%;text-align:left;margin:8px 0;padding:12px"><b>' + esc(f.nome) + '</b><br><span class="sub">' + f.vols.length + ' volantes · ' + brl(arqCusto(f.vols)) + '</span></button>'; }).join('') : '<p>Nenhuma lista ainda. Monte apostas na aba Apostas ou salve um arquivo.</p>') +
+    '<p class="sub" data-a="m"></p></div>';
+  document.body.appendChild(ov);
+  ov.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { var f = F[Number(b.dataset.f)], m = ov.querySelector('[data-a=m]');
+    if (!window.opener) { m.textContent = 'Esta janela precisa ser aberta pelo botão "Puxar do meu painel" do Marcador, na página da Caixa.'; return; }
+    window.opener.postMessage({ tipo: 'loteca-volantes', nome: f.nome, vols: f.vols.map(apSpeed) }, window.__LOTECA_ORIGEM || 'https://www.loteriasonline.caixa.gov.br');
+    m.textContent = 'Enviado ✓ — pode fechar esta janela.'; setTimeout(function () { window.close(); }, 900); }; });
+}
+function abaArquivos(el) { // subaba "Meus arquivos"
+  var L = arqLista();
+  var h = '<p class="sub">Salve a lista de apostas com um nome (como "Salvar arquivo" do LoteriaSoft) e abra quando quiser. Fica guardado neste navegador; baixe o TXT para ter cópia ou levar ao SpeedLoto.</p>' +
+    '<div class="barraf"><input id="arqnome" class="sel" style="min-width:260px" placeholder="Nome do arquivo" value="Loteca ' + (AP.conc || '') + ' - ' + AP.lista.length + ' volantes"><button class="btn pri" id="arqsalva"' + (AP.lista.length ? '' : ' disabled') + '>Salvar a lista atual</button>' +
+    '<label class="btn" style="cursor:pointer">Importar TXT do SpeedLoto<input type="file" id="arqimp" accept=".txt,.csv" hidden></label></div>' +
+    (L.length ? '<div class="rolagem"><table><thead><tr><th>Arquivo</th><th>Concurso</th><th>Salvo em</th><th>Volantes</th><th>Valor</th><th></th></tr></thead><tbody>' + L.map(function (a, n) {
+      return '<tr><td><b>' + esc(a.nome) + '</b></td><td>' + (a.conc || '—') + '</td><td>' + esc(a.data) + '</td><td>' + a.vols.length + '</td><td>' + brl(arqCusto(a.vols)) + '</td><td style="white-space:nowrap"><button class="btn" data-ab="' + n + '">Abrir</button> <button class="btn" data-aj="' + n + '">Juntar</button> <button class="btn" data-at="' + n + '">TXT</button> <button class="btn" data-ax="' + n + '">Apagar</button></td></tr>'; }).join('') + '</tbody></table></div>'
+      : '<p class="sub" style="margin-top:12px">Nenhum arquivo salvo ainda.</p>');
+  el.innerHTML = h;
+  el.querySelector('#arqsalva').onclick = function () { var nm = el.querySelector('#arqnome').value.trim(); if (!nm) { alert('Dê um nome ao arquivo.'); return; }
+    if (arqLista().some(function (a) { return a.nome === nm; }) && !confirm('Já existe "' + nm + '". Substituir?')) return; if (arqSalvar(nm, AP.conc, AP.lista)) abaApostasSub(); };
+  el.querySelector('#arqimp').onchange = function (e) { var f = e.target.files[0]; if (!f) return; var r = new FileReader(); r.onload = function () { var vs = String(r.result).split(/\r?\n/).map(apParse).filter(Boolean);
+    if (!vs.length) { alert('Não achei volantes de 14 jogos nesse arquivo.'); return; } arqSalvar(f.name.replace(/\.\w+$/, ''), AP.conc, vs); abaApostasSub(); }; r.readAsText(f); };
+  var pega = function (b, k) { return L[Number(b.getAttribute(k))]; };
+  el.querySelectorAll('[data-ab]').forEach(function (b) { b.onclick = function () { var a = pega(b, 'data-ab'); if (AP.lista.length && !confirm('Trocar a lista atual (' + AP.lista.length + ' volantes) por "' + a.nome + '"?')) return; AP.lista = a.vols.map(function (v) { return v.slice(); }); apSalva(); AP.sub = 'apostas'; abaApostas(); }; });
+  el.querySelectorAll('[data-aj]').forEach(function (b) { b.onclick = function () { var a = pega(b, 'data-aj'); AP.lista = AP.lista.concat(a.vols.map(function (v) { return v.slice(); })); apSalva(); AP.sub = 'apostas'; abaApostas(); }; });
+  el.querySelectorAll('[data-at]').forEach(function (b) { b.onclick = function () { var a = pega(b, 'data-at'); baixar(a.nome.replace(/[^\w\- ]/g, '_') + '.txt', a.vols.map(apSpeed).join('\r\n') + '\r\n'); }; });
+  el.querySelectorAll('[data-ax]').forEach(function (b) { b.onclick = function () { var a = pega(b, 'data-ax'); if (!confirm('Apagar o arquivo "' + a.nome + '"?')) return; arqGrava(arqLista().filter(function (x) { return x.nome !== a.nome; })); abaApostasSub(); }; });
+}
+// ---------------------------------------------------------------- fechamento com garantia (estilo LoteriaSoft)
+function fechamento(base, P, nd, nt, garantia) {
+  var vars = [], opts = []; base.forEach(function (t, i) { if (t.length > 1) { vars.push(i); opts.push(t.split('').map(function (k) { return R.indexOf(k); })); } });
+  var nv = vars.length, r = 14 - garantia;
+  if (!nv) return { erro: 'Marque duplos ou triplos na base para fechar.' };
+  if (nd + nt > nv) return { erro: 'O volante pede ' + (nd + nt) + ' jogos com duplo/triplo, mas a base só tem ' + nv + ' jogos com mais de uma marcação.' };
+  var podeT = opts.filter(function (o) { return o.length === 3; }).length; if (nt > podeT) return { erro: 'O volante pede ' + nt + ' triplos, mas a base só tem ' + podeT + ' jogos com triplo.' };
+  var N = 1; opts.forEach(function (o) { N *= o.length; }); if (N > 60000) return { erro: 'Base grande demais para fechar aqui (' + N.toLocaleString('pt-BR') + ' combinações; até 60 mil). Tire alguns triplos.' };
+  if (r < 0) return { erro: 'Garantia inválida.' };
+  // combinacoes da base (so os jogos variaveis) e probabilidade de cada uma
+  var dig = new Uint8Array(N * nv), pr = new Float64Array(N);
+  for (var n = 0; n < N; n++) { var x = n, p = 1; for (var v = nv - 1; v >= 0; v--) { var L = opts[v].length, d = x % L; x = Math.floor(x / L); dig[n * nv + v] = opts[v][d]; p *= P[vars[v]][opts[v][d]]; } pr[n] = p; }
+  var desc = new Uint8Array(N), falta = N, vols = [], incert = vars.map(function (gi) { return 1 - Math.max.apply(null, P[gi]); });
+  var ordem = Array.from({ length: N }, function (_, i) { return i; }).sort(function (a, b) { return pr[b] - pr[a]; }), ptr = 0;
+  var dist = function (n, mask) { var s = 0; for (var v = 0; v < nv; v++) if (!(mask[v] >> dig[n * nv + v] & 1)) { s++; if (s > r) return s; } return s; };
+  var cobre = function (mask) { var g = 0, w = 0; for (var n = 0; n < N; n++) if (!desc[n] && dist(n, mask) <= r) { g++; w += pr[n]; } return g + w; };
+  var t0 = Date.now();
+  while (falta > 0) {
+    while (desc[ordem[ptr]]) ptr++;
+    var alvo = ordem[ptr], melhor = null, mg = -1;
+    for (var k = 0; k < 40; k++) {
+      var mask = []; for (var v = 0; v < nv; v++) mask.push(1 << dig[alvo * nv + v]);
+      var cand = vars.map(function (_, v) { return v; }).sort(function (a, b) { return (incert[b] + Math.random() * 0.25) - (incert[a] + Math.random() * 0.25); });
+      var tr = cand.filter(function (v) { return opts[v].length === 3; }).slice(0, nt);
+      tr.forEach(function (v) { mask[v] = 7; });
+      var du = cand.filter(function (v) { return tr.indexOf(v) < 0; }).slice(0, nd);
+      du.forEach(function (v) { var outros = opts[v].filter(function (o) { return o !== dig[alvo * nv + v]; }); var gi = vars[v];
+        var o = outros.length === 1 || Math.random() < 0.7 ? outros.sort(function (a, b) { return P[gi][b] - P[gi][a]; })[0] : outros[1]; mask[v] |= 1 << o; });
+      var g = cobre(mask); if (g > mg) { mg = g; melhor = mask; }
+    }
+    vols.push(melhor);
+    for (var n2 = 0; n2 < N; n2++) if (!desc[n2] && dist(n2, melhor) <= r) { desc[n2] = 1; falta--; }
+    if (Date.now() - t0 > 25000) return { erro: 'Demorou demais: diminua a base ou a garantia.' };
+  }
+  // conferir o fechamento: melhor pontuacao para cada combinacao da base
+  var hist = {}; for (var n3 = 0; n3 < N; n3++) { var md = 99; for (var q = 0; q < vols.length && md > 0; q++) { var dd = dist(n3, vols[q]); if (dd < md) md = dd; } var pts = 14 - Math.min(md, 14); hist[pts] = (hist[pts] || 0) + 1; }
+  var vol = vols.map(function (mask) { return base.map(function (t, i) { var v = vars.indexOf(i); if (v < 0) return t; return R.split('').filter(function (k, kk) { return mask[v] >> kk & 1; }).join(''); }); });
+  return { vols: vol, N: N, hist: hist, seg: (Date.now() - t0) / 1000 };
+}
+
+function abaApostasSub() {
+  var el = document.getElementById('apsub'); if (!el) return; var C = apConc(AP.conc), P = C.jogos.map(function (j) { return j.p; }), L = AP.lista;
+  var tot = L.reduce(function (a, v) { return a + apCombos(v) * 2; }, 0), h = '';
+  if (AP.sub === 'apostas') {
+    h = '<div class="card" style="background:#F9FAFB"><h3 style="margin-top:0">Gerar apostas</h3><div class="barraf"><label>Quantidade <input id="gq" type="number" min="1" max="500" value="10" class="sel" style="width:80px"></label>' +
+      '<label>Duplos <input id="gd" type="number" min="0" max="14" value="1" class="sel" style="width:70px"></label><label>Triplos <input id="gt" type="number" min="0" max="14" value="0" class="sel" style="width:70px"></label>' +
+      '<label>Modo <select id="gm" class="sel"><option value="prob">pelas probabilidades</option><option value="aleatoria">aleatória</option></select></label><label class="sub"><input type="checkbox" id="gf"> aplicando os filtros</label><button class="btn pri" id="gbtn">Gerar</button></div></div>' +
+      '<div class="barraf" style="margin:12px 0"><b>Suas apostas: ' + L.length + ' volantes · ' + brl(tot) + '</b>' +
+      '<select id="apop" class="sel"><option value="">Escolha o comando a executar</option><option value="dup">Remover apostas duplicadas</option><option value="ord">Ordenar pela chance de 14</option><option value="filt">Remover as que não passam nos filtros</option><option value="cart">Combinação cartesiana (abrir em apostas simples)</option><option value="unif">Unificação linear (juntar simples em duplos)</option><option value="excl">Excluir a aposta selecionada</option><option value="limpa">Apagar a lista inteira</option></select><button class="btn" id="apexec">Executar</button>' +
+      '<button class="btn" id="apvol">Volantes: imprimir, SpeedLoto, Caixa</button></div>' +
+      '<div class="rolagem" style="max-height:460px;overflow:auto"><table><thead><tr><th>Seq.</th><th>Apostas</th><th>Valor</th><th>Chance de 14</th></tr></thead><tbody>' +
+      L.map(function (v, n) { return '<tr class="linha" data-n="' + n + '" tabindex="0" style="' + (n === AP.sel ? 'background:var(--verde2)' : '') + '"><td>' + (n + 1) + '</td><td style="font-family:monospace">' + esc(apSpeed(v)) + '</td><td>' + brl(apCombos(v) * 2) + '</td><td>' + pc(estat(v, P).p14, 3) + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+      '<p class="sub">Clique numa aposta para selecionar e levar ao quadro. A lista fica guardada neste navegador.</p><div id="apvols"></div>';
+    el.innerHTML = h;
+    el.querySelector('#gbtn').onclick = function () { var g = apGerar(Number(el.querySelector('#gq').value), Number(el.querySelector('#gd').value), Number(el.querySelector('#gt').value), el.querySelector('#gm').value, el.querySelector('#gf').checked);
+      AP.lista = AP.lista.concat(g); apSalva(); abaApostasSub(); if (g.length < Number(el.querySelector('#gq').value)) alert('Gerei ' + g.length + ' apostas (os filtros ou duplicadas limitaram).'); };
+    el.querySelector('#apexec').onclick = function () { var op = el.querySelector('#apop').value;
+      if (op === 'dup') { var vis = {}; AP.lista = AP.lista.filter(function (v) { var k = v.join(';'); if (vis[k]) return false; vis[k] = 1; return true; }); }
+      else if (op === 'ord') AP.lista.sort(function (a, b) { return estat(b, P).p14 - estat(a, P).p14; });
+      else if (op === 'filt') { var cont = {}, ant = AP.lista.length; AP.lista = AP.lista.filter(function (v) { var d = apFalha(v, P); if (d) { var nm = d.g + ' · ' + d.n; cont[nm] = (cont[nm] || 0) + 1; return false; } return true; }); AP.painelFiltro = Object.keys(cont).map(function (k) { return [k, cont[k]]; }).concat([['Total eliminado (de ' + ant + ')', ant - AP.lista.length]]); }
+      else if (op === 'cart') { AP.sub = 'cart'; abaApostas(); return; }
+      else if (op === 'unif') { AP.sub = 'unif'; abaApostas(); return; }
+      else if (op === 'excl') { if (AP.sel >= 0) { AP.lista.splice(AP.sel, 1); AP.sel = -1; } }
+      else if (op === 'limpa') { if (!confirm('Apagar todas as ' + AP.lista.length + ' apostas da lista?')) return; AP.lista = []; }
+      apSalva(); abaApostas(); };
+    el.querySelectorAll('tr.linha').forEach(function (tr) { var f = function () { AP.sel = Number(tr.dataset.n); AP.quadro = AP.lista[AP.sel].slice(); abaApostas(); }; tr.onclick = f; tr.onkeydown = function (e) { if (e.key === 'Enter') f(); }; });
+    el.querySelector('#apvol').onclick = function () { if (!AP.lista.length) { alert('A lista está vazia.'); return; } renderVolantes('apvols', AP.lista, 'loteca_' + AP.conc + '_apostas', C.jogos.map(function (j) { return { mandante: j.m, visitante: j.v }; })); document.getElementById('apvols').scrollIntoView({ block: 'start' }); };
+  } else if (AP.sub === 'fech') {
+    var b = AP.quadro, ok = b.every(function (t) { return t; }), Nb = ok ? apCombos(b) : 0;
+    h = '<p class="sub">Como o "Fechamento Loteca" do LoteriaSoft: a <b>base</b> é o que está marcado no quadro (à esquerda). Você escolhe o formato de cada volante e a garantia; o sistema escolhe o menor número de volantes que garante essa pontuação <b>sempre que o resultado cair dentro da base</b> (condição para acerto: 14). As combinações mais prováveis entram primeiro.</p>' +
+      (ok ? '<p><b>Base:</b> ' + esc(apSpeed(b)) + ' · ' + Nb.toLocaleString('pt-BR') + ' combinações (custaria ' + brl(Nb * 2) + ' cheia) · chance de o resultado cair na base: <b>' + pc(estat(b, P).p14, 2) + '</b></p>' : '<p class="no">Marque os 14 jogos da base no quadro.</p>') +
+      '<div class="barraf"><label>Duplos por volante <input id="fd" type="number" min="0" max="14" value="1" class="sel" style="width:70px"></label><label>Triplos por volante <input id="ft" type="number" min="0" max="14" value="0" class="sel" style="width:70px"></label>' +
+      '<label>Garantia mínima <select id="fg" class="sel">' + [10, 11, 12, 13].map(function (g) { return '<option' + (g === 12 ? ' selected' : '') + '>' + g + '</option>'; }).join('') + '</select></label><label>Condição para acerto <input class="sel" value="14" disabled style="width:60px"></label>' +
+      '<button class="btn pri" id="fgo"' + (ok ? '' : ' disabled') + '>Iniciar fechamento</button><span class="sub" id="fmsg"></span></div><div id="fres"></div>';
+    el.innerHTML = h;
+    var fgo = el.querySelector('#fgo'); if (fgo) fgo.onclick = function () { var m = el.querySelector('#fmsg'); m.textContent = 'Calculando… (pode levar alguns segundos)';
+      setTimeout(function () { var g = Number(el.querySelector('#fg').value), r = fechamento(b, P, Number(el.querySelector('#fd').value), Number(el.querySelector('#ft').value), g);
+        if (r.erro) { m.textContent = r.erro; return; } m.textContent = 'Pronto em ' + r.seg.toFixed(1).replace('.', ',') + ' s';
+        var cu = r.vols.reduce(function (a, v) { return a + apCombos(v) * 2; }, 0), ch = apChance(r.vols, P), chb = estat(b, P);
+        var linhas = Object.keys(r.hist).sort(function (a, c) { return c - a; }).map(function (k) { return '<tr><td>' + k + ' pontos</td><td>' + r.hist[k].toLocaleString('pt-BR') + '</td><td>' + pc(r.hist[k] / r.N, 1) + '</td></tr>'; }).join('');
+        el.querySelector('#fres').innerHTML = '<div class="grid" style="margin-top:12px"><div class="stat"><span>Volantes do fechamento</span><b>' + r.vols.length + '</b><span>' + brl(cu) + ' (a base cheia custaria ' + brl(r.N * 2) + ')</span></div>' +
+          '<div class="stat"><span>Garantia conferida</span><b>' + g + ' pontos</b><span>em todas as ' + r.N.toLocaleString('pt-BR') + ' combinações da base</span></div>' +
+          '<div class="stat"><span>Chance real de 14 (motor)</span><b>' + (ch ? pc(ch.p14, 2) : '—') + '</b><span>base cheia: ' + pc(chb.p14, 2) + '</span></div><div class="stat"><span>Chance real de 13 ou 14</span><b>' + (ch ? pc(ch.p13, 1) : '—') + '</b><span>base cheia: ' + pc(chb.p13, 1) + '</span></div></div>' +
+          '<h3>Conferência do fechamento (melhor pontuação garantida em cada combinação da base)</h3><div class="rolagem"><table><thead><tr><th>Pontuação mínima</th><th>Combinações</th><th>%</th></tr></thead><tbody>' + linhas + '</tbody></table></div>' +
+          (function () { var e = espalhado(b, P, Math.max(1, Math.floor(cu / 4))); if (e.erro || !ch) return '';
+            var melhor = e.p13 > ch.p13; return '<div class="licao" style="margin-top:10px"><b>Pelo mesmo dinheiro (' + brl(e.vols.length * 4) + '), o desdobre espalhado nesta base dá ' + pc(e.p13, 1) + ' de chance de 13 ou 14 e ' + pc(e.p14, 2) + ' de 14</b>, contra ' + pc(ch.p13, 1) + ' e ' + pc(ch.p14, 2) + ' do fechamento. ' +
+              (melhor ? 'O espalhado rende mais chance; o fechamento troca chance pela garantia, que só vale se o resultado cair dentro da base (' + pc(chb.p14, 2) + ').' : 'Aqui o fechamento rende mais.') + '</div>'; })() +
+          '<div class="licao" style="margin-top:10px">A garantia só vale se o resultado cair dentro da base; a chance disso é ' + pc(chb.p14, 2) + '. Fora da base, os pontos podem ser menores.</div>' +
+          '<div class="barraf" style="margin-top:10px"><button class="btn pri" id="flev">Levar estes ' + r.vols.length + ' volantes para Suas apostas</button></div>';
+        el.querySelector('#flev').onclick = function () { AP.lista = AP.lista.concat(r.vols); apSalva(); AP.sub = 'apostas'; abaApostas(); };
+      }, 30); };
+  } else if (AP.sub === 'estat') {
+    var ch = apChance(L, P), F = apFavs(P);
+    h = '<div class="grid"><div class="stat"><span>Volantes</span><b>' + L.length + '</b></div><div class="stat"><span>Custo total</span><b>' + brl(tot) + '</b><span>' + (tot / 2).toLocaleString('pt-BR') + ' combinações</span></div>' +
+      '<div class="stat"><span>Chance de 14 da lista</span><b>' + (ch ? pc(ch.p14, 2) : '—') + '</b><span>' + (ch ? ch.combos.toLocaleString('pt-BR') + ' combinações diferentes' : 'lista grande demais') + '</span></div><div class="stat"><span>Chance de 13 ou 14 da lista</span><b>' + (ch ? pc(ch.p13, 1) : '—') + '</b></div></div>' +
+      '<h3>Marcações por jogo (quantas apostas marcam cada resultado)</h3><div class="rolagem"><table><thead><tr><th>#</th><th>Jogo</th><th>Chance 1 · X · 2</th><th>Marcam 1</th><th>Marcam X</th><th>Marcam 2</th><th>Favorito</th></tr></thead><tbody>' +
+      C.jogos.map(function (j, i) { var c = [0, 0, 0]; L.forEach(function (v) { R.split('').forEach(function (k, n) { if (v[i].indexOf(k) >= 0) c[n]++; }); });
+        return '<tr><td>' + (i + 1) + '</td><td>' + esc(nome2(j.m)) + ' × ' + esc(nome2(j.v)) + '</td><td>' + barra(j.p) + '</td>' + c.map(function (n) { return '<td>' + (L.length ? pc(n / L.length, 0) : '—') + '</td>'; }).join('') + '<td>' + F[i] + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    el.innerHTML = h;
+  } else if (AP.sub === 'arq') {
+    abaArquivos(el);
+  } else if (AP.sub === 'filtros') {
+    var f = AP.filtro, Rz = apFiltroResumo(P), ver = AP.fver || 'c1', grupo = '';
+    var num = function (id, v, mx) { return '<input type="number" min="0" max="' + mx + '" id="' + id + '" value="' + v + '" class="sel" style="width:64px">'; };
+    h = '<p class="sub">Mesmos filtros do LoteriaSoft (jogos, sequência e intervalo por coluna, trocas), mais os nossos de zebra pelo mercado. A diferença: além do histórico, cada filtro mostra <b>quanto da chance desta semana ele joga fora</b>.</p>' +
+      '<div class="grid"><div class="stat"><span>Resultado real passaria</span><b>' + Rz.passaH + ' de ' + Rz.hist.length + '</b><span>concursos (' + pc(Rz.passaH / Rz.hist.length, 0) + ')</span></div><div class="stat"><span>Chance desta semana mantida</span><b>' + pc(Rz.passaS, 0) + '</b><span>o resto é jogado fora pelos filtros</span></div></div>' +
+      '<div class="barraf" style="margin-top:10px"><button class="btn pri" id="fsalva">Aplicar filtros</button><button class="btn" id="fseg">Faixas seguras (mantêm 95% da chance)</button><button class="btn" id="flimpa">Limpar filtros</button></div>' +
+      '<div class="rolagem"><table><thead><tr><th>Aplicar?</th><th>Filtro</th><th>Mín</th><th>Máx</th><th>Histórico dentro</th><th>Chance da semana dentro</th><th></th></tr></thead><tbody>' +
+      FD.map(function (d) { var c = f[d.k], dentro = function (o) { return o[d.k] >= c.mn && o[d.k] <= c.mx; }, hh = Rz.hist.filter(dentro).length / Rz.hist.length, ss = Rz.sem.filter(dentro).length / Rz.sem.length, cab = '';
+        if (d.g !== grupo) { grupo = d.g; cab = '<tr><td colspan="7" style="background:#EEF5F2;font-weight:700">' + d.g + '</td></tr>'; }
+        return cab + '<tr><td><input type="checkbox" id="on_' + d.k + '"' + (c.on ? ' checked' : '') + '></td><td>' + d.n + '</td><td>' + num('mn_' + d.k, c.mn, d.max) + '</td><td>' + num('mx_' + d.k, c.mx, d.max) + '</td><td>' + pc(hh, 0) + '</td><td>' + pc(ss, 0) + '</td><td><button class="btn" data-ver="' + d.k + '">Estatística</button></td></tr>'; }).join('') + '</tbody></table></div>';
+    var dv = FD.filter(function (d) { return d.k === ver; })[0], cntH = {}, cntS = {}; Rz.hist.forEach(function (o) { cntH[o[ver]] = (cntH[o[ver]] || 0) + 1; }); Rz.sem.forEach(function (o) { cntS[o[ver]] = (cntS[o[ver]] || 0) + 1; });
+    var rows = ''; for (var x = 0; x <= dv.max; x++) { var nh = cntH[x] || 0, ns = cntS[x] || 0; if (!nh && !ns) continue; var dentro = x >= f[ver].mn && x <= f[ver].mx;
+      rows += '<tr' + (dentro ? '' : ' style="opacity:.45"') + '><td>' + x + '</td><td>' + nh + '</td><td>' + pc(nh / Rz.hist.length, 1) + '</td><td>' + pc(ns / Rz.sem.length, 1) + '</td><td>' + (dentro ? 'fica' : 'eliminado') + '</td></tr>'; }
+    h += '<h3>Estatística: ' + dv.g + ' · ' + dv.n + '</h3><div class="rolagem"><table><thead><tr><th>Valor</th><th>Concursos (histórico)</th><th>Frequência histórica</th><th>Chance nesta semana</th><th>Com a faixa atual</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    if (AP.painelFiltro) h += '<h3>Painel das filtragens aplicadas</h3><div class="rolagem"><table><thead><tr><th>Filtro</th><th>Apostas eliminadas</th></tr></thead><tbody>' + AP.painelFiltro.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    h += '<div class="licao" style="margin-top:12px">Regra de ouro: um filtro que guarda 95% do histórico mas só 80% da chance desta semana está brigando com o modelo. Prefira as faixas seguras e aperte só onde a chance da semana quase não cai.</div>';
+    el.innerHTML = h;
+    var le = function () { FD.forEach(function (d) { f[d.k] = { on: el.querySelector('#on_' + d.k).checked, mn: Number(el.querySelector('#mn_' + d.k).value), mx: Number(el.querySelector('#mx_' + d.k).value) }; }); apFiltroSalva(); };
+    el.querySelector('#fsalva').onclick = function () { le(); abaApostasSub(); };
+    el.querySelector('#flimpa').onclick = function () { AP.filtro = apFiltroPadrao(); apFiltroSalva(); abaApostasSub(); };
+    el.querySelector('#fseg').onclick = function () { le(); FD.forEach(function (d) { var fx = apFaixaSegura(Rz.sem, d.k, 0.995); f[d.k] = { on: true, mn: fx[0], mx: fx[1] }; }); apFiltroSalva(); abaApostasSub(); };
+    el.querySelectorAll('[data-ver]').forEach(function (b) { b.onclick = function () { le(); AP.fver = b.getAttribute('data-ver'); abaApostasSub(); }; });
+  } else if (AP.sub === 'cart') {
+    var ca = apCartesiana();
+    h = '<p class="sub">Abre cada volante em todas as apostas simples (uma combinação por linha). A lista atual tem ' + L.length + ' volantes que viram <b>' + ca.length.toLocaleString('pt-BR') + '</b> apostas simples.</p><div class="barraf"><button class="btn pri" id="cbx"' + (ca.length > 200000 ? ' disabled' : '') + '>Baixar apostas simples (TXT)</button><button class="btn" id="csub"' + (ca.length > 5000 ? ' disabled' : '') + '>Substituir a lista pelas simples</button></div>' +
+      '<div class="rolagem" style="max-height:360px;overflow:auto;margin-top:10px"><table><tbody>' + ca.slice(0, 300).map(function (v, n) { return '<tr><td>' + (n + 1) + '</td><td style="font-family:monospace">' + v.join('') + '</td></tr>'; }).join('') + '</tbody></table></div>' + (ca.length > 300 ? '<p class="sub">Mostrando as 300 primeiras.</p>' : '');
+    el.innerHTML = h;
+    el.querySelector('#cbx').onclick = function () { baixar('loteca_' + AP.conc + '_simples.txt', ca.map(function (v) { return v.join(''); }).join('\r\n') + '\r\n'); };
+    el.querySelector('#csub').onclick = function () { if (!confirm('Trocar a lista pelas ' + ca.length + ' apostas simples?')) return; AP.lista = ca; apSalva(); AP.sub = 'apostas'; abaApostas(); };
+  } else if (AP.sub === 'unif') {
+    var un = apUnifica(L);
+    h = '<p class="sub">Junta apostas que diferem em um só jogo, transformando simples em duplos e duplos em triplos, sem mudar as combinações jogadas. Menos volantes, mesmo custo.</p><div class="grid"><div class="stat"><span>Antes</span><b>' + L.length + ' volantes</b></div><div class="stat"><span>Depois</span><b>' + un.length + ' volantes</b></div></div>' +
+      '<div class="barraf" style="margin-top:10px"><button class="btn pri" id="usub">Aplicar a unificação na lista</button></div>';
+    el.innerHTML = h;
+    el.querySelector('#usub').onclick = function () { AP.lista = un; apSalva(); AP.sub = 'apostas'; abaApostas(); };
+  } else if (AP.sub === 'conf') {
+    if (!L.length) { el.innerHTML = '<p class="sub">Inclua ou importe apostas para conferir.</p>'; return; }
+    var hs = D.historico.filter(function (x) { return x.c >= AP.ini && x.c <= AP.fim; }).sort(function (a, b) { return a.c - b.c; });
+    var linhas = [], gasto = 0, ganho = 0, dist = {};
+    hs.forEach(function (x) { var r = x.jogos.map(function (g) { return g.res; }), Rt = { premio14: x.premio14, premio13: x.premio13 }, melhor = 0, pr = 0, n13 = 0, n14 = 0;
+      L.forEach(function (v) { var k = apConfere(v, r, Rt); if (k.pts > melhor) melhor = k.pts; pr += k.premio; if (k.pts === 14) n14++; if (k.pts === 13) n13++; dist[k.pts] = (dist[k.pts] || 0) + 1; });
+      gasto += tot; ganho += pr; if (!AP.soPremiados || pr > 0) linhas.push('<tr><td>' + x.c + '</td><td style="font-family:monospace">' + r.join('') + '</td><td><b class="' + (melhor >= 13 ? 'ok' : '') + '">' + melhor + '</b></td><td>' + n14 + '</td><td>' + n13 + '</td><td>' + brl(pr) + '</td></tr>'); });
+    h = '<p class="sub">Confere as ' + L.length + ' apostas da lista contra o resultado de cada concurso da faixa ' + AP.ini + ' a ' + AP.fim + ' (prêmios pelo rateio oficial; vale como estudo: na época as apostas seriam outras).</p>' +
+      '<div class="grid"><div class="stat"><span>Concursos conferidos</span><b>' + hs.length + '</b></div><div class="stat"><span>Gasto (lista × concursos)</span><b>' + brl(gasto) + '</b></div><div class="stat"><span>Prêmios</span><b>' + brl(ganho) + '</b></div><div class="stat"><span>Lucro ou prejuízo</span><b class="' + (ganho - gasto >= 0 ? 'ok' : 'no') + '">' + brl(ganho - gasto) + '</b></div></div>' +
+      '<p class="sub" style="margin-top:8px">Pontos das apostas: ' + Object.keys(dist).sort(function (a, b) { return b - a; }).map(function (k) { return k + ' pts: ' + dist[k]; }).join(' · ') + '</p>' +
+      '<div class="rolagem" style="max-height:460px;overflow:auto"><table><thead><tr><th>Concurso</th><th>Resultado</th><th>Melhor aposta</th><th>14</th><th>13</th><th>Prêmio</th></tr></thead><tbody>' + linhas.reverse().join('') + '</tbody></table></div>';
+    el.innerHTML = h;
+  } else if (AP.sub === 'res') {
+    h = '<div class="rolagem" style="max-height:520px;overflow:auto"><table><thead><tr><th>Concurso</th><th>Data</th><th>Resultado (1 a 14)</th><th>Zebras</th><th>Ganhadores 14</th><th>Prêmio 14</th><th>Prêmio 13</th></tr></thead><tbody>' +
+      D.historico.map(function (x) { return '<tr><td>' + x.c + '</td><td>' + esc(x.data) + '</td><td style="font-family:monospace">' + x.jogos.map(function (g) { return g.res; }).join('') + '</td><td>' + x.zebras + '</td><td>' + (x.ganhadores14 == null ? '—' : x.ganhadores14) + '</td><td>' + (x.premio14 ? brl(x.premio14) : '—') + '</td><td>' + (x.premio13 ? brl(x.premio13) : '—') + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+      '<div class="barraf" style="margin-top:10px"><button class="btn" id="resbx">Baixar resultados (CSV)</button></div>';
+    el.innerHTML = h;
+    el.querySelector('#resbx').onclick = function () { baixar('loteca_resultados.csv', 'concurso;data;resultado;zebras;ganhadores14;premio14;premio13\r\n' + D.historico.map(function (x) { return [x.c, x.data, x.jogos.map(function (g) { return g.res; }).join(''), x.zebras, x.ganhadores14, x.premio14, x.premio13].join(';'); }).join('\r\n'), 'text/csv;charset=utf-8'); };
+  }
+}
+
+function tudo() { abaVolante(); abaApostas(); abaVivo(); abaSemana(); abaMeuJogo(); abaDesdobre(); abaFinanceiro(); abaHistorico(); abaErros(); abaKpis(); }
 function carregaVivo() { return fetch('dados/ao_vivo.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (v) { V = v; if (D) abaVivo(); }); }
 fetch('dados/painel.json?t=' + Date.now()).then(function (r) { return r.json(); }).then(function (d) {
   D = d; document.getElementById('gerado').textContent = 'Dados de ' + d.gerado + ' · concurso aberto ' + (d.semana ? d.semana.concurso : '—');
   return carregaVivo();
-}).then(tudo).catch(function (e) { document.getElementById('gerado').textContent = 'Não foi possível carregar os dados: ' + e; });
+}).then(function () { tudo(); if (location.hash === '#enviar') telaEnviar(); }).catch(function (e) { document.getElementById('gerado').textContent = 'Não foi possível carregar os dados: ' + e; });
 setInterval(carregaVivo, 60000);
 </script>
 </body>
