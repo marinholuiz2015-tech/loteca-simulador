@@ -59,7 +59,7 @@ def main():
     for j in sorted(js):
         r = js[j]
         g = {"jogo": j, "mandante": r["mandante"], "visitante": r["visitante"], "inicio_utc": r["inicio_utc"],
-             "situacao": "não começou", "placar": None, "resultado": None}
+             "situacao": "não começou", "placar": None, "resultado": None, "match_id": r["match_id"]}
         try:
             d = requests.get(f"{FOT}/matchDetails?matchId={r['match_id']}", headers=HEAD, timeout=30).json()
             st = d.get("header", {}).get("status", {})
