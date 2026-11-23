@@ -447,10 +447,37 @@ function apConcursos() { var L = []; if (D.semana) L.push({ c: D.semana.concurso
 function apConc(c) { return apConcursos().filter(function (x) { return x.c === c; })[0]; }
 function apP() { return apConc(AP.conc).jogos.map(function (j) { return j.p; }); }
 function apFavs(P) { return P.map(function (p) { return R[fav(p)]; }); }
-function apPassa(v, P) { // filtros: v com marcacoes simples (1 opcao por jogo) ou volante (avalia a combinacao mais provavel)
-  var f = AP.filtro, z = 0, e = 0, fo = 0, ca = 0, F = apFavs(P);
-  v.forEach(function (t, i) { var k = t.length === 1 ? t : t.split('').sort(function (a, b) { return P[i][R.indexOf(b)] - P[i][R.indexOf(a)]; })[0]; if (k !== F[i]) z++; if (k === 'X') e++; if (k === '2') fo++; if (k === '1') ca++; });
-  return z <= f.zmax && e >= f.emin && e <= f.emax && fo >= f.fmin && fo <= f.fmax && ca >= f.cmin && ca <= f.cmax;
+var FD = [ // filtros no estilo LoteriaSoft + os nossos (zebras pelo mercado)
+  { k: 'c1', g: 'Jogos por coluna', n: 'Coluna 1 (mandante)', max: 14 }, { k: 'cX', g: 'Jogos por coluna', n: 'Coluna X (empate)', max: 14 }, { k: 'c2', g: 'Jogos por coluna', n: 'Coluna 2 (visitante)', max: 14 },
+  { k: 's1', g: 'Sequência na coluna (maior repetição seguida)', n: 'Coluna 1', max: 14 }, { k: 'sX', g: 'Sequência na coluna (maior repetição seguida)', n: 'Coluna X', max: 14 }, { k: 's2', g: 'Sequência na coluna (maior repetição seguida)', n: 'Coluna 2', max: 14 },
+  { k: 'i1', g: 'Intervalo na coluna (maior trecho sem a coluna)', n: 'Coluna 1', max: 14 }, { k: 'iX', g: 'Intervalo na coluna (maior trecho sem a coluna)', n: 'Coluna X', max: 14 }, { k: 'i2', g: 'Intervalo na coluna (maior trecho sem a coluna)', n: 'Coluna 2', max: 14 },
+  { k: 'tr', g: 'Trocas de coluna', n: 'Trocas entre jogos seguidos', max: 13 },
+  { k: 'zb', g: 'Exclusivo nosso: mercado', n: 'Zebras (fora do favorito)', max: 14 }, { k: 'zf', g: 'Exclusivo nosso: mercado', n: 'Zebras fortes (resultado com menos de 25%)', max: 14 }];
+function apFiltroPadrao() { var f = {}; FD.forEach(function (d) { f[d.k] = { on: false, mn: 0, mx: d.max }; }); return f; }
+(function () { var f0 = null; try { f0 = JSON.parse(localStorage.getItem('loteca_filtros2') || 'null'); } catch (e) {} var f = apFiltroPadrao(); if (f0) FD.forEach(function (d) { if (f0[d.k]) f[d.k] = f0[d.k]; }); AP.filtro = f; })();
+function apFiltroSalva() { try { localStorage.setItem('loteca_filtros2', JSON.stringify(AP.filtro)); } catch (e) {} }
+function apFeat(v, P) { // valores de cada filtro para uma aposta (volante: avalia a combinacao mais provavel dele)
+  var F = apFavs(P), s = v.map(function (t, i) { return t.length === 1 ? t : t.split('').sort(function (a, b) { return P[i][R.indexOf(b)] - P[i][R.indexOf(a)]; })[0]; });
+  var o = { c1: 0, cX: 0, c2: 0, s1: 0, sX: 0, s2: 0, i1: 0, iX: 0, i2: 0, tr: 0, zb: 0, zf: 0 };
+  R.split('').forEach(function (k) { var run = 0, gap = 0, mr = 0, mg = 0; s.forEach(function (x) { if (x === k) { run++; gap = 0; } else { gap++; run = 0; } if (run > mr) mr = run; if (gap > mg) mg = gap; }); o['c' + k] = s.filter(function (x) { return x === k; }).length; o['s' + k] = mr; o['i' + k] = mg; });
+  for (var i = 1; i < 14; i++) if (s[i] !== s[i - 1]) o.tr++;
+  s.forEach(function (x, i) { if (x !== F[i]) o.zb++; if (P[i][R.indexOf(x)] < 0.25) o.zf++; });
+  return o;
+}
+function apFalha(v, P) { var f = AP.filtro, o = apFeat(v, P); for (var n = 0; n < FD.length; n++) { var d = FD[n], c = f[d.k]; if (c.on && (o[d.k] < c.mn || o[d.k] > c.mx)) return d; } return null; }
+function apPassa(v, P) { return !apFalha(v, P); }
+var MC = {}; // amostras da semana pelo modelo (para medir quanto de chance cada filtro joga fora)
+function apAmostra(P, n) { var key = AP.conc + '|' + n; if (MC[key]) return MC[key]; var out = [], seed = 12345, rnd = function () { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  for (var a = 0; a < n; a++) { var v = []; for (var i = 0; i < 14; i++) { var u = rnd(), p = P[i]; v.push(u < p[0] ? '1' : (u < p[0] + p[1] ? 'X' : '2')); } out.push(apFeat(v, P)); } MC[key] = out; return out; }
+function apFiltroResumo(P) { // historico (resultados reais) e chance da semana mantida
+  var f = AP.filtro, ok = function (o) { return FD.every(function (d) { var c = f[d.k]; return !c.on || (o[d.k] >= c.mn && o[d.k] <= c.mx); }); };
+  var Hs = D.historico.map(function (h2) { return apFeat(h2.jogos.map(function (g) { return g.res; }), h2.jogos.map(function (g) { return g.p; })); });
+  var S = apAmostra(P, 20000); return { hist: Hs, sem: S, passaH: Hs.filter(ok).length, passaS: S.filter(ok).length / S.length };
+}
+function apFaixaSegura(S, k, massa) { // menor faixa [mn,mx] que guarda 'massa' da chance da semana
+  var c = {}; S.forEach(function (o) { c[o[k]] = (c[o[k]] || 0) + 1; }); var vals = Object.keys(c).map(Number).sort(function (a, b) { return a - b; }), mn = vals[0], mx = vals[vals.length - 1], tot = S.length, fora = 0;
+  while (mn < mx) { var cm = c[mn] || 0, cx = c[mx] || 0, men = Math.min(cm, cx); if ((fora + men) / tot > 1 - massa) break; if (cm <= cx) { mn++; } else { mx--; } fora += men; }
+  return [mn, mx];
 }
 function apChance(lista, P) { // chance de 14 e de 13+ da lista inteira (uniao das combinacoes)
   var pot = [], q = 1; for (var i = 0; i < 14; i++) { pot.push(q); q *= 3; }
@@ -598,7 +625,7 @@ function abaApostasSub() {
     el.querySelector('#apexec').onclick = function () { var op = el.querySelector('#apop').value;
       if (op === 'dup') { var vis = {}; AP.lista = AP.lista.filter(function (v) { var k = v.join(';'); if (vis[k]) return false; vis[k] = 1; return true; }); }
       else if (op === 'ord') AP.lista.sort(function (a, b) { return estat(b, P).p14 - estat(a, P).p14; });
-      else if (op === 'filt') AP.lista = AP.lista.filter(function (v) { return apPassa(v, P); });
+      else if (op === 'filt') { var cont = {}, ant = AP.lista.length; AP.lista = AP.lista.filter(function (v) { var d = apFalha(v, P); if (d) { var nm = d.g + ' · ' + d.n; cont[nm] = (cont[nm] || 0) + 1; return false; } return true; }); AP.painelFiltro = Object.keys(cont).map(function (k) { return [k, cont[k]]; }).concat([['Total eliminado (de ' + ant + ')', ant - AP.lista.length]]); }
       else if (op === 'cart') { AP.sub = 'cart'; abaApostas(); return; }
       else if (op === 'unif') { AP.sub = 'unif'; abaApostas(); return; }
       else if (op === 'excl') { if (AP.sel >= 0) { AP.lista.splice(AP.sel, 1); AP.sel = -1; } }
@@ -639,13 +666,27 @@ function abaApostasSub() {
         return '<tr><td>' + (i + 1) + '</td><td>' + esc(nome2(j.m)) + ' × ' + esc(nome2(j.v)) + '</td><td>' + barra(j.p) + '</td>' + c.map(function (n) { return '<td>' + (L.length ? pc(n / L.length, 0) : '—') + '</td>'; }).join('') + '<td>' + F[i] + '</td></tr>'; }).join('') + '</tbody></table></div>';
     el.innerHTML = h;
   } else if (AP.sub === 'filtros') {
-    var f = AP.filtro, cam = function (id, rot, v) { return '<label style="display:flex;flex-direction:column;gap:4px;font-size:14px">' + rot + '<input type="number" min="0" max="14" id="' + id + '" value="' + v + '" class="sel" style="width:90px"></label>'; };
-    var Hs = D.historico, passa = Hs.filter(function (h2) { var r = h2.jogos.map(function (g) { return g.res; }), P2 = h2.jogos.map(function (g) { return g.p; }); return apPassa(r, P2); }).length;
-    h = '<p class="sub">Os filtros valem para gerar apostas e para o comando "remover as que não passam". Zebra = resultado diferente do favorito do mercado.</p><div class="barraf">' +
-      cam('fz', 'Máximo de zebras', f.zmax) + cam('fe1', 'Empates mín.', f.emin) + cam('fe2', 'Empates máx.', f.emax) + cam('ff1', 'Vitórias de fora mín.', f.fmin) + cam('ff2', 'Vitórias de fora máx.', f.fmax) + cam('fc1', 'Vitórias do mandante mín.', f.cmin) + cam('fc2', 'Vitórias do mandante máx.', f.cmax) +
-      '<button class="btn pri" id="fsalva">Aplicar</button></div><div class="licao" style="margin-top:12px">Com estes filtros, o resultado real teria passado em <b>' + passa + ' de ' + Hs.length + '</b> concursos (' + pc(passa / Hs.length, 0) + '). Em média o resultado tem 7 zebras e 4 empates: filtro apertado joga fora o resultado certo.</div>';
+    var f = AP.filtro, Rz = apFiltroResumo(P), ver = AP.fver || 'c1', grupo = '';
+    var num = function (id, v, mx) { return '<input type="number" min="0" max="' + mx + '" id="' + id + '" value="' + v + '" class="sel" style="width:64px">'; };
+    h = '<p class="sub">Mesmos filtros do LoteriaSoft (jogos, sequência e intervalo por coluna, trocas), mais os nossos de zebra pelo mercado. A diferença: além do histórico, cada filtro mostra <b>quanto da chance desta semana ele joga fora</b>.</p>' +
+      '<div class="grid"><div class="stat"><span>Resultado real passaria</span><b>' + Rz.passaH + ' de ' + Rz.hist.length + '</b><span>concursos (' + pc(Rz.passaH / Rz.hist.length, 0) + ')</span></div><div class="stat"><span>Chance desta semana mantida</span><b>' + pc(Rz.passaS, 0) + '</b><span>o resto é jogado fora pelos filtros</span></div></div>' +
+      '<div class="barraf" style="margin-top:10px"><button class="btn pri" id="fsalva">Aplicar filtros</button><button class="btn" id="fseg">Faixas seguras (mantêm 95% da chance)</button><button class="btn" id="flimpa">Limpar filtros</button></div>' +
+      '<div class="rolagem"><table><thead><tr><th>Aplicar?</th><th>Filtro</th><th>Mín</th><th>Máx</th><th>Histórico dentro</th><th>Chance da semana dentro</th><th></th></tr></thead><tbody>' +
+      FD.map(function (d) { var c = f[d.k], dentro = function (o) { return o[d.k] >= c.mn && o[d.k] <= c.mx; }, hh = Rz.hist.filter(dentro).length / Rz.hist.length, ss = Rz.sem.filter(dentro).length / Rz.sem.length, cab = '';
+        if (d.g !== grupo) { grupo = d.g; cab = '<tr><td colspan="7" style="background:#EEF5F2;font-weight:700">' + d.g + '</td></tr>'; }
+        return cab + '<tr><td><input type="checkbox" id="on_' + d.k + '"' + (c.on ? ' checked' : '') + '></td><td>' + d.n + '</td><td>' + num('mn_' + d.k, c.mn, d.max) + '</td><td>' + num('mx_' + d.k, c.mx, d.max) + '</td><td>' + pc(hh, 0) + '</td><td>' + pc(ss, 0) + '</td><td><button class="btn" data-ver="' + d.k + '">Estatística</button></td></tr>'; }).join('') + '</tbody></table></div>';
+    var dv = FD.filter(function (d) { return d.k === ver; })[0], cntH = {}, cntS = {}; Rz.hist.forEach(function (o) { cntH[o[ver]] = (cntH[o[ver]] || 0) + 1; }); Rz.sem.forEach(function (o) { cntS[o[ver]] = (cntS[o[ver]] || 0) + 1; });
+    var rows = ''; for (var x = 0; x <= dv.max; x++) { var nh = cntH[x] || 0, ns = cntS[x] || 0; if (!nh && !ns) continue; var dentro = x >= f[ver].mn && x <= f[ver].mx;
+      rows += '<tr' + (dentro ? '' : ' style="opacity:.45"') + '><td>' + x + '</td><td>' + nh + '</td><td>' + pc(nh / Rz.hist.length, 1) + '</td><td>' + pc(ns / Rz.sem.length, 1) + '</td><td>' + (dentro ? 'fica' : 'eliminado') + '</td></tr>'; }
+    h += '<h3>Estatística: ' + dv.g + ' · ' + dv.n + '</h3><div class="rolagem"><table><thead><tr><th>Valor</th><th>Concursos (histórico)</th><th>Frequência histórica</th><th>Chance nesta semana</th><th>Com a faixa atual</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    if (AP.painelFiltro) h += '<h3>Painel das filtragens aplicadas</h3><div class="rolagem"><table><thead><tr><th>Filtro</th><th>Apostas eliminadas</th></tr></thead><tbody>' + AP.painelFiltro.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    h += '<div class="licao" style="margin-top:12px">Regra de ouro: um filtro que guarda 95% do histórico mas só 80% da chance desta semana está brigando com o modelo. Prefira as faixas seguras e aperte só onde a chance da semana quase não cai.</div>';
     el.innerHTML = h;
-    el.querySelector('#fsalva').onclick = function () { var g = function (id) { return Number(el.querySelector('#' + id).value); }; AP.filtro = { zmax: g('fz'), emin: g('fe1'), emax: g('fe2'), fmin: g('ff1'), fmax: g('ff2'), cmin: g('fc1'), cmax: g('fc2') }; abaApostasSub(); };
+    var le = function () { FD.forEach(function (d) { f[d.k] = { on: el.querySelector('#on_' + d.k).checked, mn: Number(el.querySelector('#mn_' + d.k).value), mx: Number(el.querySelector('#mx_' + d.k).value) }; }); apFiltroSalva(); };
+    el.querySelector('#fsalva').onclick = function () { le(); abaApostasSub(); };
+    el.querySelector('#flimpa').onclick = function () { AP.filtro = apFiltroPadrao(); apFiltroSalva(); abaApostasSub(); };
+    el.querySelector('#fseg').onclick = function () { le(); FD.forEach(function (d) { var fx = apFaixaSegura(Rz.sem, d.k, 0.995); f[d.k] = { on: true, mn: fx[0], mx: fx[1] }; }); apFiltroSalva(); abaApostasSub(); };
+    el.querySelectorAll('[data-ver]').forEach(function (b) { b.onclick = function () { le(); AP.fver = b.getAttribute('data-ver'); abaApostasSub(); }; });
   } else if (AP.sub === 'cart') {
     var ca = apCartesiana();
     h = '<p class="sub">Abre cada volante em todas as apostas simples (uma combinação por linha). A lista atual tem ' + L.length + ' volantes que viram <b>' + ca.length.toLocaleString('pt-BR') + '</b> apostas simples.</p><div class="barraf"><button class="btn pri" id="cbx"' + (ca.length > 200000 ? ' disabled' : '') + '>Baixar apostas simples (TXT)</button><button class="btn" id="csub"' + (ca.length > 5000 ? ' disabled' : '') + '>Substituir a lista pelas simples</button></div>' +
