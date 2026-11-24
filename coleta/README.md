@@ -63,3 +63,20 @@ em 10 parciais: 137 jogos aceitos, nenhum errado. Base: 3.889 jogos, 297 concurs
 - Desdobre com o mesmo custo (170 concursos): cortar pelo retorno (ganhadores previstos pela massa)
   troca chance por combinações menos jogadas e pagou 10–18% mais que cortar pela chance; inconclusivo
   (2 a 6 casos de 14 por coluna).
+
+## Chance de Gol e FootyStats — 24/11/2026
+`chancedegol.py`: probabilidades 1-X-2 de cada jogo pelo modelo do chancedegol.com.br (fonte independente
+das odds). Cobre Série A, B, C, D, Copa do Brasil, Libertadores, Sul-Americana, Copa do Nordeste e Copa do
+Mundo; o site só guarda 2025 e 2026 (2.801 jogos). Grava também os próximos jogos em
+`dados/chancedegol_aberto.csv`, acumulando os retratos (a probabilidade de antes do jogo não se perde).
+`motor/chancedegol_teste.py` mede contra a bet365 nos jogos da Loteca → `motor/chancedegol_teste.md`.
+- 755 jogos da Loteca casados (concursos 1175–1281): odds Brier 0,5862 × Chance de Gol 0,6016.
+- Peso escolhido na 1ª metade = 0% Chance de Gol; na 2ª metade, nunca vista, a mistura empata com as odds (+0,00%).
+- Quando discordam (94 jogos): odds 40,4% × Chance de Gol 34,0%. Não entra no motor; fica como reserva
+  para jogo sem odd (Série D) e fonte de conferência.
+
+`footystats.py`: API gratuita do FootyStats com a chave pública de teste (sem cadastro): Premier League
+2018/19–2024/25 e Liga MX 2019/20 — odds, xG real, xG previsto antes do jogo e pontos por jogo antes da
+partida (2.935 jogos). Com o segredo `FOOTYSTATS_KEY` (plano pago) passa a baixar as ligas liberadas na conta.
+- Teste no tempo na Premier (treino nas temporadas anteriores, 1.799 jogos conferidos): só odds Brier 0,5771 ×
+  odds + xG previsto + PPG 0,5784. Não acrescenta; 123 jogos da Premier passaram pela Loteca desde 2020.

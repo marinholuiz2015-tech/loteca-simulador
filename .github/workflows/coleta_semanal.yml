@@ -88,6 +88,18 @@ jobs:
         continue-on-error: true
         run: python coleta/avaliar_massa.py | tee coleta/dados/resumo_massa.txt
 
+      - name: Chance de Gol (modelo independente das odds) e teste contra a bet365
+        id: chancedegol
+        continue-on-error: true
+        run: |
+          python coleta/chancedegol.py
+          python motor/chancedegol_teste.py
+
+      - name: FootyStats (Premier League gratis - odds, xG e xG previsto)
+        id: footystats
+        continue-on-error: true
+        run: python coleta/footystats.py
+
       - name: Jogos prontos e boloes dos sites (Arena, Vovoteca) e confronto com o nosso
         id: sites
         continue-on-error: true
@@ -158,7 +170,7 @@ jobs:
         run: |
           git config user.name "loteca-coleta-bot"
           git config user.email "actions@github.com"
-          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md motor/confronto_sites.md motor/sinal_especialista.md motor/motivacao.md motor/motivacao.json motor/fechamento.md motor/apostas motor/camada3_historico.csv motor/camada3_config.json motor/placar_financeiro.md motor/rodizio.json motor/historico_desdobre.csv motor/pilares_registro.csv docs/dados 2>/dev/null || true
+          git add coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md motor/confronto_sites.md motor/sinal_especialista.md motor/motivacao.md motor/motivacao.json motor/fechamento.md motor/apostas motor/camada3_historico.csv motor/camada3_config.json motor/placar_financeiro.md motor/rodizio.json motor/historico_desdobre.csv motor/pilares_registro.csv motor/chancedegol_teste.md docs/dados 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit -m "Coleta semanal de fontes (automatico)"
           for i in 1 2 3; do
