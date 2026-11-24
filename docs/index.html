@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Loteca Elite Pro — Painel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -102,24 +102,141 @@ select.sel{min-height:44px;padding:8px 12px;border:1px solid #D1D5DB;border-radi
 @media (max-width:900px){.ap-grid{grid-template-columns:1fr!important}}
 @media (max-width:640px){h1{font-size:24px}.stat b{font-size:22px}}
 </style>
+<style>
+/* ---------- identidade 2026-11: sobria, mesa de jogo, numeros em destaque ---------- */
+:root{--papel:#F4F5F3;--tinta:#16202A;--grafite:#58626B;--linha:#DCE0E2;--mesa:#1E5B48;--mesa2:#E5EEEA;--baixa:#9C3A2C;--baixa2:#F5E6E2;--ouro:#9A7A35;--ouro2:#F4EEDF;
+  --verde:var(--mesa);--verde2:var(--mesa2);--txt:var(--tinta);--sub:var(--grafite);--borda:var(--linha);--fundo:var(--papel);--erro:var(--baixa);--erro2:var(--baixa2)}
+body{font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--papel);color:var(--tinta);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,.stat b,.decisao b,.vhead b{font-family:'IBM Plex Sans',system-ui,sans-serif}
+h2{font-size:18px;font-weight:600;letter-spacing:-.005em}
+.wrap{max-width:1120px;gap:18px;padding-top:0}
+th{text-transform:none;letter-spacing:0;font-size:13px;color:var(--grafite);font-weight:500}
+.card{border-radius:10px;border-color:var(--linha);padding:20px}
+.stat{background:#fff;border:1px solid var(--linha);border-radius:8px}
+.btn{border-radius:7px;border-color:#C9CED2;color:var(--tinta)}
+.btn.pri{background:var(--mesa)}
+.btn:hover{border-color:var(--tinta)}.btn.pri:hover{background:#174A3A}
+.num,.stat b{font-variant-numeric:tabular-nums}
+/* topo */
+.topo{position:sticky;top:0;z-index:20;background:rgba(244,245,243,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--linha);margin:0 -16px;padding:12px 16px 0}
+.marca-app{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding-bottom:8px}
+.logo{font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;font-size:21px;letter-spacing:-.01em}
+nav.principal{all:unset;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.principal button{all:unset;cursor:pointer;padding:10px 14px 12px;font-weight:500;color:var(--grafite);border-bottom:2px solid transparent;white-space:nowrap;font-size:15px}
+nav.principal button:hover{color:var(--tinta)}
+nav.principal button[aria-selected=true]{color:var(--tinta);border-bottom-color:var(--tinta);font-weight:600}
+nav.principal button:focus-visible,nav.secundaria button:focus-visible{outline:2px solid var(--mesa);outline-offset:-2px}
+nav.secundaria{all:unset;display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+nav.secundaria button{all:unset;cursor:pointer;padding:7px 12px;border-radius:999px;border:1px solid var(--linha);background:#fff;font-size:14px;color:var(--grafite)}
+nav.secundaria button[aria-selected=true]{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.pag{display:flex;flex-direction:column;gap:18px}.pag[hidden]{display:none!important}
+#p-estudos .aba{display:flex;flex-direction:column;gap:18px}#p-estudos .aba[hidden]{display:none!important}
+/* placar grande: o elemento marcante */
+.placar{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,2fr);gap:0;background:#fff;border:1px solid var(--linha);border-radius:10px;overflow:hidden}
+.placar .grande{padding:22px 24px;border-right:1px solid var(--linha);display:flex;flex-direction:column;justify-content:center}
+.placar .grande .n{font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;font-size:84px;line-height:.9;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.placar .grande .n small{font-size:30px;font-weight:600;color:var(--grafite);letter-spacing:0;margin-left:6px}
+.placar .grande .rot{color:var(--grafite);margin-top:8px}
+.placar .lado{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.placar .item{padding:18px 20px;border-bottom:1px solid var(--linha);border-left:1px solid var(--linha);margin-left:-1px}
+.placar .item span{display:block;color:var(--grafite);font-size:13px}
+.placar .item b{display:block;font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:600;font-size:30px;line-height:1.15;font-variant-numeric:tabular-nums}
+.placar .item em{font-style:normal;font-size:13px;color:var(--grafite)}
+.pos{color:var(--mesa)}.neg{color:var(--baixa)}
+.placar .grande .n .moeda{font-size:32px;font-weight:600;margin-right:4px;letter-spacing:0}
+.wrap a{color:var(--mesa);text-underline-offset:2px}.wrap a.btn{color:#fff}
+.mk i.on.res{background:var(--mesa);border-color:var(--mesa);box-shadow:none}
+@media (max-width:640px){.tbl-m thead{display:none}.tbl-m,.tbl-m tbody,.tbl-m tr,.tbl-m td{display:block;width:100%}
+ .tbl-m tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:12px 0;border-bottom:1px solid var(--linha)}
+ .tbl-m td{border:0;padding:0}.tbl-m td[data-l]::before{content:attr(data-l);display:block;font-size:12px;color:var(--grafite)}
+ .tbl-m td.larga{grid-column:1/-1}}
+/* faixa de decisao */
+.faixa{border-radius:10px;padding:22px 24px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;background:var(--tinta);color:#fff}
+.faixa.jogar{background:var(--mesa)}
+.faixa h2{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:34px;font-weight:700;margin:2px 0 4px;letter-spacing:-.01em}
+.faixa p{margin:0;color:rgba(255,255,255,.82);max-width:68ch}
+.faixa .lado{text-align:right;color:rgba(255,255,255,.82);font-size:14px;line-height:1.6}
+.faixa .lado b{color:#fff;font-weight:600}
+/* opcoes de jogo */
+.opcoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.opcao{background:#fff;border:1px solid var(--linha);border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.opcao.rec{border-color:var(--mesa);box-shadow:inset 0 3px 0 var(--mesa)}
+.opcao h3{margin:0;font-size:16px}.opcao .tag{font-size:12px;font-weight:600;color:var(--mesa);background:var(--mesa2);border-radius:999px;padding:2px 9px;margin-left:8px;vertical-align:2px}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.trio div{border-top:1px solid var(--linha);padding-top:8px}.trio span{display:block;font-size:13px;color:var(--grafite)}
+.trio b{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}
+.acoes{display:flex;gap:8px;flex-wrap:wrap}
+/* lista de jogos */
+.jogos{width:100%;border-collapse:collapse}
+.jogos td{padding:9px 8px;border-bottom:1px solid #ECEEF0}
+.jogos tr:last-child td{border-bottom:0}
+.jogos .n{color:var(--grafite);width:28px;font-variant-numeric:tabular-nums}
+.jogos .t{font-weight:500}
+.jogos .t small{display:block;font-weight:400;color:var(--grafite);font-size:12.5px}
+.mk{display:inline-flex;gap:4px}
+.mk i{font-style:normal;width:26px;height:26px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:600;color:#9AA3AA;border:1px solid var(--linha);background:#fff}
+.mk i.on{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.mk i.res{box-shadow:0 0 0 2px var(--mesa)}
+.mk i.res.fora{box-shadow:0 0 0 2px var(--baixa)}
+.pb{display:flex;height:6px;border-radius:3px;overflow:hidden;min-width:120px;background:#ECEEF0}
+.pb span:nth-child(1){background:var(--tinta)}.pb span:nth-child(2){background:#9AA3AA}.pb span:nth-child(3){background:#5F7F9A}
+.pbn{display:flex;justify-content:space-between;font-size:12px;color:var(--grafite);font-variant-numeric:tabular-nums;margin-top:3px;min-width:120px}
+.st{font-weight:600;white-space:nowrap}.st.ok{color:var(--mesa)}.st.no{color:var(--baixa)}.st.ag{color:var(--grafite);font-weight:400}
+.ao::before{background:var(--baixa)}
+/* avisos e licoes */
+.nota{border-left:3px solid var(--ouro);background:var(--ouro2);padding:12px 16px;border-radius:0 8px 8px 0;font-size:14.5px}
+.nota.inf{border-left-color:var(--grafite);background:#EEF0F1}
+.nota.er{border-left-color:var(--baixa);background:var(--baixa2)}
+.aprende{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.aprende li{padding:10px 14px;border:1px solid var(--linha);border-radius:8px;background:#fff}
+.aprende li b{font-weight:600}
+.pendente{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;border:1px solid var(--ouro);background:var(--ouro2);border-radius:10px}
+.linha-sel{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.vazio{text-align:center;padding:36px 20px;color:var(--grafite)}
+.vazio b{display:block;color:var(--tinta);font-size:17px;margin-bottom:6px}
+select.sel,input.sel{border-color:#C9CED2;border-radius:7px}
+.graf{height:260px}
+/* dialogo */
+.dlg{border:0;border-radius:12px;padding:0;max-width:560px;width:calc(100% - 32px);box-shadow:0 24px 60px rgba(22,32,42,.25)}
+.dlg::backdrop{background:rgba(22,32,42,.45)}
+.dlg form{padding:22px 24px;display:flex;flex-direction:column;gap:14px}
+.dlg h2{margin:0}.dlg label{display:flex;flex-direction:column;gap:6px;font-weight:500;font-size:14px}
+.dlg textarea{min-height:120px;border:1px solid #C9CED2;border-radius:7px;padding:8px;font:13px/1.45 ui-monospace,Consolas,monospace}
+.dlg .acoes{justify-content:flex-end}
+.escolha{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.escolha label{flex-direction:row;align-items:center;gap:8px;border:1px solid var(--linha);border-radius:8px;padding:10px 12px;cursor:pointer;font-weight:500}
+.escolha input{accent-color:var(--mesa)}
+@media (max-width:760px){.placar{grid-template-columns:1fr}.placar .grande{border-right:0;border-bottom:1px solid var(--linha)}.placar .grande .n{font-size:68px}.faixa{grid-template-columns:1fr}.faixa .lado{text-align:left}.faixa h2{font-size:28px}.trio b{font-size:20px}.jogos .pbc{display:none}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+@media print{.topo,nav.secundaria,#p-semana,#p-conf,#p-banca{display:none!important}}
+</style>
 </head>
 <body>
 <div class="wrap">
-<header>
-<h1>Loteca Elite Pro</h1>
-<div class="sub" id="gerado">Carregando…</div>
+<header class="topo">
+<div class="marca-app"><span class="logo">Loteca Elite Pro</span><span class="sub" id="gerado">Carregando…</span></div>
+<nav class="principal" role="tablist" aria-label="Seções">
+<button role="tab" data-pag="p-semana" aria-selected="true">Semana</button>
+<button role="tab" data-pag="p-conf" aria-selected="false">Conferência</button>
+<button role="tab" data-pag="p-banca" aria-selected="false">Banca</button>
+<button role="tab" data-pag="p-estudos" aria-selected="false">Estudos</button>
+</nav>
 </header>
-<nav role="tablist" aria-label="Seções">
-<button role="tab" data-aba="volante" aria-selected="true">Volante</button>
+
+<section id="p-semana" class="pag"></section>
+<section id="p-conf" class="pag" hidden></section>
+<section id="p-banca" class="pag" hidden></section>
+<section id="p-estudos" class="pag" hidden>
+<nav class="secundaria" role="tablist" aria-label="Estudos e ferramentas">
+<button role="tab" data-aba="volante" aria-selected="true">Montar volante</button>
 <button role="tab" data-aba="apostas" aria-selected="false">Lista de apostas</button>
-<button role="tab" data-aba="vivo" aria-selected="false">Ao vivo</button>
 <button role="tab" data-aba="semana" aria-selected="false">Análise da semana</button>
+<button role="tab" data-aba="vivo" aria-selected="false">Placar ao vivo</button>
 <button role="tab" data-aba="historico" aria-selected="false">Histórico</button>
 <button role="tab" data-aba="erros" aria-selected="false">Onde erramos</button>
-<button role="tab" data-aba="financeiro" aria-selected="false">Financeiro</button>
+<button role="tab" data-aba="financeiro" aria-selected="false">Simulações</button>
 <button role="tab" data-aba="kpis" aria-selected="false">Sites e KPIs</button>
 </nav>
-
 <section id="volante" class="aba"></section>
 <section id="vivo" class="aba" hidden></section>
 <section id="semana" class="aba" hidden></section>
@@ -130,7 +247,9 @@ select.sel{min-height:44px;padding:8px 12px;border:1px solid #D1D5DB;border-radi
 <section id="historico" class="aba" hidden></section>
 <section id="erros" class="aba" hidden></section>
 <section id="kpis" class="aba" hidden></section>
+</section>
 </div>
+<dialog id="dlg" class="dlg"></dialog>
 <script>
 var D = null, V = null, R = '1X2';
 function pc(v, c) { return v == null ? '—' : (v * 100).toFixed(c == null ? 1 : c).replace('.', ',') + '%'; }
@@ -146,9 +265,17 @@ function barra(p) {
   return '<div class="barra" role="img" aria-label="1 ' + pc(p[0], 0) + ', X ' + pc(p[1], 0) + ', 2 ' + pc(p[2], 0) + '">' +
     p.map(function (x, k) { return '<span style="width:' + (x * 100) + '%;background:' + cor[k] + '">' + (x >= .12 ? Math.round(x * 100) + '%' : '') + '</span>'; }).join('') + '</div>';
 }
-document.querySelectorAll('nav button').forEach(function (b) {
+function irPara(pag, sub) {
+  document.querySelectorAll('nav.principal button').forEach(function (x) { x.setAttribute('aria-selected', x.dataset.pag === pag ? 'true' : 'false'); });
+  document.querySelectorAll('.pag').forEach(function (s) { s.hidden = s.id !== pag; });
+  if (sub) document.querySelectorAll('nav.secundaria button').forEach(function (x) { if (x.dataset.aba === sub) x.click(); });
+  if (D) { var f = { 'p-conf': pagConferencia, 'p-banca': pagBanca, 'p-semana': pagSemana }[pag]; if (f) f(); }
+  window.scrollTo({ top: 0 });
+}
+document.querySelectorAll('nav.principal button').forEach(function (b) { b.addEventListener('click', function () { irPara(b.dataset.pag); }); });
+document.querySelectorAll('nav.secundaria button').forEach(function (b) {
   b.addEventListener('click', function () {
-    document.querySelectorAll('nav button').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
+    document.querySelectorAll('nav.secundaria button').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
     document.querySelectorAll('.aba').forEach(function (s) { s.hidden = s.id !== b.dataset.aba; });
     if (D) { var f = { financeiro: abaFinanceiro, historico: abaHistorico, erros: abaErros }[b.dataset.aba]; if (f) f(); }
   });
@@ -344,7 +471,7 @@ function renderVolantes(alvo, vols, titulo, jogos) {
       '</tbody></table></div>';
   }).join('');
   el.innerHTML = '<div class="barraf noprint" style="margin:8px 0 12px"><b>' + vols.length + ' volantes · ' + brl(custo) + '</b>' +
-    '<button class="btn" data-a="lista">Levar para Apostas</button><button class="btn pri" data-a="caixa">Enviar para a Caixa</button><button class="btn" data-a="speed">Baixar para o SpeedLoto</button><button class="btn" data-a="imp">Imprimir volantes</button><button class="btn" data-a="txt">Baixar TXT (1 volante por linha)</button>' +
+    '<button class="btn" data-a="lista">Levar para Apostas</button><button class="btn pri" data-a="caixa">Enviar para a Caixa</button><button class="btn" data-a="reg">Registrar como jogado</button><button class="btn" data-a="speed">Baixar para o SpeedLoto</button><button class="btn" data-a="imp">Imprimir volantes</button><button class="btn" data-a="txt">Baixar TXT (1 volante por linha)</button>' +
     '<button class="btn" data-a="simples">Baixar TXT (apostas simples)</button><button class="btn" data-a="csv">Baixar planilha (CSV)</button><button class="btn" data-a="cop">Copiar texto</button><span class="sub" data-a="msg"></span></div>' +
     '<p class="sub noprint"><b>SpeedLoto:</b> arquivo com um volante por linha, os 14 jogos separados por ponto e vírgula e as opções do duplo ou triplo separadas por ponto (ex.: <code>1;2.x;1;1;x;2;...</code>). No SpeedLoto, abra o arquivo pelo ícone da pasta em "Suas apostas". Volante no mesmo desenho do bilhete da Caixa (coluna 1, coluna do meio = empate, coluna 2). Para a lotérica: imprima e copie as marcas. Para programas de loteria: o TXT de 1 volante por linha traz as 14 marcações separadas por espaço (ex.: <code>1X 1 2 ...</code>); o TXT de apostas simples abre cada volante em todas as combinações (uma por linha, 14 letras).</p>' +
     '<div class="vols">' + cartoes + '</div>';
@@ -353,6 +480,7 @@ function renderVolantes(alvo, vols, titulo, jogos) {
   var speed = vols.map(function (v) { return v.map(function (t) { return ['1', '2', 'X'].filter(function (k) { return t.indexOf(k) >= 0; }).map(function (k) { return k === 'X' ? 'x' : k; }).join('.'); }).join(';'); }).join('\r\n');
   el.querySelector('[data-a=speed]').onclick = function () { baixar(titulo + '_speedloto.txt', speed + '\r\n'); };
   el.querySelector('[data-a=caixa]').onclick = function () { mostraCaixa(el, speed, vols.length); };
+  el.querySelector('[data-a=reg]').onclick = function () { var m = String(titulo).match(/(\d{3,5})/); bancaRegistrar({ concurso: m ? Number(m[1]) : (D.semana && D.semana.concurso), vols: vols, origem: String(titulo).replace(/^loteca_\d+_?/, '').replace(/_/g, ' ') || 'Volantes' }); };
   var bl = el.querySelector('[data-a=lista]'); if (bl) bl.onclick = function () { if (alvo === 'apvols') { alert('Estes volantes já são a sua lista.'); return; } AP.lista = AP.lista.concat(vols.map(function (v) { return v.slice(); })); apSalva(); abaApostas(); el.querySelector('[data-a=msg]').textContent = vols.length + ' volantes levados para a aba Apostas ✓'; };
   el.querySelector('[data-a=imp]').onclick = function () { document.querySelectorAll('.aba').forEach(function (s) { s.classList.toggle('imprimir', s.id === el.closest('.aba').id); }); window.print(); };
   el.querySelector('[data-a=txt]').onclick = function () { baixar(titulo + '.txt', txt + '\r\n'); };
@@ -490,9 +618,7 @@ function abaFinanceiro() {
     { n: 'Cofrinho (só aposta quando se paga)', g: tot('cofrinho_aposta'), p: tot('cofrinho_premio') }];
   var guardado = 200 * F.length - tot('cofrinho_aposta') + tot('cofrinho_premio');
   var gj = A.reduce(function (a, x) { return a + x.valor; }, 0), pj = A.reduce(function (a, x) { return a + (x.premio || 0); }, 0);
-  el.innerHTML = blocoJogadas() + '<div class="card"><h2>Financeiro — o seu dinheiro</h2>' +
-    '<div class="grid"><div class="stat"><span>Apostado (concursos conferidos)</span><b>' + brl(gj) + '</b><span>' + A.length + ' aposta(s) registrada(s)</span></div><div class="stat"><span>Prêmios</span><b>' + brl(pj) + '</b></div>' +
-    '<div class="stat" style="background:' + (pj - gj >= 0 ? 'var(--verde2)' : 'var(--erro2)') + '"><span>Lucro ou prejuízo</span><b class="' + (pj - gj >= 0 ? 'ok' : 'no') + '">' + brl(pj - gj) + '</b></div></div>' +
+  el.innerHTML = '<div class="card"><h2>Simulações</h2><p class="sub">O que cada estratégia teria dado no passado. O seu dinheiro de verdade fica na aba Banca.</p>' +
     (A.length ? '<div class="rolagem" style="margin-top:12px"><table><thead><tr><th>Concurso</th><th>Tipo</th><th>Aposta</th><th>Pontos</th><th>Prêmio</th><th>Resultado</th></tr></thead><tbody>' + A.map(function (x) { var r = x.premio == null ? null : x.premio - x.valor;
       return '<tr><td>' + x.concurso + '</td><td>' + esc(x.tipo) + '</td><td>' + brl(x.valor) + ' (' + esc(x.estrutura) + ')</td><td>' + (x.pontos == null ? 'aguardando' : x.pontos) + '</td><td>' + (x.premio == null ? '—' : brl(x.premio)) + '</td><td class="' + (r == null ? '' : (r >= 0 ? 'ok' : 'no')) + '">' + (r == null ? '—' : brl(r)) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="sub">Nenhuma aposta registrada ainda. O cofrinho guarda R$ 200 por semana e só aposta quando o jogo se paga em média.</p>') + '</div>' +
     '<div class="card"><h2>Se tivesse jogado — ' + F.length + ' concursos com rateio oficial</h2><p class="sub">Saldo acumulado (prêmios menos o que foi gasto) de cada estratégia, só com informação de antes de cada concurso.</p><div class="graf"><canvas id="gfin"></canvas></div>' +
@@ -771,7 +897,7 @@ function cardTermometro() {
 }
 function jogLista() { try { return JSON.parse(localStorage.getItem('loteca_jogadas') || '[]'); } catch (e) { return []; } }
 function jogGrava(L) { try { localStorage.setItem('loteca_jogadas', JSON.stringify(L)); } catch (e) { alert('Não consegui salvar.'); } }
-function jogRegistrar(conc, vols, minhas, total) { var L = jogLista(); L.unshift({ conc: conc, data: new Date().toLocaleString('pt-BR'), vols: vols, custo: arqCusto(vols), minhas: minhas || 1, total: total || 1 }); jogGrava(L); }
+function jogRegistrar(conc, vols, minhas, total) { bancaAcao({ acao: 'adicionar', aposta: { concurso: conc, origem: 'Bolão', vols: vols, minhas: minhas || 1, total: total || 1, status: 'pago' } }); return; var L = jogLista(); L.unshift({ conc: conc, data: new Date().toLocaleString('pt-BR'), vols: vols, custo: arqCusto(vols), minhas: minhas || 1, total: total || 1 }); jogGrava(L); }
 function jogConfere(j) { // premio real pelo rateio oficial (se o concurso ja tem resultado)
   var h = (D.historico || []).filter(function (x) { return x.c === j.conc; })[0]; if (!h) return null;
   var res = h.jogos.map(function (g) { return g.res; }), Rt = { premio14: h.premio14, premio13: h.premio13 }, pr = 0, mx = 0;
@@ -822,6 +948,7 @@ function telaEnviar() { // janela aberta pelo Marcador Loteca dentro do site da 
   ov.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { var f = F[Number(b.dataset.f)], m = ov.querySelector('[data-a=m]');
     if (!window.opener) { m.textContent = 'Esta janela precisa ser aberta pelo botão "Puxar do meu painel" do Marcador, na página da Caixa.'; return; }
     window.opener.postMessage({ tipo: 'loteca-volantes', nome: f.nome, vols: f.vols.map(apSpeed) }, window.__LOTECA_ORIGEM || 'https://www.loteriasonline.caixa.gov.br');
+    bancaAcao({ acao: 'adicionar', aposta: { concurso: D.semana ? D.semana.concurso : 0, origem: f.nome, vols: f.vols, status: 'carrinho' } });
     m.textContent = 'Enviado ✓ — pode fechar esta janela.'; setTimeout(function () { window.close(); }, 900); }; });
 }
 function abaArquivos(el) { // subaba "Meus arquivos"
@@ -1001,13 +1128,271 @@ function abaApostasSub() {
 }
 
 document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('[data-jx]'); if (!b) return; var L = jogLista(), n = Number(b.getAttribute('data-jx')); if (!confirm('Apagar o registro do concurso ' + L[n].conc + '?')) return; L.splice(n, 1); jogGrava(L); abaFinanceiro(); });
-function tudo() { abaVolante(); abaApostas(); abaVivo(); abaSemana(); abaMeuJogo(); abaDesdobre(); abaFinanceiro(); abaHistorico(); abaErros(); abaKpis(); }
-function carregaVivo() { return fetch('dados/ao_vivo.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (v) { V = v; if (D) abaVivo(); }); }
+function tudo() { [abaVolante, abaApostas, abaVivo, abaSemana, abaMeuJogo, abaDesdobre, abaFinanceiro, abaHistorico, abaErros, abaKpis].forEach(function (f) { try { f(); } catch (e) { console.error(e); } }); pagSemana(); pagConferencia(); pagBanca(); }
+function carregaVivo() { return fetch('dados/ao_vivo.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (v) { V = v; if (D) { abaVivo(); if (!document.getElementById('p-conf').hidden) pagConferencia(); } }); }
+function carregaResultados() { return fetch('dados/resultados.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (x) { RS = x; }); }
 fetch('dados/painel.json?t=' + Date.now()).then(function (r) { return r.json(); }).then(function (d) {
-  D = d; document.getElementById('gerado').textContent = 'Dados de ' + d.gerado + ' · concurso aberto ' + (d.semana ? d.semana.concurso : '—');
-  return fetch('dados/pilares.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (p) { PIL = p; return fetch('dados/placar_pilares.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (q) { PLP = q; return carregaVivo(); }); });
-}).then(function () { tudo(); if (location.hash === '#enviar') telaEnviar(); }).catch(function (e) { document.getElementById('gerado').textContent = 'Não foi possível carregar os dados: ' + e; });
+  D = d; document.getElementById('gerado').textContent = (d.semana ? 'Concurso ' + d.semana.concurso + ' aberto' : 'Sem concurso aberto') + ', dados de ' + d.gerado;
+  return fetch('dados/pilares.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (p) { PIL = p; return fetch('dados/placar_pilares.json?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (q) { PLP = q; return Promise.all([carregaVivo(), carregaResultados(), bancaCarrega()]); }); });
+}).then(function () { tudo(); if (location.hash === '#enviar') telaEnviar(); else if (location.hash === '#banca') irPara('p-banca'); else if (location.hash === '#conferencia') irPara('p-conf'); }).catch(function (e) { document.getElementById('gerado').textContent = 'Não foi possível carregar os dados: ' + e; });
 setInterval(carregaVivo, 60000);
+</script>
+<script>
+// ================================================================ Semana · Conferência · Banca (2026-11)
+var RS = null; // resultados e rateio oficiais (dados/resultados.json)
+var BANCA = { lista: [], servidor: false, erro: '' };
+var CONF = { c: null };
+
+function brl2(v) { return v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function pl(n, um, varios) { return n + ' ' + (n === 1 ? um : varios); }
+function sinal(v) { return (v > 0 ? '+' : v < 0 ? '−' : '') + brl(Math.abs(v)); }
+function nomeT(s) { return nome(s); }
+function pbar(p) {
+  return '<div class="pb" role="img" aria-label="1 ' + pc(p[0], 0) + ', empate ' + pc(p[1], 0) + ', 2 ' + pc(p[2], 0) + '">' + p.map(function (x) { return '<span style="width:' + (x * 100) + '%"></span>'; }).join('') + '</div>' +
+    '<div class="pbn"><span>' + pc(p[0], 0) + '</span><span>' + pc(p[1], 0) + '</span><span>' + pc(p[2], 0) + '</span></div>';
+}
+function mk(sel, res) { // marcacao: sel = '1X', res = resultado (ou null)
+  return '<span class="mk">' + [0, 1, 2].map(function (k) { var t = R[k], on = sel.indexOf(t) >= 0, r = res === t;
+    return '<i class="' + (on ? 'on' : '') + (r ? ' res' + (on ? '' : ' fora') : '') + '">' + t + '</i>'; }).join('') + '</span>';
+}
+
+// ---------------------------------------------------------------- banca: servidor (repositório) ou este aparelho
+function bancaLocal() { try { return JSON.parse(localStorage.getItem('loteca_banca') || '[]'); } catch (e) { return []; } }
+function bancaLocalGrava(L) { try { localStorage.setItem('loteca_banca', JSON.stringify(L)); } catch (e) {} }
+function antigasLocais() { // apostas do formato antigo (Financeiro) e da banca local, para levar ao servidor
+  var out = bancaLocal().map(function (a) { return { concurso: a.concurso, vols: a.vols, origem: a.origem, minhas: a.minhas, total: a.total }; });
+  try { JSON.parse(localStorage.getItem('loteca_jogadas') || '[]').forEach(function (j) { out.push({ concurso: j.conc, vols: j.vols, origem: 'Registrada no Financeiro', minhas: j.minhas, total: j.total }); }); } catch (e) {}
+  return out;
+}
+function bancaCarrega() {
+  return fetch('api/banca', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+    if (j && j.ok) { BANCA.servidor = true; BANCA.lista = j.apostas || []; BANCA.erro = ''; }
+    else { BANCA.servidor = false; BANCA.erro = (j && j.erro) || 'indisponível'; BANCA.lista = bancaLocal(); }
+  }).catch(function () { BANCA.servidor = false; BANCA.erro = 'sem conexão com o servidor'; BANCA.lista = bancaLocal(); });
+}
+function custoVols(vols) { return vols.reduce(function (a, v) { return a + apCombos(v) * 2; }, 0); }
+function bancaAcao(obj) {
+  var depois = function () { if (D) { pagBanca(); pagConferencia(); pagSemana(); } };
+  if (BANCA.servidor) {
+    return fetch('api/banca', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) })
+      .then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.erro || 'falhou'); BANCA.lista = j.apostas; depois(); return j; })
+      .catch(function (e) { alert('Não consegui gravar na banca: ' + e.message); });
+  }
+  var L = bancaLocal();
+  if (obj.acao === 'adicionar') { var a = obj.aposta; L.push({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 8), concurso: Number(a.concurso), registrado_utc: new Date().toISOString().slice(0, 16) + 'Z', origem: a.origem || '', vols: a.vols, custo: custoVols(a.vols), minhas: a.minhas || 1, total: a.total || 1, status: a.status || 'carrinho' }); }
+  else if (obj.acao === 'status') L.forEach(function (x) { if (x.id === obj.id) x.status = obj.status; });
+  else if (obj.acao === 'apagar') L = L.filter(function (x) { return x.id !== obj.id; });
+  bancaLocalGrava(L); BANCA.lista = L; depois(); return Promise.resolve({ ok: true });
+}
+function bancaRegistrar(pre) { // dialogo para registrar uma aposta (pre: {concurso, vols, origem})
+  var dlg = document.getElementById('dlg'), conc = pre.concurso || (D.semana && D.semana.concurso) || '';
+  dlg.innerHTML = '<form method="dialog"><h2>Registrar aposta</h2>' +
+    '<label>Concurso<input class="sel" name="c" type="number" value="' + conc + '" required></label>' +
+    (pre.vols ? '<p style="margin:0">' + pre.vols.length + ' volante(s), ' + brl(custoVols(pre.vols)) + (pre.origem ? ' · ' + esc(pre.origem) : '') + '</p>'
+      : '<label>Volantes (um por linha, como no SpeedLoto: 1;2.x;1;…)<textarea name="v" required placeholder="1;x;2;1.x;..."></textarea></label><label>Descrição<input class="sel" name="o" value="Aposta manual"></label>') +
+    '<div class="escolha"><label><input type="radio" name="s" value="pago" checked> Já paguei</label><label><input type="radio" name="s" value="carrinho"> Está no carrinho</label></div>' +
+    '<p class="sub" style="margin:0">' + (BANCA.servidor ? 'Fica guardado na banca e aparece em qualquer aparelho.' : 'A banca está guardada só neste aparelho até a chave de gravação ser configurada.') + '</p>' +
+    '<div class="acoes"><button class="btn" value="cancelar">Cancelar</button><button class="btn pri" value="ok">Registrar</button></div></form>';
+  dlg.onclose = function () {
+    if (dlg.returnValue !== 'ok') return;
+    var f = dlg.querySelector('form'), vols = pre.vols;
+    if (!vols) vols = f.v.value.split(/\r?\n/).map(apParse).filter(Boolean);
+    if (!vols || !vols.length) { alert('Nenhum volante válido (cada linha precisa dos 14 jogos).'); return; }
+    bancaAcao({ acao: 'adicionar', aposta: { concurso: Number(f.c.value), vols: vols, origem: pre.origem || (f.o ? f.o.value : ''), status: f.s.value } })
+      .then(function (j) { if (j && j.ok) irPara('p-banca'); });
+  };
+  dlg.showModal();
+}
+
+// ---------------------------------------------------------------- resultado de um concurso (oficial ou ao vivo)
+function resultadoDe(c) {
+  var r = RS && RS.concursos && RS.concursos[String(c)];
+  if (r) return { res: r.res.split(''), final: true, jogos: r.jogos.map(function (j) { return { m: j.m, v: j.v, placar: j.placar, sit: 'encerrado' }; }),
+    rateio: r.rateio ? { premio14: r.premio14, premio13: r.premio13, g14: r.ganhadores14, g13: r.ganhadores13, acumulou: r.acumulou } : null, data: r.data };
+  if (V && V.concurso === c) {
+    var js = V.jogos.slice().sort(function (a, b) { return a.jogo - b.jogo; });
+    var fim = js.length === 14 && js.every(function (g) { return g.situacao === 'encerrado' && g.resultado; });
+    return { res: js.map(function (g) { return g.resultado || null; }), final: false, fim: fim, ao_vivo: !fim, atualizado: V.atualizado_utc,
+      jogos: js.map(function (g) { return { m: g.mandante, v: g.visitante, placar: g.placar, sit: g.situacao || '' }; }), rateio: null };
+  }
+  return null;
+}
+function probsDe(c) { // probabilidades do motor para o concurso (para explicar os erros)
+  if (D.semana && D.semana.concurso === c) return D.semana.jogos.map(function (j) { return j.p; });
+  var h = (D.historico || []).filter(function (x) { return x.c === c; })[0];
+  return h ? h.jogos.map(function (g) { return g.p; }) : null;
+}
+function confere(vols, Rz, parte) {
+  var res = Rz.res, conhecidos = res.filter(function (x) { return x != null; }).length, melhor = 0, maxPos = 0, n14 = 0, n13 = 0, dist = {};
+  vols.forEach(function (v) {
+    var ac = 0, er = [], i;
+    for (i = 0; i < 14; i++) { if (res[i] == null) continue; if (v[i].indexOf(res[i]) >= 0) ac++; else er.push(i); }
+    melhor = Math.max(melhor, ac); maxPos = Math.max(maxPos, 14 - er.length); dist[ac] = (dist[ac] || 0) + 1;
+    if (Rz.final) { if (!er.length) { n14 += 1; n13 += v.reduce(function (a, t) { return a + t.length - 1; }, 0); } else if (er.length === 1) n13 += v[er[0]].length; }
+  });
+  var cobertura = res.map(function (r, i) { return r == null ? null : vols.filter(function (v) { return v[i].indexOf(r) >= 0; }).length; });
+  var premio = null;
+  if (Rz.final && Rz.rateio) premio = (n14 * (Rz.rateio.premio14 || 0) + n13 * (Rz.rateio.premio13 || 0)) * (parte || 1);
+  return { melhor: melhor, maxPos: maxPos, conhecidos: conhecidos, n14: n14, n13: n13, premio: premio, cobertura: cobertura, dist: dist };
+}
+function apostasDo(c) { return BANCA.lista.filter(function (a) { return a.concurso === c && a.status !== 'cancelado'; }); }
+function uniao(vols) { return Array.from({ length: 14 }, function (_, i) { return R.split('').filter(function (k) { return vols.some(function (v) { return v[i].indexOf(k) >= 0; }); }).join(''); }); }
+
+// ---------------------------------------------------------------- SEMANA
+function pagSemana() {
+  var el = document.getElementById('p-semana'), S = D.semana;
+  if (!S) { el.innerHTML = '<div class="card vazio"><b>Nenhum concurso aberto agora.</b>A grade nova aparece aqui assim que a Caixa publicar.</div>'; return; }
+  var d = S.decisao, ds = S.desdobre, h = '';
+  if (d) {
+    var jogar = d.apostar > 0;
+    h += '<div class="faixa' + (jogar ? ' jogar' : '') + '"><div><span>Concurso ' + S.concurso + '</span><h2>' + (jogar ? 'Jogar ' + brl(d.apostar) + ' nesta semana' : 'Semana para jogar o mínimo') + '</h2><p>' +
+      (jogar ? 'O retorno esperado passa do que a aposta custa. É uma das poucas semanas em que vale investir mais.' :
+        'O retorno esperado das cartelas grandes fica abaixo do que custam (melhor: ' + pc(Math.max.apply(null, d.orcamentos.map(function (o) { return o.retorno; })), 0) + '). Se for jogar, fique no desdobre de R$ 200.') + '</p></div>' +
+      '<div class="lado">Prêmio estimado <b>' + brl(d.premio) + '</b><br>Guardado no cofrinho <b>' + brl(d.saldo) + '</b></div></div>';
+  }
+  var ja = apostasDo(S.concurso);
+  if (ja.length) h += '<div class="nota inf">Você já registrou ' + pl(ja.length, 'aposta', 'apostas') + ' neste concurso, ' + brl(ja.reduce(function (a, x) { return a + x.custo; }, 0)) + '. <a href="#" data-ir="p-conf">Ver a conferência</a></div>';
+  if (ds) {
+    var esp = ds.espalhado, sim = ds.simples;
+    var op = function (rec, titulo, txt, custo, p14, p13, chave) {
+      return '<div class="opcao' + (rec ? ' rec' : '') + '"><div><h3>' + titulo + (rec ? '<span class="tag">recomendado</span>' : '') + '</h3><p class="sub" style="margin:6px 0 0">' + txt + '</p></div>' +
+        '<div class="trio"><div><span>Custo</span><b>' + brl(custo) + '</b></div><div><span>Chance de 13+</span><b>' + pc(p13, 1) + '</b></div><div><span>Chance de 14</span><b>' + pc(p14, 2) + '</b></div></div>' +
+        '<div class="acoes"><button class="btn pri" data-op="' + chave + '" data-a="caixa">Mandar para a Caixa</button><button class="btn" data-op="' + chave + '" data-a="reg">Registrar como jogado</button><button class="btn" data-op="' + chave + '" data-a="ver">Ver volantes</button></div></div>';
+    };
+    h += '<div class="opcoes">' +
+      (esp ? op(true, 'Desdobre espalhado', esp.volantes.length + ' volantes que se cobrem entre si. No histórico fez 13 ou mais o dobro de vezes que o jogo simples, pelo mesmo valor.', esp.custo, esp.p14, esp.p13, 'esp') : '') +
+      (sim ? op(false, 'Jogo simples ' + sim.estrutura, 'Uma cartela só, a de maior chance de 14 que cabe no orçamento.', sim.custo, sim.p14, sim.p13, 'sim') : '') + '</div><div id="semvols"></div>';
+  }
+  var simp = ds && ds.simples ? ds.simples.cartela : null;
+  h += '<div class="card"><h2>Os 14 jogos</h2><p class="sub" style="margin-top:-6px">Chance de cada resultado pelo motor. As marcas são as do jogo simples.</p><div class="rolagem"><table class="jogos"><tbody>' +
+    S.jogos.map(function (j, i) {
+      return '<tr><td class="n">' + j.jogo + '</td><td class="t">' + nomeT(j.mandante) + ' × ' + nomeT(j.visitante) + (j.alertas && j.alertas.length ? '<small>' + j.alertas.map(esc).join(' ') + '</small>' : '') + '</td>' +
+        '<td class="pbc" style="width:170px">' + pbar(j.p) + '</td><td style="width:100px;text-align:right">' + (simp ? mk(simp[i], null) : '') + '</td></tr>';
+    }).join('') + '</tbody></table></div><p class="sub" style="margin-bottom:0">Quer mudar algum jogo? <a href="#" data-ir="p-estudos" data-sub="volante">Montar o seu volante</a>.</p></div>';
+  el.innerHTML = h;
+  el.querySelectorAll('[data-op]').forEach(function (b) {
+    b.onclick = function () {
+      var vols = b.dataset.op === 'esp' ? ds.espalhado.volantes : [ds.simples.cartela], nomeOp = b.dataset.op === 'esp' ? 'Desdobre espalhado' : 'Jogo simples ' + ds.simples.estrutura;
+      if (b.dataset.a === 'reg') bancaRegistrar({ concurso: S.concurso, vols: vols, origem: nomeOp });
+      else { renderVolantes('semvols', vols, 'loteca_' + S.concurso + '_' + (b.dataset.op === 'esp' ? 'desdobre' : 'simples'), S.jogos);
+        var alvo = document.getElementById('semvols'); if (b.dataset.a === 'caixa') alvo.querySelector('[data-a=caixa]').click(); alvo.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    };
+  });
+}
+
+// ---------------------------------------------------------------- CONFERÊNCIA
+function concursosConf() {
+  var cs = {}; BANCA.lista.forEach(function (a) { if (a.status !== 'cancelado') cs[a.concurso] = 1; });
+  if (D.semana) cs[D.semana.concurso] = 1; if (V) cs[V.concurso] = 1;
+  return Object.keys(cs).map(Number).sort(function (a, b) { return b - a; });
+}
+function pagConferencia() {
+  var el = document.getElementById('p-conf'), cs = concursosConf();
+  if (!cs.length) { el.innerHTML = '<div class="card vazio"><b>Nada para conferir ainda.</b>Registre uma aposta na aba Semana.</div>'; return; }
+  if (CONF.c == null || cs.indexOf(CONF.c) < 0) { CONF.c = cs.filter(function (c) { return apostasDo(c).length; })[0] || cs[0]; }
+  var c = CONF.c, Rz = resultadoDe(c), ap = apostasDo(c), h = '';
+  h += '<div class="linha-sel"><label class="lb">Concurso <select class="sel" id="confsel">' + cs.map(function (x) { return '<option' + (x === c ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></label>' +
+    (Rz && Rz.ao_vivo ? '<span class="ao">Ao vivo, atualizado ' + horaBR(Rz.atualizado) + '</span>' : Rz && Rz.fim ? '<span class="sub">Jogos encerrados, aguardando a apuração da Caixa</span>' : Rz && Rz.final ? '<span class="sub">Resultado oficial' + (Rz.data ? ' de ' + esc(Rz.data) : '') + '</span>' : '') + '</div>';
+  var vols, rotulo, parte = 1, custo = 0;
+  if (ap.length) { vols = []; ap.forEach(function (a) { vols = vols.concat(a.vols); custo += a.custo * a.minhas / a.total; }); parte = ap.length === 1 ? ap[0].minhas / ap[0].total : 1; rotulo = ap.length === 1 ? (ap[0].origem || 'Sua aposta') : ap.length + ' apostas suas'; }
+  else if (D.semana && D.semana.concurso === c && D.semana.desdobre) { vols = D.semana.desdobre.espalhado.volantes; rotulo = 'Jogo recomendado (você não registrou aposta neste concurso)'; }
+  if (!Rz) { el.innerHTML = h + '<div class="card vazio"><b>Os jogos ainda não começaram.</b>Os pontos aparecem aqui assim que o primeiro jogo tiver placar.</div>'; ligaConf(el); return; }
+  if (!vols) { el.innerHTML = h + '<div class="card vazio"><b>Nenhuma aposta registrada no concurso ' + c + '.</b>Use “Registrar como jogado” na aba Semana ou na Banca.</div>'; ligaConf(el); return; }
+  var k = confere(vols, Rz, parte), P = probsDe(c), U = uniao(vols);
+  var premioTxt, lucroTxt = '—', lucroCls = '';
+  if (!Rz.final) premioTxt = Rz.fim ? 'sai na apuração da Caixa' : 'depois do último jogo';
+  else if (!Rz.rateio) premioTxt = 'aguardando o rateio da Caixa';
+  else premioTxt = k.premio > 0 ? brl2(k.premio) : 'sem prêmio';
+  if (Rz.final && Rz.rateio && ap.length) { var l = (k.premio || 0) - custo; lucroTxt = sinal(l); lucroCls = l >= 0 ? 'pos' : 'neg'; }
+  h += '<div class="placar"><div class="grande"><div class="n">' + k.melhor + '<small>pontos</small></div><div class="rot">' + esc(rotulo) + '<br>' +
+    (Rz.final ? 'Melhor volante, resultado final' : Rz.fim ? 'Melhor volante, todos os jogos encerrados' : 'Melhor volante até agora, ' + k.conhecidos + ' de 14 jogos com placar' + (k.maxPos > k.melhor ? '. Ainda pode chegar a ' + k.maxPos : '')) + '</div></div>' +
+    '<div class="lado"><div class="item"><span>Volantes</span><b>' + vols.length + '</b><em>' + (ap.length ? brl(custo) + ' investidos' : 'não jogado') + '</em></div>' +
+    '<div class="item"><span>Com 13 ou 14</span><b>' + volantesCom(k.dist, 13) + '</b><em>' + (Rz.final ? pl(k.n14, 'aposta de 14', 'apostas de 14') + ', ' + pl(k.n13, 'de 13', 'de 13') : Rz.fim ? 'pelo placar final' : 'até agora') + '</em></div>' +
+    '<div class="item"><span>Prêmio</span><b>' + (k.premio > 0 ? brl(k.premio) : '—') + '</b><em>' + premioTxt + '</em></div>' +
+    '<div class="item"><span>Lucro do concurso</span><b class="' + lucroCls + '">' + lucroTxt + '</b><em>' + (Rz.rateio ? (Rz.rateio.acumulou ? 'acumulou: ninguém fez 14' : Rz.rateio.g14 + ' ganhadores de 14 no Brasil') : '') + '</em></div></div></div>';
+  if (Rz.final && Rz.rateio && Rz.rateio.acumulou && k.n14) h += '<div class="nota">Ninguém mais fez 14 e você fez: o prêmio é o valor acumulado. Confira na Caixa.</div>';
+  // o que aprendemos
+  var lic = [];
+  Rz.res.forEach(function (r, i) {
+    if (r == null || k.cobertura[i] > 0) return;
+    var p = P ? P[i][R.indexOf(r)] : null, tipo = r === 'X' ? 'empate' : (r === '1' ? 'vitória do mandante' : 'vitória do visitante');
+    var porque = p == null ? '' : (p < .2 ? ' — zebra grande: o motor dava só ' + pc(p, 0) : p < .33 ? ' — zebra: o motor dava ' + pc(p, 0) : ' — resultado com ' + pc(p, 0) + ' de chance que ficou de fora');
+    lic.push('<li><b>Jogo ' + (i + 1) + ', ' + nomeT(Rz.jogos[i].m) + ' × ' + nomeT(Rz.jogos[i].v) + ':</b> ' + tipo + porque + '.</li>');
+  });
+  var emp = Rz.res.filter(function (r, i) { return r === 'X' && k.cobertura[i] === 0; }).length;
+  if (lic.length) h += '<div class="card"><h2>' + (Rz.final || Rz.fim ? 'Onde a aposta ficou de fora' : 'Fora da aposta até agora') + '</h2><ul class="aprende">' + lic.join('') + '</ul>' +
+    (emp && lic.length ? '<p class="sub" style="margin-bottom:0">' + emp + ' de ' + lic.length + ' foram empate. No histórico, 60% dos secos errados foram empate.</p>' : '') + '</div>';
+  else if (k.conhecidos) h += '<div class="nota inf">Todos os resultados até agora estão cobertos por pelo menos um volante.</div>';
+  // jogo a jogo
+  h += '<div class="card"><h2>Jogo a jogo</h2><div class="rolagem"><table class="jogos"><tbody>' + Rz.jogos.map(function (j, i) {
+    var r = Rz.res[i], cv = k.cobertura[i], st = r == null ? '<span class="st ag">' + esc(j.sit || 'aguardando') + '</span>' : cv > 0 ? '<span class="st ok">✓ em ' + cv + ' de ' + vols.length + '</span>' : '<span class="st no">✗ fora</span>';
+    var sit = j.sit && j.sit.indexOf('ao vivo') === 0 ? '<small class="ao">' + esc(j.sit) + '</small>' : '';
+    return '<tr><td class="n">' + (i + 1) + '</td><td class="t">' + nomeT(j.m) + ' × ' + nomeT(j.v) + sit + '</td><td class="num" style="font-weight:600;white-space:nowrap">' + (j.placar && j.placar[0] != null ? j.placar.join(' × ') : '—') + '</td>' +
+      '<td>' + mk(U[i], r) + '</td><td style="text-align:right">' + st + '</td></tr>';
+  }).join('') + '</tbody></table></div><p class="sub" style="margin-bottom:0">Marcas escuras: o que a aposta cobre, somando todos os volantes. Em verde, o resultado coberto; com contorno vermelho, o resultado que ficou de fora.</p></div>';
+  el.innerHTML = h; ligaConf(el);
+}
+function volantesCom(dist, n) { var t = 0; Object.keys(dist).forEach(function (a) { if (Number(a) >= n) t += dist[a]; }); return t; }
+function horaBR(u) { var t = Date.parse(String(u || '').replace('Z', ':00Z')); return isNaN(t) ? esc(u || '') : new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+function ligaConf(el) { var s = el.querySelector('#confsel'); if (s) s.onchange = function () { CONF.c = Number(s.value); pagConferencia(); }; }
+
+// ---------------------------------------------------------------- BANCA
+function linhasBanca() {
+  return BANCA.lista.slice().sort(function (a, b) { return a.concurso - b.concurso || String(a.registrado_utc).localeCompare(String(b.registrado_utc)); }).map(function (a) {
+    var Rz = resultadoDe(a.concurso), parte = a.minhas / a.total, k = Rz ? confere(a.vols, Rz, parte) : null;
+    return { a: a, parte: parte, gasto: a.custo * parte, k: k, final: !!(Rz && Rz.final), rateio: !!(Rz && Rz.rateio) };
+  });
+}
+function pagBanca() {
+  var el = document.getElementById('p-banca'), L = linhasBanca(), h = '';
+  if (!BANCA.servidor) h += '<div class="nota er"><b>A banca está guardada só neste aparelho.</b> Para aparecer igual no celular e no computador, falta configurar a chave de gravação no Render (variável <code>PAINEL_GITHUB_ESCRITA</code>). ' + (BANCA.erro && BANCA.erro !== 'sem_chave' ? 'Detalhe: ' + esc(BANCA.erro) + '.' : '') + '</div>';
+  var antigas = BANCA.servidor ? antigasLocais() : [];
+  if (antigas.length) h += '<div class="pendente"><span>' + (antigas.length === 1 ? 'Há 1 aposta guardada' : 'Há ' + antigas.length + ' apostas guardadas') + ' só neste aparelho.</span><button class="btn pri" id="bkimp">Levar para a banca</button></div>';
+  L.filter(function (x) { return x.a.status === 'carrinho'; }).forEach(function (x) {
+    h += '<div class="pendente"><span>Concurso <b>' + x.a.concurso + '</b>: ' + pl(x.a.vols.length, 'volante', 'volantes') + ', ' + brl(x.a.custo) + ' foram para o carrinho. Você pagou?</span><span class="acoes"><button class="btn pri" data-st="pago" data-id="' + x.a.id + '">Paguei</button><button class="btn" data-st="cancelado" data-id="' + x.a.id + '">Não paguei</button></span></div>';
+  });
+  var pagas = L.filter(function (x) { return x.a.status === 'pago'; });
+  var inv = 0, rec = 0, pend = 0, serie = [], acum = 0, porConc = {};
+  pagas.forEach(function (x) { inv += x.gasto; if (x.k && x.final && x.rateio) rec += x.k.premio || 0; else pend++;
+    var c = x.a.concurso; porConc[c] = (porConc[c] || 0) + ((x.k && x.final && x.rateio ? x.k.premio || 0 : 0) - x.gasto); });
+  Object.keys(porConc).map(Number).sort(function (a, b) { return a - b; }).forEach(function (c) { acum += porConc[c]; serie.push({ c: c, v: Math.round(acum) }); });
+  var saldo = rec - inv, melhor = pagas.reduce(function (m, x) { return x.k && x.k.melhor > m ? x.k.melhor : m; }, 0);
+  if (!pagas.length && !L.length) {
+    el.innerHTML = h + '<div class="card vazio"><b>Nenhuma aposta registrada ainda.</b>Quando você mandar volantes para a Caixa pelo Marcador, eles entram aqui sozinhos. Também dá para <a href="#" id="bkman">registrar à mão</a>.</div>';
+    ligaBanca(el); return;
+  }
+  h += '<div class="placar"><div class="grande"><div class="n ' + (saldo >= 0 ? 'pos' : 'neg') + '">' + (saldo > 0 ? '+' : saldo < 0 ? '−' : '') + '<span class="moeda">R$</span>' + Math.round(Math.abs(saldo)).toLocaleString('pt-BR') + '</div><div class="rot">Saldo desde a primeira aposta registrada' + (pend ? '<br>' + pl(pend, 'aposta aguardando', 'apostas aguardando') + ' resultado ou rateio' : '') + '</div></div>' +
+    '<div class="lado"><div class="item"><span>Investido</span><b>' + brl(inv) + '</b><em>' + pl(pagas.length, 'aposta paga', 'apostas pagas') + '</em></div>' +
+    '<div class="item"><span>Recebido</span><b>' + brl(rec) + '</b><em>prêmios conferidos com o rateio</em></div>' +
+    '<div class="item"><span>Retorno</span><b>' + (inv ? pc(rec / inv, 0) : '—') + '</b><em>a média da Loteca fica perto de 25%</em></div>' +
+    '<div class="item"><span>Melhor resultado</span><b>' + (melhor || '—') + '</b><em>pontos em um volante</em></div></div></div>';
+  if (serie.length > 1) h += '<div class="card"><h2>Evolução do saldo</h2><div class="graf"><canvas id="gbanca"></canvas></div></div>';
+  h += '<div class="card"><div class="linha-sel" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Apostas</h2><button class="btn" id="bkman">Registrar aposta à mão</button></div><div class="rolagem"><table class="tbl-m"><thead><tr><th>Concurso</th><th>Aposta</th><th>Valor</th><th>Pontos</th><th>Prêmio</th><th>Saldo</th><th>Situação</th><th></th></tr></thead><tbody>' +
+    L.slice().reverse().map(function (x) {
+      var a = x.a, k = x.k, pr = k && x.final && x.rateio ? k.premio || 0 : null, sl = pr == null || a.status !== 'pago' ? null : pr - x.gasto;
+      var pts = !k ? '<span class="st ag">aguardando</span>' : (x.final ? k.melhor : k.melhor + ' <span class="sub">(parcial)</span>');
+      return '<tr><td class="num" data-l="Concurso"><a href="#" data-conf="' + a.concurso + '">' + a.concurso + '</a></td><td data-l="Aposta">' + esc(a.origem || 'Aposta') + '<br><span class="sub">' + pl(a.vols.length, 'volante', 'volantes') + (a.total > 1 ? ', ' + a.minhas + ' de ' + a.total + ' cotas' : '') + '</span></td>' +
+        '<td class="num" data-l="Valor">' + brl(x.gasto) + '</td><td class="num" data-l="Pontos">' + pts + '</td><td class="num" data-l="Prêmio">' + (pr == null ? (x.final ? '<span class="sub">rateio pendente</span>' : '—') : brl2(pr)) + '</td>' +
+        '<td data-l="Saldo" class="num ' + (sl == null ? '' : sl >= 0 ? 'pos' : 'neg') + '">' + (sl == null ? '—' : sinal(sl)) + '</td>' +
+        '<td data-l="Situação"><select class="sel" data-id="' + a.id + '" style="min-height:36px;padding:4px 8px">' + [['pago', 'Paga'], ['carrinho', 'No carrinho'], ['cancelado', 'Não paga']].map(function (o) { return '<option value="' + o[0] + '"' + (a.status === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></td>' +
+        '<td><button class="btn" data-del="' + a.id + '" title="Apagar" aria-label="Apagar aposta" style="min-height:36px;padding:4px 10px">Apagar</button></td></tr>';
+    }).join('') + '</tbody></table></div></div>';
+  el.innerHTML = h; ligaBanca(el);
+  if (serie.length > 1 && window.Chart) grafico('gbanca', { type: 'line', data: { labels: serie.map(function (s) { return s.c; }), datasets: [{ data: serie.map(function (s) { return s.v; }), borderColor: '#16202A', backgroundColor: 'rgba(30,91,72,.08)', fill: true, tension: .2, pointRadius: 3 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (t) { return 'Saldo ' + brl(t.parsed.y); } } } }, scales: { y: { ticks: { callback: function (v) { return brl(v); } } } } } });
+}
+function ligaBanca(el) {
+  el.querySelectorAll('[data-st]').forEach(function (b) { b.onclick = function () { bancaAcao({ acao: 'status', id: b.dataset.id, status: b.dataset.st }); }; });
+  el.querySelectorAll('select[data-id]').forEach(function (s) { s.onchange = function () { bancaAcao({ acao: 'status', id: s.dataset.id, status: s.value }); }; });
+  el.querySelectorAll('[data-del]').forEach(function (b) { b.onclick = function () { if (confirm('Apagar esta aposta da banca?')) bancaAcao({ acao: 'apagar', id: b.dataset.del }); }; });
+  el.querySelectorAll('[data-conf]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); CONF.c = Number(a.dataset.conf); irPara('p-conf'); }; });
+  var m = el.querySelector('#bkman'); if (m) m.onclick = function (e) { e.preventDefault(); bancaRegistrar({}); };
+  var imp = el.querySelector('#bkimp'); if (imp) imp.onclick = function () {
+    bancaAcao({ acao: 'importar', apostas: antigasLocais() }).then(function (j) { if (j && j.ok) { try { localStorage.removeItem('loteca_banca'); localStorage.removeItem('loteca_jogadas'); } catch (e) {} pagBanca(); } });
+  };
+}
+document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('[data-ir]'); if (!a) return; e.preventDefault(); irPara(a.dataset.ir, a.dataset.sub); });
+setInterval(function () { carregaResultados().then(function () { if (D && !document.getElementById('p-conf').hidden) pagConferencia(); }); }, 300000);
 </script>
 </body>
 </html>

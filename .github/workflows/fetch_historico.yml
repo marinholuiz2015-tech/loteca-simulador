@@ -36,12 +36,18 @@ jobs:
           LIMITE: ${{ github.event.inputs.limite }}
         run: python scripts/fetch_historico_cef.py
 
+      - name: Rateio oficial (preenche concursos que faltam) e resultados do painel
+        if: always()
+        run: |
+          timeout 300 python coleta/rateio_caixa.py || echo "rateio: sem atualizacao nesta rodada"
+          python scripts/resultados_painel.py || echo "resultados do painel: sem atualizacao"
+
       - name: Commitar historico
         if: always()
         run: |
           git config user.name "loteca-cache-bot"
           git config user.email "actions@github.com"
-          git add data/historico_cef.json || true
+          git add data/historico_cef.json coleta/dados/rateio_caixa.csv docs/dados/resultados.json || true
           git diff --cached --quiet && exit 0
           git commit -m "Atualiza historico completo da Loteca (manual)"
           git pull --rebase origin main
