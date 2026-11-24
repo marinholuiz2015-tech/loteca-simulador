@@ -1,465 +1,443 @@
 {
- "concurso": 1284,
- "gerado": "2026-11-24T20:30Z",
+ "concurso": 1285,
+ "gerado": "2026-11-24T21:26Z",
  "jogos": [
   {
    "jogo": 1,
    "casa": "Palmeiras",
-   "fora": "Flamengo",
+   "fora": "Estudiantes",
    "dados": true,
    "jogos_base": [
-    415,
-    338
+    416,
+    50
    ],
    "p": [
-    0.4032,
-    0.284,
-    0.3128
+    0.6452,
+    0.2337,
+    0.1211
    ],
    "x": {
-    "xg_saldo": 0.33,
-    "xg_pro": 0.258,
-    "xg_contra": 0.072,
-    "xgm_saldo": 1.65,
-    "efic": -0.416,
-    "dom": -0.042,
-    "forma5": -1.2,
-    "forma_mando": 0.2,
-    "descanso": 0.0,
-    "j14": 1.0,
+    "xg_saldo": 0.562,
+    "xg_pro": 0.76,
+    "xg_contra": -0.197,
+    "xgm_saldo": 2.142,
+    "efic": 0.21,
+    "dom": 0.08,
+    "forma5": -0.4,
+    "forma_mando": 0.4,
+    "descanso": -7.979,
+    "j14": 2.0,
     "copa": 0.0,
-    "viagem": 0.359,
+    "viagem": 0.163,
     "sintetico": 0.0,
-    "arb_casa": 0.003,
-    "arb_verm": 0.089,
-    "elo": -0.988
+    "elo": 1.154
    }
   },
   {
    "jogo": 2,
-   "casa": "Athletico Paranaense",
-   "fora": "Remo",
+   "casa": "Real Madrid",
+   "fora": "Deportivo Alavés",
    "dados": true,
    "jogos_base": [
-    311,
-    191
+    203,
+    165
    ],
    "p": [
-    0.633,
-    0.2424,
-    0.1246
+    0.7935,
+    0.152,
+    0.0544
    ],
    "x": {
-    "xg_saldo": 0.618,
-    "xg_pro": 0.076,
-    "xg_contra": 0.541,
-    "xgm_saldo": 1.933,
-    "efic": 0.407,
-    "dom": 0.066,
-    "forma5": -1.2,
-    "forma_mando": 0.8,
-    "descanso": -0.021,
+    "xg_saldo": 1.522,
+    "xg_pro": 1.179,
+    "xg_contra": 0.344,
+    "xgm_saldo": 2.327,
+    "efic": -0.233,
+    "dom": 0.173,
+    "forma5": 2.0,
+    "forma_mando": 2.6,
+    "descanso": -0.292,
     "j14": 0.0,
     "copa": 0.0,
-    "viagem": 2.678,
-    "sintetico": 1.0,
-    "arb_casa": 0.02,
-    "arb_verm": -0.023,
-    "elo": 0.902
+    "viagem": 0.278,
+    "sintetico": 0.0,
+    "elo": 3.103
    }
   },
   {
    "jogo": 3,
-   "casa": "Bahia",
-   "fora": "Coritiba",
+   "casa": "Botafogo",
+   "fora": "Bahia",
    "dados": true,
    "jogos_base": [
-    275,
-    241
+    295,
+    276
    ],
    "p": [
-    0.5982,
-    0.2549,
-    0.1469
+    0.5013,
+    0.2696,
+    0.2292
    ],
    "x": {
-    "xg_saldo": 0.022,
-    "xg_pro": 0.266,
-    "xg_contra": -0.244,
-    "xgm_saldo": 1.423,
-    "efic": 0.237,
-    "dom": 0.06,
-    "forma5": 0.4,
-    "forma_mando": 1.8,
-    "descanso": -0.083,
+    "xg_saldo": 0.647,
+    "xg_pro": -0.31,
+    "xg_contra": 0.958,
+    "xgm_saldo": 1.227,
+    "efic": 0.404,
+    "dom": 0.061,
+    "forma5": -0.2,
+    "forma_mando": 1.6,
+    "descanso": -2.104,
     "j14": 0.0,
     "copa": 0.0,
-    "viagem": 1.784,
-    "sintetico": 0.0,
-    "arb_casa": 0.078,
-    "arb_verm": -0.008,
-    "elo": 1.001
+    "viagem": 1.213,
+    "sintetico": 1.0,
+    "elo": -0.437
    }
   },
   {
    "jogo": 4,
-   "casa": "Atlético-MG",
-   "fora": "Boca Juniors",
-   "dados": true,
-   "jogos_base": [
-    339,
-    53
-   ],
-   "p": [
-    0.568,
-    0.299,
-    0.133
-   ],
-   "x": {
-    "xg_saldo": -0.85,
-    "xg_pro": -0.001,
-    "xg_contra": -0.849,
-    "xgm_saldo": 0.733,
-    "efic": 0.111,
-    "dom": -0.038,
-    "forma5": -1.6,
-    "forma_mando": 0.6,
-    "descanso": -7.958,
-    "j14": 2.0,
-    "copa": 0.0,
-    "viagem": 5.355,
-    "sintetico": 0.0,
-    "arb_casa": 0.056,
-    "arb_verm": 0.155,
-    "elo": 0.391
-   }
-  },
-  {
-   "jogo": 5,
-   "casa": "Chapecoense",
-   "fora": "Cruzeiro",
-   "dados": true,
-   "jogos_base": [
-    233,
-    281
-   ],
-   "p": [
-    0.1466,
-    0.2696,
-    0.5838
-   ],
-   "x": {
-    "xg_saldo": -2.361,
-    "xg_pro": -1.539,
-    "xg_contra": -0.823,
-    "xgm_saldo": -0.505,
-    "efic": -0.146,
-    "dom": -0.107,
-    "forma5": -2.4,
-    "forma_mando": -1.2,
-    "descanso": 0.021,
-    "j14": 1.0,
-    "copa": 0.0,
-    "viagem": 1.192,
-    "sintetico": 0.0,
-    "arb_casa": -0.031,
-    "arb_verm": 0.094,
-    "elo": -3.059
-   }
-  },
-  {
-   "jogo": 6,
-   "casa": "Real Madrid",
-   "fora": "Celta Vigo",
-   "dados": true,
-   "jogos_base": [
-    202,
-    202
-   ],
-   "p": [
-    0.7251,
-    0.1928,
-    0.0821
-   ],
-   "x": {
-    "xg_saldo": 0.529,
-    "xg_pro": 0.757,
-    "xg_contra": -0.229,
-    "xgm_saldo": 1.997,
-    "efic": 0.504,
-    "dom": 0.062,
-    "forma5": 1.8,
-    "forma_mando": 2.2,
-    "descanso": 0.896,
-    "j14": 0.0,
-    "copa": 0.0,
-    "viagem": 0.465,
-    "sintetico": 0.0,
-    "arb_casa": 0.204,
-    "arb_verm": -0.043,
-    "elo": 2.852
-   }
-  },
-  {
-   "jogo": 7,
-   "casa": "Juventus",
-   "fora": "Venezia",
-   "dados": true,
-   "jogos_base": [
-    201,
-    87
-   ],
-   "p": [
-    0.7781,
-    0.1553,
-    0.0666
-   ],
-   "x": {
-    "xg_saldo": 0.892,
-    "xg_pro": -0.061,
-    "xg_contra": 0.954,
-    "xgm_saldo": 1.162,
-    "efic": 0.629,
-    "dom": 0.191,
-    "forma5": 0.2,
-    "forma_mando": 2.0,
-    "descanso": -1.344,
-    "j14": 1.0,
-    "copa": 0.0,
-    "viagem": 0.371,
-    "sintetico": 0.0,
-    "elo": 2.988
-   }
-  },
-  {
-   "jogo": 8,
-   "casa": "Barcelona",
-   "fora": "Villarreal",
-   "dados": true,
-   "jogos_base": [
-    202,
-    202
-   ],
-   "p": [
-    0.6491,
-    0.2422,
-    0.1087
-   ],
-   "x": {
-    "xg_saldo": 0.623,
-    "xg_pro": 0.858,
-    "xg_contra": -0.235,
-    "xgm_saldo": 1.553,
-    "efic": 1.696,
-    "dom": 0.016,
-    "forma5": 1.0,
-    "forma_mando": 1.0,
-    "descanso": -0.104,
-    "j14": 0.0,
-    "copa": 0.0,
-    "viagem": 0.247,
-    "sintetico": 0.0,
-    "arb_casa": -0.014,
-    "arb_verm": 0.167,
-    "elo": 2.582
-   }
-  },
-  {
-   "jogo": 9,
-   "casa": "Liverpool",
-   "fora": "Manchester United",
-   "dados": true,
-   "jogos_base": [
-    200,
-    200
-   ],
-   "p": [
-    0.4764,
-    0.2543,
-    0.2692
-   ],
-   "x": {
-    "xg_saldo": 0.704,
-    "xg_pro": 0.016,
-    "xg_contra": 0.688,
-    "xgm_saldo": 0.337,
-    "efic": 0.174,
-    "dom": -0.036,
-    "forma5": 1.2,
-    "forma_mando": 0.4,
-    "descanso": 0.104,
-    "j14": 0.0,
-    "copa": 0.0,
-    "viagem": 0.045,
-    "sintetico": 0.0,
-    "arb_casa": -0.05,
-    "arb_verm": -0.142,
-    "elo": 0.67
-   }
-  },
-  {
-   "jogo": 10,
-   "casa": "Fluminense",
-   "fora": "Mirassol",
-   "dados": true,
-   "jogos_base": [
-    322,
-    283
-   ],
-   "p": [
-    0.5224,
-    0.2798,
-    0.1978
-   ],
-   "x": {
-    "xg_saldo": -0.056,
-    "xg_pro": -0.525,
-    "xg_contra": 0.469,
-    "xgm_saldo": 0.863,
-    "efic": 0.838,
-    "dom": 0.055,
-    "forma5": 0.8,
-    "forma_mando": 0.4,
-    "descanso": -5.125,
-    "j14": 0.0,
-    "copa": 0.0,
-    "viagem": 0.688,
-    "sintetico": 0.0,
-    "arb_casa": -0.004,
-    "arb_verm": 0.015,
-    "elo": 0.72
-   }
-  },
-  {
-   "jogo": 11,
-   "casa": "RB Bragantino",
-   "fora": "Vasco da Gama",
-   "dados": true,
-   "jogos_base": [
-    370,
-    287
-   ],
-   "p": [
-    0.3737,
-    0.2897,
-    0.3366
-   ],
-   "x": {
-    "xg_saldo": -0.474,
-    "xg_pro": 0.38,
-    "xg_contra": -0.854,
-    "xgm_saldo": 0.083,
-    "efic": -0.571,
-    "dom": 0.018,
-    "forma5": -1.0,
-    "forma_mando": 0.2,
-    "descanso": 0.0,
-    "j14": -2.0,
-    "copa": 0.0,
-    "viagem": 0.338,
-    "sintetico": 0.0,
-    "arb_casa": 0.032,
-    "arb_verm": 0.048,
-    "elo": -0.793
-   }
-  },
-  {
-   "jogo": 12,
-   "casa": "Osasuna",
-   "fora": "Málaga",
-   "dados": true,
-   "jogos_base": [
-    202,
-    12
-   ],
-   "p": [
-    0.5177,
-    0.2677,
-    0.2146
-   ],
-   "x": {
-    "xg_saldo": 0.345,
-    "xg_pro": 0.369,
-    "xg_contra": -0.024,
-    "xgm_saldo": 1.26,
-    "efic": -0.197,
-    "dom": 0.051,
-    "forma5": 0.4,
-    "forma_mando": 1.2,
-    "descanso": 0.0,
-    "j14": 0.0,
-    "copa": 0.0,
-    "viagem": 0.715,
-    "sintetico": 0.0,
-    "arb_casa": -0.026,
-    "arb_verm": 0.0,
-    "elo": 0.208
-   }
-  },
-  {
-   "jogo": 13,
-   "casa": "Atalanta",
-   "fora": "Inter",
+   "casa": "Everton",
+   "fora": "Liverpool",
    "dados": true,
    "jogos_base": [
     201,
     201
    ],
    "p": [
-    0.1395,
-    0.2477,
-    0.6128
+    0.2568,
+    0.2703,
+    0.4729
    ],
    "x": {
-    "xg_saldo": -1.406,
-    "xg_pro": -0.624,
-    "xg_contra": -0.782,
-    "xgm_saldo": -1.153,
-    "efic": 0.267,
-    "dom": -0.177,
-    "forma5": -1.4,
+    "xg_saldo": -0.929,
+    "xg_pro": -0.584,
+    "xg_contra": -0.345,
+    "xgm_saldo": -0.473,
+    "efic": -0.174,
+    "dom": -0.122,
+    "forma5": -1.2,
     "forma_mando": -0.6,
-    "descanso": 0.125,
+    "descanso": -1.146,
     "j14": 0.0,
     "copa": 0.0,
-    "viagem": 0.051,
+    "viagem": 0.003,
     "sintetico": 0.0,
-    "arb_casa": -0.092,
-    "arb_verm": 0.05,
-    "elo": -2.542
+    "arb_casa": -0.005,
+    "arb_verm": -0.041,
+    "elo": -1.254
+   }
+  },
+  {
+   "jogo": 5,
+   "casa": "Celta Vigo",
+   "fora": "Villarreal",
+   "dados": true,
+   "jogos_base": [
+    203,
+    203
+   ],
+   "p": [
+    0.2986,
+    0.284,
+    0.4174
+   ],
+   "x": {
+    "xg_saldo": -0.526,
+    "xg_pro": -0.381,
+    "xg_contra": -0.145,
+    "xgm_saldo": 0.042,
+    "efic": -0.033,
+    "dom": -0.173,
+    "forma5": -0.4,
+    "forma_mando": 0.6,
+    "descanso": 0.708,
+    "j14": 0.0,
+    "copa": 0.0,
+    "viagem": 0.767,
+    "sintetico": 0.0,
+    "elo": -0.809
+   }
+  },
+  {
+   "jogo": 6,
+   "casa": "Valencia",
+   "fora": "Osasuna",
+   "dados": true,
+   "jogos_base": [
+    203,
+    203
+   ],
+   "p": [
+    0.4332,
+    0.2595,
+    0.3073
+   ],
+   "x": {
+    "xg_saldo": 0.155,
+    "xg_pro": -0.235,
+    "xg_contra": 0.39,
+    "xgm_saldo": -0.422,
+    "efic": 0.181,
+    "dom": -0.101,
+    "forma5": 0.0,
+    "forma_mando": 0.2,
+    "descanso": 1.094,
+    "j14": 0.0,
+    "copa": 0.0,
+    "viagem": 0.385,
+    "sintetico": 0.0,
+    "elo": 0.583
+   }
+  },
+  {
+   "jogo": 7,
+   "casa": "Coritiba",
+   "fora": "Flamengo",
+   "dados": true,
+   "jogos_base": [
+    242,
+    339
+   ],
+   "p": [
+    0.1251,
+    0.2444,
+    0.6305
+   ],
+   "x": {
+    "xg_saldo": -1.32,
+    "xg_pro": -0.5,
+    "xg_contra": -0.82,
+    "xgm_saldo": -0.145,
+    "efic": -0.709,
+    "dom": -0.283,
+    "forma5": -1.4,
+    "forma_mando": -0.8,
+    "descanso": -0.042,
+    "j14": 0.0,
+    "copa": 0.0,
+    "viagem": 0.672,
+    "sintetico": 0.0,
+    "elo": -2.979
+   }
+  },
+  {
+   "jogo": 8,
+   "casa": "Vitória",
+   "fora": "Santos",
+   "dados": true,
+   "jogos_base": [
+    240,
+    363
+   ],
+   "p": [
+    0.2629,
+    0.3128,
+    0.4242
+   ],
+   "x": {
+    "xg_saldo": -0.554,
+    "xg_pro": -0.436,
+    "xg_contra": -0.118,
+    "xgm_saldo": 0.265,
+    "efic": 0.798,
+    "dom": -0.202,
+    "forma5": 0.4,
+    "forma_mando": -0.4,
+    "descanso": 0.062,
+    "j14": 0.0,
+    "copa": 0.0,
+    "viagem": 1.483,
+    "sintetico": 0.0,
+    "elo": -0.944
+   }
+  },
+  {
+   "jogo": 9,
+   "casa": "Arsenal",
+   "fora": "Manchester City",
+   "dados": true,
+   "jogos_base": [
+    201,
+    201
+   ],
+   "p": [
+    0.4669,
+    0.2721,
+    0.261
+   ],
+   "x": {
+    "xg_saldo": -0.039,
+    "xg_pro": -0.339,
+    "xg_contra": 0.3,
+    "xgm_saldo": 0.918,
+    "efic": -0.205,
+    "dom": -0.091,
+    "forma5": 1.8,
+    "forma_mando": 1.2,
+    "descanso": -0.208,
+    "j14": 0.0,
+    "copa": 0.0,
+    "viagem": 0.257,
+    "sintetico": 0.0,
+    "arb_casa": 0.038,
+    "arb_verm": -0.035,
+    "elo": 0.728
+   }
+  },
+  {
+   "jogo": 10,
+   "casa": "Corinthians",
+   "fora": "Grêmio",
+   "dados": true,
+   "jogos_base": [
+    408,
+    291
+   ],
+   "p": [
+    0.4532,
+    0.2874,
+    0.2594
+   ],
+   "x": {
+    "xg_saldo": -0.094,
+    "xg_pro": -0.127,
+    "xg_contra": 0.034,
+    "xgm_saldo": 1.175,
+    "efic": 0.197,
+    "dom": 0.166,
+    "forma5": 0.0,
+    "forma_mando": -0.2,
+    "descanso": 4.979,
+    "j14": -1.0,
+    "copa": 0.0,
+    "viagem": 0.854,
+    "sintetico": 0.0,
+    "elo": -0.46
+   }
+  },
+  {
+   "jogo": 11,
+   "casa": "Mirassol",
+   "fora": "Athletico Paranaense",
+   "dados": true,
+   "jogos_base": [
+    284,
+    312
+   ],
+   "p": [
+    0.3918,
+    0.2903,
+    0.3179
+   ],
+   "x": {
+    "xg_saldo": -0.202,
+    "xg_pro": 0.245,
+    "xg_contra": -0.447,
+    "xgm_saldo": 1.162,
+    "efic": -1.063,
+    "dom": -0.093,
+    "forma5": 0.2,
+    "forma_mando": 0.8,
+    "descanso": -0.104,
+    "j14": -1.0,
+    "copa": 0.0,
+    "viagem": 0.515,
+    "sintetico": 0.0,
+    "elo": -0.432
+   }
+  },
+  {
+   "jogo": 12,
+   "casa": "Internacional",
+   "fora": "RB Bragantino",
+   "dados": true,
+   "jogos_base": [
+    293,
+    371
+   ],
+   "p": [
+    0.4213,
+    0.2907,
+    0.288
+   ],
+   "x": {
+    "xg_saldo": -0.035,
+    "xg_pro": -0.276,
+    "xg_contra": 0.241,
+    "xgm_saldo": 1.218,
+    "efic": 0.275,
+    "dom": -0.01,
+    "forma5": -0.6,
+    "forma_mando": 1.6,
+    "descanso": -1.0,
+    "j14": 0.0,
+    "copa": 0.0,
+    "viagem": 0.917,
+    "sintetico": 0.0,
+    "elo": -0.67
+   }
+  },
+  {
+   "jogo": 13,
+   "casa": "Atlético-MG",
+   "fora": "Vasco da Gama",
+   "dados": true,
+   "jogos_base": [
+    340,
+    288
+   ],
+   "p": [
+    0.3629,
+    0.2812,
+    0.3559
+   ],
+   "x": {
+    "xg_saldo": -0.953,
+    "xg_pro": -0.208,
+    "xg_contra": -0.745,
+    "xgm_saldo": -0.408,
+    "efic": -0.371,
+    "dom": -0.017,
+    "forma5": -2.0,
+    "forma_mando": 0.2,
+    "descanso": 1.0,
+    "j14": -2.0,
+    "copa": 0.0,
+    "viagem": 0.339,
+    "sintetico": 0.0,
+    "elo": -0.478
    }
   },
   {
    "jogo": 14,
-   "casa": "Getafe",
-   "fora": "Atlético Madrid",
+   "casa": "Real Sociedad",
+   "fora": "Sevilla",
    "dados": true,
    "jogos_base": [
-    202,
-    202
+    203,
+    203
    ],
    "p": [
-    0.1521,
-    0.2551,
-    0.5928
+    0.451,
+    0.2868,
+    0.2621
    ],
    "x": {
-    "xg_saldo": -1.726,
-    "xg_pro": -1.264,
-    "xg_contra": -0.463,
-    "xgm_saldo": -0.565,
-    "efic": -0.127,
-    "dom": -0.248,
-    "forma5": -1.6,
-    "forma_mando": -0.6,
-    "descanso": 0.104,
+    "xg_saldo": 0.214,
+    "xg_pro": 0.701,
+    "xg_contra": -0.488,
+    "xgm_saldo": 0.573,
+    "efic": 0.223,
+    "dom": -0.086,
+    "forma5": 0.8,
+    "forma_mando": 1.0,
+    "descanso": -0.906,
     "j14": 0.0,
     "copa": 0.0,
-    "viagem": 0.016,
+    "viagem": 0.74,
     "sintetico": 0.0,
-    "arb_casa": -0.056,
-    "arb_verm": 0.089,
-    "elo": -2.05
+    "elo": 0.341
    }
   }
  ],

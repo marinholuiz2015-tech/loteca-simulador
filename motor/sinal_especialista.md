@@ -15,8 +15,8 @@
 - teste no tempo (87 concursos): ganho medio -0.0094 log-loss por concurso, forca -1.4 -> nao passa no criterio (precisa > 2)
 
 ## Vovoteca - boloes
-- jogos com odd: 393 em 20 concursos
-- secos do site: acertam 53.6%; a odd dava a esses mesmos resultados 55.8% em media
+- jogos com odd: 405 em 21 concursos
+- secos do site: acertam 53.5%; a odd dava a esses mesmos resultados 56.1% em media
 - secos CONTRA o favorito do mercado: 18 jogos, acertam 33.3% (a odd dava 30.5%)
-- peso ajustado em toda a base: seco -0.094, duplo -0.087 (0 = nao acrescenta nada a odd)
-- teste no tempo (12 concursos): ganho medio -0.3164 log-loss por concurso, forca -1.5 -> nao passa no criterio (precisa > 2)
+- peso ajustado em toda a base: seco -0.113, duplo -0.048 (0 = nao acrescenta nada a odd)
+- teste no tempo (13 concursos): ganho medio -0.2930 log-loss por concurso, forca -1.5 -> nao passa no criterio (precisa > 2)

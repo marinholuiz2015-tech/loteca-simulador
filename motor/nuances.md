@@ -1,6 +1,6 @@
 # Nuances confirmadas (onde as odds erram)
 
-Atualizado em 2026-11-22 · descoberta nos concursos 895-1150, conferência nos concursos 1151-1283 (nunca vistos pela descoberta) · 465 combinações testadas.
+Atualizado em 2026-11-24 · descoberta nos concursos 895-1150, conferência nos concursos 1151-1283 (nunca vistos pela descoberta) · 477 combinações testadas.
 
 | Tipo de jogo | Sinal | O mercado... | Descoberta | Conferência (vale este) | Jogos |
 |---|---|---|---|---|---|

@@ -1,8 +1,8 @@
 {
- "atualizado_em_utc": "2026-11-22T17:15:37Z",
+ "atualizado_em_utc": "2026-11-24T21:29:46Z",
  "descoberta": "895-1150",
  "conferencia": "1151-1283",
- "combinacoes_testadas": 465,
+ "combinacoes_testadas": 477,
  "confirmadas": [
   {
    "segmento": "todos",

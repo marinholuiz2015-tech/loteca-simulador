@@ -1,174 +1,146 @@
 {
- "concurso": 1284,
- "atualizado_utc": "2026-11-23T00:48Z",
+ "concurso": 1285,
+ "atualizado_utc": "2026-11-24T21:26Z",
  "jogos": [
   {
    "jogo": 1,
-   "mandante": "PALMEIRAS/SP",
-   "visitante": "FLAMENGO/RJ",
-   "inicio_utc": "2026-11-21T19:30Z",
-   "situacao": "encerrado",
-   "placar": [
-    1,
-    1
-   ],
-   "resultado": "X"
+   "mandante": "PALMEIRAS-SP",
+   "visitante": "ESTUDIANTES-ARG",
+   "inicio_utc": "2026-11-28T20:00Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "1000020617"
   },
   {
    "jogo": 2,
-   "mandante": "ATHLETICO/PR",
-   "visitante": "REMO/PA",
-   "inicio_utc": "2026-11-22T19:00Z",
-   "situacao": "encerrado",
-   "placar": [
-    4,
-    2
-   ],
-   "resultado": "1"
+   "mandante": "REAL MADRID-ESP",
+   "visitante": "DEP. ALAVES-ESP",
+   "inicio_utc": "2026-11-28T20:00Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5868148"
   },
   {
    "jogo": 3,
-   "mandante": "BAHIA/BA",
-   "visitante": "CORITIBA/PR",
-   "inicio_utc": "2026-11-21T20:30Z",
-   "situacao": "encerrado",
-   "placar": [
-    0,
-    1
-   ],
-   "resultado": "2"
+   "mandante": "BOTAFOGO-RJ",
+   "visitante": "BAHIA-BA",
+   "inicio_utc": "2026-11-29T00:00Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5103725"
   },
   {
    "jogo": 4,
-   "mandante": "ATLÉTICO/MG",
-   "visitante": "BOCA JUNIORS",
-   "inicio_utc": "2026-11-21T22:30Z",
-   "situacao": "encerrado",
-   "placar": [
-    0,
-    2
-   ],
-   "resultado": "2"
+   "mandante": "EVERTON-ING",
+   "visitante": "LIVERPOOL-ING",
+   "inicio_utc": "2026-11-29T12:00Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5795528"
   },
   {
    "jogo": 5,
-   "mandante": "CHAPECOENSE/SC",
-   "visitante": "CRUZEIRO/MG",
-   "inicio_utc": "2026-11-22T00:00Z",
-   "situacao": "encerrado",
-   "placar": [
-    1,
-    2
-   ],
-   "resultado": "2"
+   "mandante": "CELTA DE VIGO-ESP",
+   "visitante": "~~ VILLARREAL-ESP",
+   "inicio_utc": "2026-11-29T17:30Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5868142"
   },
   {
    "jogo": 6,
-   "mandante": "REAL MADRID",
-   "visitante": "CELTA DE VIGO",
-   "inicio_utc": "2026-11-21T20:00Z",
-   "situacao": "encerrado",
-   "placar": [
-    2,
-    1
-   ],
-   "resultado": "1"
+   "mandante": "VALENCIA-ESP",
+   "visitante": "OSASUNA-ESP",
+   "inicio_utc": "2026-11-29T13:00Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5868150"
   },
   {
    "jogo": 7,
-   "mandante": "JUVENTUS",
-   "visitante": "VENEZIA",
-   "inicio_utc": "2026-11-22T11:30Z",
-   "situacao": "encerrado",
-   "placar": [
-    4,
-    0
-   ],
-   "resultado": "1"
+   "mandante": "CORITIBA-PR",
+   "visitante": "FLAMENGO-RJ",
+   "inicio_utc": "2026-11-29T19:00Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5103731"
   },
   {
    "jogo": 8,
-   "mandante": "BARCELONA",
-   "visitante": "VILLARREAL",
-   "inicio_utc": "2026-11-22T13:00Z",
-   "situacao": "encerrado",
-   "placar": [
-    3,
-    2
-   ],
-   "resultado": "1"
+   "mandante": "VITORIA-BA",
+   "visitante": "SANTOS-SP",
+   "inicio_utc": "2026-11-29T19:00Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5103732"
   },
   {
    "jogo": 9,
-   "mandante": "LIVERPOOL",
-   "visitante": "MANCHESTER UNITED",
-   "inicio_utc": "2026-11-22T16:30Z",
-   "situacao": "encerrado",
-   "placar": [
-    4,
-    0
-   ],
-   "resultado": "1"
+   "mandante": "ARSENAL-ING",
+   "visitante": "MANC. CITY-ING",
+   "inicio_utc": "2026-11-29T16:30Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5795525"
   },
   {
    "jogo": 10,
-   "mandante": "FLUMINENSE/RJ",
-   "visitante": "MIRASSOL/SP",
-   "inicio_utc": "2026-11-22T21:30Z",
-   "situacao": "encerrado",
-   "placar": [
-    1,
-    0
-   ],
-   "resultado": "1"
+   "mandante": "CORINTHIANS-SP",
+   "visitante": "GREMIO-RS",
+   "inicio_utc": "2026-11-29T21:30Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5103727"
   },
   {
    "jogo": 11,
-   "mandante": "BRAGANTINO/SP",
-   "visitante": "VASCO DA GAMA/RJ",
-   "inicio_utc": "2026-11-22T22:30Z",
-   "situacao": "encerrado",
-   "placar": [
-    1,
-    0
-   ],
-   "resultado": "1"
+   "mandante": "MIRASSOL-SP",
+   "visitante": "ATHLETICO-PR",
+   "inicio_utc": "2026-11-29T21:30Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5103728"
   },
   {
    "jogo": 12,
-   "mandante": "OSASUNA",
-   "visitante": "MALAGA",
-   "inicio_utc": "2026-11-22T17:30Z",
-   "situacao": "encerrado",
-   "placar": [
-    1,
-    0
-   ],
-   "resultado": "1"
+   "mandante": "INTERNACIONAL-RS",
+   "visitante": "BRAGANTINO-SP",
+   "inicio_utc": "2026-11-29T21:30Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5103730"
   },
   {
    "jogo": 13,
-   "mandante": "ATALANTA BERGAMAS",
-   "visitante": "INTER DE MILÃO",
-   "inicio_utc": "2026-11-22T19:45Z",
-   "situacao": "encerrado",
-   "placar": [
-    4,
-    4
-   ],
-   "resultado": "X"
+   "mandante": "ATLETICO-MG",
+   "visitante": "VASCO DA GAMA-RI",
+   "inicio_utc": "2026-11-29T22:30Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5103729"
   },
   {
    "jogo": 14,
-   "mandante": "GETAFE",
-   "visitante": "ATLÉTICO MADRID",
-   "inicio_utc": "2026-11-22T20:00Z",
-   "situacao": "encerrado",
-   "placar": [
-    0,
-    3
-   ],
-   "resultado": "2"
+   "mandante": "REALSOCIEDAD-ESP",
+   "visitante": "SEVILLA-ESP",
+   "inicio_utc": "2026-11-29T20:00Z",
+   "situacao": "não começou",
+   "placar": null,
+   "resultado": null,
+   "match_id": "5868149"
   }
  ]
 }
