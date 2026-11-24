@@ -54,7 +54,7 @@ def valor_esperado(P, Q, coef, cart, pool14, pool13, apostas, razao13):
     i = np.arange(14)
     lp = np.log(P[i, combs]).sum(1)
     lq = np.log(np.clip(Q[i, combs], 1e-3, 1)).sum(1)
-    W14 = np.exp(c2.log_ganhadores(coef, lq, lp)) * apostas
+    W14 = np.exp(c2.log_ganhadores(coef, lq, lp, math.log(pool14))) * apostas
     e14 = float((np.exp(lp) * pool14 / (W14 + 1)).sum())
     # 13: cada jogo errado vira |opcoes| combinacoes de 13; ganhadores de 13 ~ razao x ganhadores de 14
     p14, p13 = chances(P, cart)
