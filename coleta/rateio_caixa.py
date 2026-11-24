@@ -84,8 +84,10 @@ def main():
     ultimo = pedir(None)
     fim = (ultimo or {}).get("numero") or (max(dados) + 1 if dados else 0)
     ini = max(dados) + 1 if dados else max(fim - 30, 1)
+    # tambem preenche buracos no meio da serie (antes so pegava concursos depois do ultimo salvo)
+    buracos = [n for n in range(min(dados), ini) if n not in dados] if dados else []
     novos = 0
-    for n in range(ini, fim + 1):
+    for n in buracos + list(range(ini, fim + 1)):
         d = ultimo if ultimo and ultimo.get("numero") == n else pedir(n)
         li = linha(d) if d else None
         if li:

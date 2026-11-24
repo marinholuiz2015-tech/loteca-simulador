@@ -116,10 +116,15 @@ def dados_ganhadores(odds, massa, rat):
         res = [odds[c][j]["resultado"] for j in range(1, 15)]
         if any(x not in ("1", "X", "2") for x in res):
             continue
+        ant = rat.get(c - 1) or {}
+        pool = max(ant.get("estimado_proximo") or 0, ant.get("acumulado_proximo") or 0)
+        if pool <= 0:
+            continue
+        lpool = math.log(pool)
         idx = ["1X2".index(x) for x in res]
         lq = sum(math.log(max(massa[c][j][i], 1e-3)) for j, i in zip(range(1, 15), idx))
         lp = sum(math.log(prob_mercado(odds[c][j])[i]) for j, i in zip(range(1, 15), idx))
-        X.append([1.0, lq, lp, lq * lq])
+        X.append([1.0, lq, lp, lq * lq, lpool, lpool * lq])
         Y.append(math.log(rat[c]["ganhadores_14"] + 0.5) - math.log(rat[c]["arrecadacao"] / PRECO))
         cs.append(c)
     return np.array(X), np.array(Y), cs
@@ -129,11 +134,18 @@ def ajusta_ganhadores(X, Y):
     return np.linalg.lstsq(X, Y, rcond=None)[0]
 
 
-def log_ganhadores(coef, lq, lp):
+def log_ganhadores(coef, lq, lp, lpool=None):
     """log(ganhadores por aposta) do resultado. O termo lq^2 capta a concentracao nos resultados
-    populares (todos os favoritos): sem ele o modelo previa 13 ganhadores no 992 (foram 1.339)."""
+    populares (todos os favoritos): sem ele o modelo previa 13 ganhadores no 992 (foram 1.339).
+    Os termos do premio (log do premio estimado e premio x massa, 23/11/2026) captam que premio alto
+    muda quem aposta e como: erro do modelo caiu de 1,01 para 0,93 (log) no teste no tempo e sumiu o
+    vies nas semanas de premio >= R$ 2 mi."""
     z = coef[0] + coef[1] * lq + coef[2] * lp
-    return z + coef[3] * lq * lq if len(coef) > 3 else z
+    if len(coef) > 3:
+        z = z + coef[3] * lq * lq
+    if len(coef) > 5 and lpool is not None:
+        z = z + coef[4] * lpool + coef[5] * lpool * lq
+    return z
 
 
 # ------------------------------------------------------------------ universo e selecao
@@ -214,7 +226,7 @@ def escolher(P, Q, coef, pool, apostas, orcamento, criterio="valor"):
     i = np.arange(14)
     lp = np.log(P[i, G]).sum(1)
     lq = np.log(np.clip(Q[i, G], 1e-3, 1)).sum(1)
-    W = np.exp(log_ganhadores(coef, lq, lp)) * apostas
+    W = np.exp(log_ganhadores(coef, lq, lp, math.log(max(pool, 1.0)))) * apostas
     ev = np.exp(lp) * pool / (W + 1)
     ordem = np.argsort(-(ev if criterio == "valor" else lp))
     # cresce o conjunto ate o custo em volantes (R$ 4 cada) atingir o orcamento
@@ -233,7 +245,7 @@ def chance_e_valor(vols, P, Q, coef, pool, apostas):
     i = np.arange(14)
     lp = np.log(P[i, combs]).sum(1)
     lq = np.log(np.clip(Q[i, combs], 1e-3, 1)).sum(1)
-    W = np.exp(log_ganhadores(coef, lq, lp)) * apostas
+    W = np.exp(log_ganhadores(coef, lq, lp, math.log(max(pool, 1.0)))) * apostas
     return float(np.exp(lp).sum()), float((np.exp(lp) * pool / (W + 1)).sum())
 
 
