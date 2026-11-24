@@ -1,6 +1,6 @@
 # Loteca 1285 — Camada 1 (motor de previsão)
 
-Gerado em 2026-11-24T21:24:58Z (UTC). Grade: Arena (imagem). Probabilidades: odds bet365 sem margem + calibração gama 1.04.
+Gerado em 2026-11-24T22:30:57Z (UTC). Grade: Arena (imagem). Probabilidades: odds bet365 sem margem + calibração gama 1.04.
 
 | Jogo | Confronto | 1 | X | 2 | Favorito | Confiança | Ordem | Classe | Duplo |
 |---|---|---|---|---|---|---|---|---|---|
@@ -27,6 +27,7 @@ Top 8: jogo 2 (1), jogo 10 (1), jogo 7 (2), jogo 4 (2), jogo 9 (1), jogo 1 (1), 
 Nuances confirmadas no período que a busca nunca viu (lista completa: `motor/nuances.md`). Use para escolher o lado do duplo ou subir para triplo.
 
 - **Jogo 1** (PALMEIRAS-SP x ESTUDIANTES-ARG): todos + visitante com 3+ dias a mais de descanso: o mercado superestima a vitória do visitante em 3.0 pts (real 16.8% x previsto 19.8%)
+- **Jogo 2** (REAL MADRID-ESP x DEP. ALAVES-ESP): todos + visitante com 3+ dias a mais de descanso: o mercado superestima a vitória do visitante em 3.0 pts (real 16.8% x previsto 19.8%)
 - **Jogo 3** (BOTAFOGO-RJ x BAHIA-BA): Tabela: mandante na luta contra o rebaixamento (14º, 43 pts, 2 restantes)
 - **Jogo 7** (CORITIBA-PR x FLAMENGO-RJ): Tabela: visitante brigando pelo título (1º, 80 pts, 2 restantes)
 - **Jogo 10** (CORINTHIANS-SP x GREMIO-RS): Tabela: mandante na luta contra o rebaixamento (17º, 40 pts, 3 restantes)
@@ -41,14 +42,14 @@ Notas positivas favorecem o mandante (no clássico, o empate). Placar completo d
 | Jogo | reservas | altitude | viagem | H2H | invicto | desfalques | descanso | clássico | massa |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | — | +0.00 | +0.73 | — | -0.40 | -0.33 | -1.00 | +0.00 | — |
-| 2 | +0.00 | +0.00 | +0.80 | +1.00 | +0.40 | -0.33 | -0.10 | +0.00 | — |
+| 2 | -1.20 | +0.00 | +0.80 | +1.00 | +0.40 | -0.33 | -1.10 | +0.00 | — |
 | 3 | +0.00 | +0.00 | +1.01 | -0.25 | +0.20 | +0.33 | -0.70 | +0.00 | — |
 | 4 | — | +0.00 | +0.19 | -0.50 | -0.40 | +1.33 | -0.37 | +1.00 | — |
 | 5 | — | +0.00 | +0.95 | -0.25 | +0.00 | +0.67 | +0.23 | +0.00 | — |
 | 6 | — | +0.00 | +0.85 | +0.25 | +0.00 | +0.67 | +0.37 | +0.00 | — |
 | 7 | — | +0.00 | +0.93 | -0.75 | -0.80 | -0.33 | -0.03 | +0.00 | — |
 | 8 | — | +0.00 | +1.04 | -0.62 | +0.40 | -0.33 | +0.03 | +0.00 | — |
-| 9 | — | +0.00 | +0.79 | +0.12 | +0.80 | -0.33 | -0.07 | +0.00 | — |
+| 9 | — | +0.00 | +0.79 | +0.12 | +0.60 | -0.33 | +0.00 | +0.00 | — |
 | 10 | — | +0.00 | +0.96 | +0.50 | +0.00 | -0.67 | +1.37 | +0.00 | — |
 | 11 | — | +0.00 | +0.89 | -0.33 | -0.20 | +0.00 | -0.03 | +0.00 | — |
 | 12 | — | +0.00 | +0.97 | +0.38 | -0.20 | -1.00 | -0.33 | +0.00 | — |
@@ -60,7 +61,7 @@ Notas positivas favorecem o mandante (no clássico, o empate). Placar completo d
 | Jogo | Mandante: desfalque / reservas / crise / retorno | Visitante: desfalque / reservas / crise / retorno | Nota do leitor |
 |---|---|---|---|
 | 1 | 0 / 0 / 0 / 0 (0 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
-| 2 | 3 / 0 / 0 / 1 (13 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
+| 2 | 2 / 0 / 0 / 1 (13 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
 | 3 | 0 / 0 / 0 / 0 (0 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
 | 4 | 0 / 0 / 0 / 0 (0 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
 | 5 | 0 / 0 / 0 / 0 (0 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
@@ -69,7 +70,7 @@ Notas positivas favorecem o mandante (no clássico, o empate). Placar completo d
 | 8 | 0 / 0 / 0 / 0 (0 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
 | 9 | 0 / 0 / 0 / 0 (0 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
 | 10 | 0 / 0 / 0 / 0 (0 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
-| 11 | 0 / 0 / 0 / 0 (0 manchetes) | 2 / 0 / 0 / 1 (34) | —  |
+| 11 | 0 / 0 / 0 / 0 (0 manchetes) | 1 / 0 / 0 / 1 (32) | —  |
 | 12 | 0 / 0 / 0 / 0 (0 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
-| 13 | 4 / 1 / 1 / 1 (45 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
+| 13 | 6 / 1 / 1 / 2 (55 manchetes) | 0 / 0 / 0 / 0 (0) | —  |
 | 14 | 0 / 0 / 0 / 0 (0 manchetes) | 0 / 0 / 0 / 0 (0) | —  |

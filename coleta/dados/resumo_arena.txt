@@ -1,29 +1,29 @@
-posts recentes: [1275, 1276, 1277, 1279, 1280, 1281, 1282, 1283, 1284, 1285] | a ler: [1285]
-  concurso 1285 (titulo da imagem: 1285): 14/14 jogos com odds aceitas
+posts recentes: [1274, 1275, 1276, 1277, 1279, 1280, 1281, 1282, 1283, 1284] | a ler: [1284]
+  concurso 1284 (titulo da imagem: 1284): 14/14 jogos com odds aceitas
 == Leitura ==
   imagens                   384
   imagem_falhou             1
   titulo_diferente_do_post  1
-  sem_grade_caixa           2
-  jogos                     5334
+  sem_grade_caixa           1
+  jogos                     5348
   sem_odd                   145
   odd_reprovada_checagem    22
   times_nao_batem           5
   casado_em_outra_posicao   8
-  jogos aceitos             5162
+  jogos aceitos             5176
 
-== Mercado (odds bet365) em 5152 jogos com resultado ==
-  acerto do favorito: 52.0%  | sempre '1': 45.6%  | lift 1.141x
-  Brier mercado: 0.5883  | frequencia fixa: 0.6442  | melhora 8.7%
+== Mercado (odds bet365) em 5166 jogos com resultado ==
+  acerto do favorito: 52.1%  | sempre '1': 45.6%  | lift 1.142x
+  Brier mercado: 0.5878  | frequencia fixa: 0.6441  | melhora 8.7%
   favorito do mercado = X em 6 jogos
 
 == Acerto por forca do favorito (base p/ seco/duplo/triplo) ==
   p_fav 0%-40%:  1048 jogos | seco no favorito  37.2% (esperado  37.5%) | duplo  67.7%
-  p_fav 40%-50%:  1903 jogos | seco no favorito  45.6% (esperado  44.8%) | duplo  75.3%
-  p_fav 50%-60%:  1239 jogos | seco no favorito  58.7% (esperado  54.8%) | duplo  83.2%
-  p_fav 60%-70%:   637 jogos | seco no favorito  66.9% (esperado  64.4%) | duplo  88.2%
-  p_fav 70%-80%:   226 jogos | seco no favorito  77.0% (esperado  74.4%) | duplo  93.8%
-  p_fav 80%-100%:    99 jogos | seco no favorito  93.9% (esperado  85.2%) | duplo  98.0%
+  p_fav 40%-50%:  1906 jogos | seco no favorito  45.6% (esperado  44.8%) | duplo  75.3%
+  p_fav 50%-60%:  1243 jogos | seco no favorito  58.7% (esperado  54.8%) | duplo  83.3%
+  p_fav 60%-70%:   641 jogos | seco no favorito  66.9% (esperado  64.4%) | duplo  88.1%
+  p_fav 70%-80%:   228 jogos | seco no favorito  77.2% (esperado  74.4%) | duplo  93.9%
+  p_fav 80%-100%:   100 jogos | seco no favorito  94.0% (esperado  85.2%) | duplo  98.0%
 
 == Comparacao pareada com o Lotequeiros (mesmos jogos) ==
   3944 jogos | mercado 51.5% | Lotequeiros 47.9% | so mercado acerta 500 | so Lotequeiros acerta 359 | McNemar z=4.8

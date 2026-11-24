@@ -1,32 +1,32 @@
-== 3661 jogos com enquete final + odds + resultado (287 concursos) ==
-  acerto do favorito: massa 50.5% | mercado 52.4%
-  Brier: massa 0.6216 | mercado 0.5882 (menor = melhor)
+== 3674 jogos com enquete final + odds + resultado (288 concursos) ==
+  acerto do favorito: massa 50.6% | mercado 52.5%
+  Brier: massa 0.6206 | mercado 0.5874 (menor = melhor)
 
-== Favoritos diferentes: 708 jogos ==
-  massa acerta 230 (32%) | mercado acerta 299 (42%)
+== Favoritos diferentes: 711 jogos ==
+  massa acerta 231 (32%) | mercado acerta 301 (42%)
   McNemar z = 3.0 (positivo = mercado melhor)
 
 == Vies da massa por resultado (diferenca massa - mercado, em pontos) ==
   resultado 1:
     subvotado >15      165 jogos | massa 20.1% | mercado 39.2% | real 41.2%
-    subvotado 5-15     763 jogos | massa 23.9% | mercado 33.3% | real 31.2%
-    alinhado +-5       886 jogos | massa 39.7% | mercado 39.8% | real 41.8%
-    supervotado 5-15   908 jogos | massa 61.7% | mercado 51.5% | real 54.4%
-    supervotado >15    939 jogos | massa 73.7% | mercado 52.5% | real 52.7%
+    subvotado 5-15     766 jogos | massa 23.8% | mercado 33.3% | real 31.2%
+    alinhado +-5       889 jogos | massa 39.8% | mercado 39.8% | real 41.7%
+    supervotado 5-15   913 jogos | massa 61.7% | mercado 51.6% | real 54.5%
+    supervotado >15    941 jogos | massa 73.8% | mercado 52.5% | real 52.8%
   resultado X:
     subvotado >15       60 jogos | massa  9.3% | mercado 26.8% | real 25.0%
-    subvotado 5-15     973 jogos | massa 16.2% | mercado 25.0% | real 26.3%
-    alinhado +-5      1517 jogos | massa 26.5% | mercado 26.5% | real 26.8%
-    supervotado 5-15   946 jogos | massa 37.5% | mercado 28.6% | real 29.0%
+    subvotado 5-15     977 jogos | massa 16.2% | mercado 25.0% | real 26.2%
+    alinhado +-5      1521 jogos | massa 26.5% | mercado 26.5% | real 26.8%
+    supervotado 5-15   951 jogos | massa 37.5% | mercado 28.5% | real 28.9%
     supervotado >15    165 jogos | massa 47.7% | mercado 28.7% | real 37.6%
   resultado 2:
-    subvotado >15      500 jogos | massa 12.0% | mercado 30.7% | real 27.2%
-    subvotado 5-15    1841 jogos | massa 13.1% | mercado 23.2% | real 21.3%
-    alinhado +-5       741 jogos | massa 28.4% | mercado 29.1% | real 27.4%
-    supervotado 5-15   390 jogos | massa 53.6% | mercado 44.0% | real 44.9%
+    subvotado >15      501 jogos | massa 12.0% | mercado 30.8% | real 27.3%
+    subvotado 5-15    1849 jogos | massa 13.1% | mercado 23.2% | real 21.3%
+    alinhado +-5       743 jogos | massa 28.4% | mercado 29.1% | real 27.3%
+    supervotado 5-15   392 jogos | massa 53.7% | mercado 44.1% | real 45.2%
     supervotado >15    189 jogos | massa 64.7% | mercado 43.1% | real 39.7%
 
 == Agregado ==
   coluna 1: massa 49.7% | mercado 44.6% | real 45.5%
-  coluna X: massa 27.3% | mercado 26.8% | real 27.7%
+  coluna X: massa 27.3% | mercado 26.7% | real 27.6%
   coluna 2: massa 23.0% | mercado 28.7% | real 26.8%
