@@ -31,7 +31,7 @@ import os
 import re
 import sys
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import requests
@@ -39,7 +39,7 @@ import requests
 AQUI = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(AQUI)
 sys.path.insert(0, AQUI)
-from calibracao import aplica, aprende  # noqa: E402
+from calibracao import aplica, aprende, sem_margem  # noqa: E402
 
 DADOS = os.path.join(REPO, "coleta", "dados")
 SAIDA = os.path.join(AQUI, "saida")
@@ -47,6 +47,7 @@ REGISTRO = os.path.join(AQUI, "registro_previsoes.csv")
 API = "https://servicebus2.caixa.gov.br/portaldeloterias/api/loteca/{}"
 HEAD = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/128.0 Safari/537.36",
         "Referer": "https://loterias.caixa.gov.br/Paginas/Programacao-Loteca.aspx"}
+CONFERIR_OCR = []
 FREQ = np.array([0.472, 0.262, 0.266])  # frequencia historica 1/X/2 (17.602 jogos)
 SECO_MIN = 0.60     # (referencia antiga; a classe agora vem da cartela padrao)
 TRIPLO_MAX = 0.70
@@ -198,11 +199,54 @@ def params_calibracao():
     return aprende(jogos, usar_empate=False, usar_gama=True)
 
 
+def odds_validas(o):
+    """Descarta leitura ruim do OCR: odd < 1,02 ou margem fora de 0-25%."""
+    try:
+        o = [float(x) for x in o]
+    except Exception:
+        return False
+    if len(o) != 3 or min(o) < 1.02:
+        return False
+    margem = sum(1 / x for x in o) - 1
+    return 0 <= margem <= 0.25
+
+
+def odds_odds_api(grade):
+    """Odds da The Odds API (coleta/odds_api.py): media das casas no retrato mais recente (ate 5 dias)."""
+    linhas = ler_csv("odds_api.csv")
+    if not linhas:
+        return {}
+    ultimo = max(r["coletado_em_utc"] for r in linhas)
+    lim = (datetime.strptime(ultimo, "%Y-%m-%dT%H:%M:%SZ") - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    linhas = [r for r in linhas if r["coletado_em_utc"] >= lim]
+    out = {}
+    for k, (m, v) in grade.items():
+        casas = [r for r in linhas if parecido(m, r["mandante"]) and parecido(v, r["visitante"])]
+        if not casas:
+            continue
+        ult = max(r["coletado_em_utc"] for r in casas)
+        casas = [r for r in casas if r["coletado_em_utc"] == ult and odds_validas([r["odd_1"], r["odd_x"], r["odd_2"]])]
+        pin = [r for r in casas if r["casa"] == "pinnacle"]
+        usar = pin or casas
+        if usar:
+            out[k] = [float(np.mean([float(r[c]) for r in usar])) for c in ("odd_1", "odd_x", "odd_2")]
+    return out
+
+
+def pilares_abertos(concurso):
+    """Probabilidades dos pilares sem odds (docs/dados/pilares.json), quando o jogo tem dados."""
+    try:
+        d = json.load(open(os.path.join(REPO, "docs", "dados", "pilares.json"), encoding="utf-8"))
+    except Exception:
+        return {}
+    if int(d.get("concurso") or 0) != int(concurso):
+        return {}
+    return {int(j["jogo"]): np.array(j["p"], float) for j in d.get("jogos", []) if j.get("dados") and j.get("p")}
+
+
 # -------------------------------------------------------------------- motor
 def prever(concurso):
-    reg = arena(concurso)
-    if not reg:
-        raise SystemExit(f"Sem odds da Arena para o concurso {concurso}.")
+    reg = arena(concurso) or {"jogos": []}
     grade, fonte_grade = grade_caixa(concurso)
     g_guia, f_guia, bolsa = grade_guia(concurso)
     if not grade:
@@ -232,19 +276,48 @@ def prever(concurso):
             alvo = k
         else:
             alvo = next((q for q, (gm, gv) in grade.items() if parecido(m, gm) and parecido(v, gv)), None)
-        if alvo and alvo not in odds_por_jogo:
+        if alvo and alvo not in odds_por_jogo and odds_validas([j["odd_1"], j["odd_x"], j["odd_2"]]):
             odds_por_jogo[alvo] = [j["odd_1"], j["odd_x"], j["odd_2"]]
+
+    # reservas: bolsa do Guia da Loteria, The Odds API e pilares sem odds
+    odds_guia = {}
+    for r in [r for r in ler_csv("guia_loteria.csv") if int(r["concurso"]) == int(concurso)]:
+        o = [r["odd_1"], r["odd_x"], r["odd_2"]]
+        if odds_validas(o):
+            odds_guia[int(r["jogo"])] = [float(x) for x in o]  # fica o retrato mais recente (arquivo em ordem)
+    odds_api = odds_odds_api(grade)
+    pil = pilares_abertos(concurso)
+    if not odds_por_jogo and not odds_guia and not odds_api:
+        raise SystemExit(f"Sem odds para o concurso {concurso} (Arena, Guia e The Odds API).")
+    conferir = []
+    for k in odds_por_jogo:
+        if k in odds_guia:
+            pa, pg = sem_margem(odds_por_jogo[k]), sem_margem(odds_guia[k])
+            if max(abs(pa - pg)) > 0.15:
+                conferir.append((k, int(np.argmax(pa)), int(np.argmax(pg)), round(float(max(abs(pa - pg))), 2)))
 
     linhas = []
     for k in range(1, 15):
         mand, vis = grade.get(k, ("", ""))
+        origem = None
         if k in odds_por_jogo:
-            pm = aplica(odds_por_jogo[k], prm)
+            origem = ("odds bet365 (Arena)", odds_por_jogo[k])
+        elif k in odds_guia:
+            origem = ("odds da bolsa (Guia da Loteria)", odds_guia[k])
+        elif k in odds_api:
+            origem = ("odds The Odds API", odds_api[k])
+        if origem:
+            pm = aplica(origem[1], prm)
             vals = kpis.valores(fatos.get(k), (int(concurso), k), pm, ctx_kpi)
             p, contrib, usou = kpis.aplicar(pm, vals, mod_kpi)
-            fonte = "odds bet365 (Arena)" + (" + KPIs" if usou else "")
+            fonte = origem[0] + (" + KPIs" if usou else "")
             sent = ("ligados (" + ("pesos do Luiz" if mod_kpi.get("usa") == "luiz" else "pesos aprendidos") + ")"
                     if usou else "desligados (não superaram o mercado)") if mod_kpi else "sem modelo"
+        elif k in pil:
+            pm = p = pil[k] / pil[k].sum()
+            vals, contrib = {}, {}
+            fonte = "pilares sem odds (Elo, xG, domínio)"
+            sent = "sem odds"
         else:
             pm = p = FREQ.copy()
             vals, contrib = {}, {}
@@ -259,7 +332,7 @@ def prever(concurso):
         cobertura_real = float(pd_[od[0]] + pd_[od[1]])  # cobertura com o empate corrigido
         classe = "TRIPLO" if fonte.startswith("sem odds") else ""
         b = bolsa.get(k)
-        o = odds_por_jogo.get(k, ["", "", ""])
+        o = origem[1] if origem else ["", "", ""]
         linhas.append(dict(concurso=concurso, jogo=k, mandante=mand, visitante=vis,
                            p1=round(float(p[0]), 4), px=round(float(p[1]), 4), p2=round(float(p[2]), 4),
                            favorito=fav, confianca=round(float(p.max()), 4), ordem=0, classe=classe,
@@ -278,6 +351,8 @@ def prever(concurso):
     for l, c in zip(linhas, cls):
         l["classe"] = l["classe"] or c
         l.pop("_p", None)
+    global CONFERIR_OCR
+    CONFERIR_OCR = conferir
     return linhas, fonte_grade
 
 
@@ -355,6 +430,15 @@ def gravar(linhas, fonte_grade, registrar=True):
     sem = [l["jogo"] for l in linhas if l["fonte_prob"].startswith("sem odds")]
     if sem:
         md.append(f"Jogos sem odds (frequência histórica, triplo): {sem}")
+    reserva = [(l["jogo"], l["fonte_prob"]) for l in linhas
+               if not l["fonte_prob"].startswith(("odds bet365", "sem odds"))]
+    if reserva:
+        md.append("Jogos com fonte reserva (a Arena não trouxe odd válida): " +
+                  ", ".join(f"{j} ({f})" for j, f in reserva))
+    if CONFERIR_OCR:
+        md.append("**Conferir a leitura da Arena** (diferença > 15 pontos para a bolsa do Guia): " +
+                  ", ".join(f"jogo {k} (Arena favorito {'1X2'[a]}, bolsa {'1X2'[b]}, diferença {d:.0%})"
+                            for k, a, b, d in CONFERIR_OCR))
     with open(os.path.join(SAIDA, f"concurso_{c}.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(md) + "\n")
     if registrar:

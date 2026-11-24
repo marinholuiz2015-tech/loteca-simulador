@@ -125,6 +125,13 @@ jobs:
           timeout 400 python coleta/sentinela/coletar_sentinela.py aberto || echo "sentinela: parou no limite de tempo"
           timeout 300 python coleta/sentinela/noticias.py || echo "noticias: parou no limite de tempo"
 
+      - name: The Odds API - terceira fonte de odds (reserva da Arena e do Guia)
+        id: odds_api
+        continue-on-error: true
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python coleta/odds_api.py
+
       - name: Motor - camada 1 (previsao do concurso aberto - provisoria/oficial/atualizacao)
         id: motor
         continue-on-error: true
