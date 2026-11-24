@@ -203,6 +203,23 @@ select.sel,input.sel{border-color:#C9CED2;border-radius:7px}
 .dlg h2{margin:0}.dlg label{display:flex;flex-direction:column;gap:6px;font-weight:500;font-size:14px}
 .dlg textarea{min-height:120px;border:1px solid #C9CED2;border-radius:7px;padding:8px;font:13px/1.45 ui-monospace,Consolas,monospace}
 .dlg .acoes{justify-content:flex-end}
+.dlg.largo{max-width:720px}
+.vsel-wrap{max-height:52vh;overflow:auto;border:1px solid var(--linha);border-radius:8px}
+.vsel{width:100%;border-collapse:collapse}
+.vsel td{padding:5px 6px;border-bottom:1px solid var(--linha);font-size:13px;vertical-align:middle}
+.vsel tr:last-child td{border-bottom:0}
+.vsel td.n{color:var(--grafite);width:22px;text-align:right}
+.vsel td.t{line-height:1.25}
+.vsel td.b{white-space:nowrap;text-align:right}
+.vb{position:relative;width:64px;height:38px;margin-left:4px;border:1px solid #C9CED2;border-radius:7px;background:#fff;cursor:pointer;overflow:hidden;font:inherit;color:var(--tinta);padding:0}
+.vb b{display:block;font-size:14px;line-height:1.1}.vb small{display:block;font-size:10.5px;color:var(--grafite)}
+.vb i{position:absolute;left:0;bottom:0;height:4px;background:var(--mesa);opacity:.45}
+.vb.sug{box-shadow:inset 0 0 0 2px var(--ouro)}
+.vb.on{background:var(--mesa);border-color:var(--mesa);color:#fff}.vb.on small{color:#DCEBE4}.vb.on i{background:#fff}
+.vresumo{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13.5px}
+.vresumo b{font-size:15px}.vresumo .er{color:var(--baixa);font-weight:600}
+.vlegenda{font-size:12px;color:var(--grafite);margin:0}
+.vlink{background:none;border:0;padding:0;color:var(--mesa);text-decoration:underline;cursor:pointer;font:inherit;font-size:13px}
 .escolha{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .escolha label{flex-direction:row;align-items:center;gap:8px;border:1px solid var(--linha);border-radius:8px;padding:10px 12px;cursor:pointer;font-weight:500}
 .escolha input{accent-color:var(--mesa)}
@@ -1184,23 +1201,82 @@ function bancaAcao(obj) {
   else if (obj.acao === 'apagar') L = L.filter(function (x) { return x.id !== obj.id; });
   bancaLocalGrava(L); BANCA.lista = L; depois(); return Promise.resolve({ ok: true });
 }
+// ---------------------------------------------------------------- volante clicavel (registrar aposta sem digitar)
+var VSEL = { c: null, m: [] };
+function vselGrade(c) { var x = apConc(Number(c)); return x && x.jogos && x.jogos.length === 14 ? x.jogos : null; }
+function vselSugestao(c) {
+  var js = vselGrade(c); if (!js) return null;
+  var sem = D.semana && D.semana.concurso === Number(c) ? D.semana.jogos : null;
+  return js.map(function (j, i) {
+    var p = j.p || [1, 1, 1], fav = R[p.indexOf(Math.max.apply(null, p))];
+    if (sem && sem[i]) { var cl = String(sem[i].classe || '').toUpperCase(); if (cl === 'TRIPLO') return '1X2'; if (cl === 'DUPLO' && sem[i].duplo) return String(sem[i].duplo).toUpperCase(); }
+    return fav;
+  });
+}
+function vselTexto(set) { return ['1', 'X', '2'].filter(function (k) { return set.indexOf(k) >= 0; }).join(''); }
+function vselResumo() {
+  var m = VSEL.m, s = 0, d = 0, t = 0, falta = 0;
+  m.forEach(function (x) { if (!x.length) falta++; else if (x.length === 1) s++; else if (x.length === 2) d++; else t++; });
+  var comb = falta ? 0 : m.reduce(function (a, x) { return a * x.length; }, 1);
+  var aviso = falta ? '<span class="er">Faltam ' + falta + ' jogo(s)</span>' : comb < 2 ? '<span class="er">A aposta mínima tem 1 duplo</span>' : comb > 864 ? '<span class="er">Passa de 864 combinações (limite da Caixa por volante)</span>' : '<span>✓ volante válido</span>';
+  return '<span><b>' + s + '</b> secos</span><span><b>' + d + '</b> duplos</span><span><b>' + t + '</b> triplos</span><span><b>' + (comb || '—') + '</b> combinações</span><span><b>' + (comb ? brl(comb * 2) : '—') + '</b></span>' + aviso;
+}
+function vselRender(box, c) {
+  var js = vselGrade(c), sug = vselSugestao(c);
+  if (!js) { box.innerHTML = '<p class="sub" style="margin:0">Não tenho a grade do concurso ' + esc(String(c)) + ' no painel. Use “colar volantes” abaixo.</p>'; return false; }
+  if (VSEL.c !== Number(c) || VSEL.m.length !== 14) { VSEL.c = Number(c); VSEL.m = js.map(function () { return []; }); }
+  box.innerHTML = '<div class="linha-sel" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><div class="vresumo" id="vres">' + vselResumo() + '</div>' +
+    '<span><button type="button" class="btn" id="vsug">Usar a sugestão do motor</button> <button type="button" class="btn" id="vlimpa">Limpar</button></span></div>' +
+    '<div class="vsel-wrap"><table class="vsel"><tbody>' + js.map(function (j, i) {
+      var p = j.p || [null, null, null];
+      return '<tr><td class="n">' + (i + 1) + '</td><td class="t">' + nomeT(j.m) + ' × ' + nomeT(j.v) + '</td><td class="b">' + ['1', 'X', '2'].map(function (k, q) {
+        var on = VSEL.m[i].indexOf(k) >= 0, sg = sug && sug[i].indexOf(k) >= 0;
+        return '<button type="button" class="vb' + (on ? ' on' : '') + (sg ? ' sug' : '') + '" data-i="' + i + '" data-k="' + k + '"><b>' + k + '</b><small>' + (p[q] != null ? pc(p[q], 0) : '') + '</small>' + (p[q] != null ? '<i style="width:' + Math.round(p[q] * 100) + '%"></i>' : '') + '</button>';
+      }).join('') + '</td></tr>';
+    }).join('') + '</tbody></table></div><p class="vlegenda">Clique para marcar ou desmarcar. Número = chance do motor; barra = tamanho da chance; contorno dourado = sugestão do motor.</p>';
+  box.querySelectorAll('.vb').forEach(function (b) {
+    b.onclick = function () {
+      var i = Number(b.dataset.i), k = b.dataset.k, a = VSEL.m[i], pos = a.indexOf(k);
+      if (pos >= 0) a.splice(pos, 1); else a.push(k);
+      b.classList.toggle('on'); box.querySelector('#vres').innerHTML = vselResumo();
+    };
+  });
+  box.querySelector('#vsug').onclick = function () { VSEL.m = sug.map(function (x) { return x.split(''); }); vselRender(box, c); };
+  box.querySelector('#vlimpa').onclick = function () { VSEL.m = js.map(function () { return []; }); vselRender(box, c); };
+  return true;
+}
+
 function bancaRegistrar(pre) { // dialogo para registrar uma aposta (pre: {concurso, vols, origem})
   var dlg = document.getElementById('dlg'), conc = pre.concurso || (D.semana && D.semana.concurso) || '';
   dlg.innerHTML = '<form method="dialog"><h2>Registrar aposta</h2>' +
     '<label>Concurso<input class="sel" name="c" type="number" value="' + conc + '" required></label>' +
     (pre.vols ? '<p style="margin:0">' + pre.vols.length + ' volante(s), ' + brl(custoVols(pre.vols)) + (pre.origem ? ' · ' + esc(pre.origem) : '') + '</p>'
-      : '<label>Volantes (um por linha, como no SpeedLoto: 1;2.x;1;…)<textarea name="v" required placeholder="1;x;2;1.x;..."></textarea></label><label>Descrição<input class="sel" name="o" value="Aposta manual"></label>') +
+      : '<div id="vselbox"></div><div><button type="button" class="vlink" id="vcolar">Colar vários volantes (avançado)</button></div>' +
+        '<label id="vcolararea" hidden>Volantes (um por linha, como no SpeedLoto: 1;2.x;1;…)<textarea name="v" placeholder="1;x;2;1.x;..."></textarea></label><label>Descrição<input class="sel" name="o" value="Aposta manual"></label>') +
     '<div class="escolha"><label><input type="radio" name="s" value="pago" checked> Já paguei</label><label><input type="radio" name="s" value="carrinho"> Está no carrinho</label></div>' +
     '<p class="sub" style="margin:0">' + (BANCA.servidor ? 'Fica guardado na banca e aparece em qualquer aparelho.' : 'A banca está guardada só neste aparelho até a chave de gravação ser configurada.') + '</p>' +
     '<div class="acoes"><button class="btn" value="cancelar">Cancelar</button><button class="btn pri" value="ok">Registrar</button></div></form>';
   dlg.onclose = function () {
     if (dlg.returnValue !== 'ok') return;
     var f = dlg.querySelector('form'), vols = pre.vols;
-    if (!vols) vols = f.v.value.split(/\r?\n/).map(apParse).filter(Boolean);
+    if (!vols && f.v && f.v.value.trim()) vols = f.v.value.split(/\r?\n/).map(apParse).filter(Boolean);
+    else if (!vols) {
+      var comb = VSEL.m.reduce(function (a, x) { return a * x.length; }, 1);
+      if (VSEL.m.length !== 14 || VSEL.m.some(function (x) { return !x.length; })) { alert('Marque os 14 jogos do volante.'); return; }
+      if (comb < 2 || comb > 864) { alert('O volante precisa ter de 2 a 864 combinações (pelo menos 1 duplo).'); return; }
+      vols = [VSEL.m.map(vselTexto)];
+    }
     if (!vols || !vols.length) { alert('Nenhum volante válido (cada linha precisa dos 14 jogos).'); return; }
     bancaAcao({ acao: 'adicionar', aposta: { concurso: Number(f.c.value), vols: vols, origem: pre.origem || (f.o ? f.o.value : ''), status: f.s.value } })
       .then(function (j) { if (j && j.ok) irPara('p-banca'); });
   };
+  dlg.classList.toggle('largo', !pre.vols);
+  if (!pre.vols) {
+    var box = dlg.querySelector('#vselbox'), fc = dlg.querySelector('input[name=c]');
+    VSEL = { c: null, m: [] }; vselRender(box, fc.value);
+    fc.onchange = function () { vselRender(box, fc.value); };
+    dlg.querySelector('#vcolar').onclick = function () { var a = dlg.querySelector('#vcolararea'); a.hidden = !a.hidden; };
+  }
   dlg.showModal();
 }
 
