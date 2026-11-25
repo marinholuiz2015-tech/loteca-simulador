@@ -28,6 +28,7 @@ import email.utils
 import json
 import os
 import re
+import signal
 import sys
 import time
 import unicodedata
@@ -248,6 +249,17 @@ def main():
     sys.path.insert(0, AQUI)
     from coletar_sentinela import anexar
     linhas = []
+    # se o limite de tempo interromper, grava o que ja foi lido (SIGTERM vira SystemExit e cai no finally)
+    signal.signal(signal.SIGTERM, lambda *a: sys.exit(1))
+    try:
+        _ler_grade(c, grade, agora, linhas)
+    finally:
+        if linhas:
+            anexar(arq, campos, linhas)
+            print(f"Gravados {len(linhas)} jogos em {arq}")
+
+
+def _ler_grade(c, grade, agora, linhas):
     for j in sorted(grade):
         mand, vis = grade[j]
         mc, mv = noticias_do_time(mand), noticias_do_time(vis)
@@ -266,7 +278,6 @@ def main():
         linhas.append(linha)
         print(f"Jogo {j}: {mand} ({len(mc)} manchetes, {sc}) x {vis} ({len(mv)}, {sv}) | fontes: {', '.join(fontes)}"
               + (f" | nota {nota}: {motivo}" if nota != "" else ""))
-    anexar(arq, campos, linhas)
 
 if __name__ == "__main__":
     main()
