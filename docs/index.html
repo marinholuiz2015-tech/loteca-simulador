@@ -1356,6 +1356,47 @@ function confere(vols, Rz, parte) {
 function apostasDo(c) { return BANCA.lista.filter(function (a) { return a.concurso === c && a.status !== 'cancelado'; }); }
 function uniao(vols) { return Array.from({ length: 14 }, function (_, i) { return R.split('').filter(function (k) { return vols.some(function (v) { return v[i].indexOf(k) >= 0; }); }).join(''); }); }
 
+// ---------------------------------------------------------------- desdobre pela chance (cartelas da semana)
+function porChance(sel, P, valor) { // as combinacoes mais provaveis da base, em volantes de 1 duplo (R$ 4)
+  var pot = [], q = 1; for (var i = 0; i < 14; i++) { pot.push(q); q *= 3; }
+  var opts = sel.map(function (s) { return s.split('').map(function (k) { return R.indexOf(k); }); });
+  var LP = P.map(function (p) { return p.map(function (x) { return Math.log(Math.max(x, 1e-9)); }); });
+  var nv = Math.floor(valor / 4); if (nv < 1) return null;
+  var top = melhoresCombos(opts, LP, pot, nv * 2 + 40), rank = new Map(); top.forEach(function (c, n) { rank.set(c, n); });
+  var dig = function (c, i) { return Math.floor(c / pot[i]) % 3; }, usado = new Set(), vols = [];
+  var pr = function (c) { var s = 0; for (var i = 0; i < 14; i++) s += LP[i][dig(c, i)]; return s; };
+  for (var n = 0; n < top.length && vols.length < nv; n++) {
+    var c = top[n]; if (usado.has(c)) continue;
+    var par = null, pv = -Infinity, parFora = null, pf = -Infinity;
+    for (var i = 0; i < 14; i++) { var d0 = dig(c, i); opts[i].forEach(function (k) { if (k === d0) return; var v = c + (k - d0) * pot[i]; if (usado.has(v)) return;
+      var sc = pr(v); if (rank.has(v)) { if (sc > pv) { pv = sc; par = v; } } else if (sc > pf) { pf = sc; parFora = v; } }); }
+    var b = par != null ? par : parFora; if (b == null) continue;
+    usado.add(c); usado.add(b);
+    var vol = []; for (var j = 0; j < 14; j++) { var a1 = dig(c, j), a2 = dig(b, j); vol.push(a1 === a2 ? R[a1] : [a1, a2].sort().map(function (x) { return R[x]; }).join('')); }
+    vols.push(vol);
+  }
+  var ch = apChance(vols, P);
+  return { vols: vols, custo: arqCusto(vols), p14: ch ? ch.p14 : null, p13: ch ? ch.p13 : null };
+}
+function retornoAprox(d, valor) { // retorno esperado do motor para o orcamento mais proximo (cartela unica; o desdobre pela chance fica um pouco acima)
+  if (!d || !d.orcamentos || !d.orcamentos.length) return null;
+  var o = d.orcamentos.slice().sort(function (a, b) { return Math.abs(a.valor - valor) - Math.abs(b.valor - valor); })[0]; return o.retorno;
+}
+function cartelasSemana(S) {
+  var P = S.jogos.map(function (j) { return j.p; }), d = S.decisao || {};
+  var base = otimo(P, 4, 5); if (!base) return [];
+  var bolso = d.deposito || 200;
+  var melhor = d.apostar > 0 ? d.apostar : bolso;
+  var principal = Math.max(Math.min(Math.round(((d.saldo || 0) + bolso) / 4) * 4, 2000), bolso * 2);
+  var lista = [
+    { chave: 'bolso', titulo: 'Cartela de bolso', txt: 'Para toda semana, com o mínimo de dinheiro. As combinações mais prováveis da base, em volantes de R$ 4.', valor: bolso },
+    { chave: 'melhor', titulo: 'Melhor escolha da semana', rec: true, txt: d.apostar > 0 ? 'Semana em que o jogo se paga em média: vale investir o que o motor indica.' : 'Semana comum (retorno esperado abaixo de 100%): a melhor escolha é ficar no valor de bolso.', valor: melhor },
+    { chave: 'principal', titulo: 'Cartela principal', txt: 'A maior chance dentro do que está guardado no cofrinho (até R$ 2.000). Só vale a pena nas semanas boas.', valor: principal }
+  ];
+  lista.forEach(function (o) { var r = porChance(base.sel, P, o.valor); o.r = r; o.ret = retornoAprox(d, o.valor); });
+  return lista;
+}
+
 // ---------------------------------------------------------------- SEMANA
 function pagSemana() {
   var el = document.getElementById('p-semana'), S = D.semana;
@@ -1370,19 +1411,18 @@ function pagSemana() {
   }
   var ja = apostasDo(S.concurso);
   if (ja.length) h += '<div class="nota inf">Você já registrou ' + pl(ja.length, 'aposta', 'apostas') + ' neste concurso, ' + brl(ja.reduce(function (a, x) { return a + x.custo; }, 0)) + '. <a href="#" data-ir="p-conf">Ver a conferência</a></div>';
-  if (ds) {
-    var esp = ds.espalhado, sim = ds.simples;
-    var op = function (rec, titulo, txt, custo, p14, p13, chave) {
-      return '<div class="opcao' + (rec ? ' rec' : '') + '"><div><h3>' + titulo + (rec ? '<span class="tag">recomendado</span>' : '') + '</h3><p class="sub" style="margin:6px 0 0">' + txt + '</p></div>' +
-        '<div class="trio"><div><span>Custo</span><b>' + brl(custo) + '</b></div><div><span>Chance de 13+</span><b>' + pc(p13, 1) + '</b></div><div><span>Chance de 14</span><b>' + pc(p14, 2) + '</b></div></div>' +
-        '<div class="acoes"><button class="btn pri" data-op="' + chave + '" data-a="caixa">Mandar para a Caixa</button><button class="btn" data-op="' + chave + '" data-a="reg">Registrar como jogado</button><button class="btn" data-op="' + chave + '" data-a="ver">Ver volantes</button></div></div>';
-    };
-    h += '<div class="opcoes">' +
-      (esp ? op(true, 'Desdobre espalhado', esp.volantes.length + ' volantes que se cobrem entre si. No histórico fez 13 ou mais o dobro de vezes que o jogo simples, pelo mesmo valor.', esp.custo, esp.p14, esp.p13, 'esp') : '') +
-      (sim ? op(false, 'Jogo simples ' + sim.estrutura, 'Uma cartela só, a de maior chance de 14 que cabe no orçamento.', sim.custo, sim.p14, sim.p13, 'sim') : '') + '</div><div id="semvols"></div>';
+  var CS = cartelasSemana(S);
+  if (CS.length) {
+    h += '<div class="opcoes">' + CS.map(function (o) {
+      var r = o.r || {};
+      return '<div class="opcao' + (o.rec ? ' rec' : '') + '"><div><h3>' + o.titulo + (o.rec ? '<span class="tag">recomendado</span>' : '') + '</h3><p class="sub" style="margin:6px 0 0">' + o.txt + '</p></div>' +
+        '<div class="trio"><div><span>Custo</span><b>' + brl(r.custo || o.valor) + '</b></div><div><span>Chance de 13+</span><b>' + (r.p13 != null ? pc(r.p13, 1) : '—') + '</b></div><div><span>Chance de 14</span><b>' + (r.p14 != null ? pc(r.p14, 2) : '—') + '</b></div></div>' +
+        '<p class="sub" style="margin:0">Retorno esperado ≈ ' + (o.ret != null ? '<b class="' + (o.ret >= 1 ? 'ok' : '') + '">' + pc(o.ret, 0) + '</b>' + (o.ret >= 1 ? ' — se paga em média' : ' do valor apostado') : '—') + ' · ' + (r.vols ? r.vols.length : 0) + ' volantes</p>' +
+        '<div class="acoes"><button class="btn pri" data-op="' + o.chave + '" data-a="caixa">Mandar para a Caixa</button><button class="btn" data-op="' + o.chave + '" data-a="reg">Registrar como jogado</button><button class="btn" data-op="' + o.chave + '" data-a="ver">Ver volantes</button></div></div>';
+    }).join('') + '</div><div id="semvols"></div>';
   }
-  var simp = ds && ds.simples ? ds.simples.cartela : null;
-  h += '<div class="card"><h2>Os 14 jogos</h2><p class="sub" style="margin-top:-6px">Chance de cada resultado pelo motor. As marcas são as do jogo simples.</p><div class="rolagem"><table class="jogos"><tbody>' +
+  var bs = otimo(S.jogos.map(function (j) { return j.p; }), 4, 5), simp = bs ? bs.sel : null;
+  h += '<div class="card"><h2>Os 14 jogos</h2><p class="sub" style="margin-top:-6px">Chance de cada resultado pelo motor. As marcas são as da base das cartelas (4 duplos + 5 triplos nos jogos mais incertos).</p><div class="rolagem"><table class="jogos"><tbody>' +
     S.jogos.map(function (j, i) {
       return '<tr><td class="n">' + j.jogo + '</td><td class="t">' + nomeT(j.mandante) + ' × ' + nomeT(j.visitante) + (j.alertas && j.alertas.length ? '<small>' + j.alertas.map(esc).join(' ') + '</small>' : '') + '</td>' +
         '<td class="pbc" style="width:170px">' + pbar(j.p) + '</td><td style="width:100px;text-align:right">' + (simp ? mk(simp[i], null) : '') + '</td></tr>';
@@ -1390,9 +1430,10 @@ function pagSemana() {
   el.innerHTML = h;
   el.querySelectorAll('[data-op]').forEach(function (b) {
     b.onclick = function () {
-      var vols = b.dataset.op === 'esp' ? ds.espalhado.volantes : [ds.simples.cartela], nomeOp = b.dataset.op === 'esp' ? 'Desdobre espalhado' : 'Jogo simples ' + ds.simples.estrutura;
+      var o = CS.filter(function (x) { return x.chave === b.dataset.op; })[0]; if (!o || !o.r) return;
+      var vols = o.r.vols, nomeOp = o.titulo + ' (' + brl(o.r.custo) + ')';
       if (b.dataset.a === 'reg') bancaRegistrar({ concurso: S.concurso, vols: vols, origem: nomeOp });
-      else { renderVolantes('semvols', vols, 'loteca_' + S.concurso + '_' + (b.dataset.op === 'esp' ? 'desdobre' : 'simples'), S.jogos);
+      else { renderVolantes('semvols', vols, 'loteca_' + S.concurso + '_' + o.chave, S.jogos);
         var alvo = document.getElementById('semvols'); if (b.dataset.a === 'caixa') alvo.querySelector('[data-a=caixa]').click(); alvo.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     };
   });
