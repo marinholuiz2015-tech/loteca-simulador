@@ -44,6 +44,17 @@ PUGA = "https://palpitesdopuga.com.br/loteca/{}/palpites"
 MODELO = os.environ.get("MODELO_VISAO", os.environ.get("MODELO_NOTICIAS", "claude-haiku-5-5"))
 
 
+
+def texto_ia(r):
+    """Junta os blocos de texto da resposta da IA (o modelo pode mandar antes um bloco de raciocinio)."""
+    d = r.json()
+    if r.status_code != 200 or "error" in d:
+        raise RuntimeError(f"API {r.status_code}: {str(d.get('error', d))[:300]}")
+    t = "".join(b.get("text", "") for b in d.get("content", []) if b.get("type") == "text")
+    if not t:
+        raise RuntimeError(f"resposta sem texto (stop={d.get('stop_reason')}, blocos={[b.get('type') for b in d.get('content', [])]})")
+    return t
+
 def agora():
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -140,11 +151,11 @@ def ler_matriz(url, g):
         "\"zebra\": {\"jogo\": 10, \"lado\": \"2\", \"time\": \"...\"}}")
     r = requests.post("https://api.anthropic.com/v1/messages", timeout=120,
                       headers={"x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-                      json={"model": MODELO, "max_tokens": 900, "messages": [{"role": "user", "content": [
+                      json={"model": MODELO, "max_tokens": 4000, "messages": [{"role": "user", "content": [
                           {"type": "image", "source": {"type": "base64", "media_type": tipo,
                                                        "data": base64.b64encode(img.content).decode()}},
                           {"type": "text", "text": pedido}]}]})
-    d = json.loads(re.search(r"\{.*\}", r.json()["content"][0]["text"], re.S).group(0))
+    d = json.loads(re.search(r"\{.*\}", texto_ia(r), re.S).group(0))
     secos = {int(k): str(v).upper().strip() for k, v in (d.get("secos") or {}).items() if str(k).isdigit()}
     if sorted(secos) != list(range(1, 15)) or any(v not in ("1", "X", "2") for v in secos.values()):
         raise ValueError(f"secos incompletos: {secos}")

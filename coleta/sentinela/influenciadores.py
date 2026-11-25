@@ -30,6 +30,17 @@ CAMPOS_MAT = ["concurso", "fonte", "tipo", "quando", "titulo", "texto", "link", 
 CAMPOS_PAL = ["concurso", "jogo", "mandante", "visitante", "fonte", "palpite", "trecho", "link", "coletado_em_utc"]
 
 
+
+def texto_ia(r):
+    """Junta os blocos de texto da resposta da IA (o modelo pode mandar antes um bloco de raciocinio)."""
+    d = r.json()
+    if r.status_code != 200 or "error" in d:
+        raise RuntimeError(f"API {r.status_code}: {str(d.get('error', d))[:300]}")
+    t = "".join(b.get("text", "") for b in d.get("content", []) if b.get("type") == "text")
+    if not t:
+        raise RuntimeError(f"resposta sem texto (stop={d.get('stop_reason')}, blocos={[b.get('type') for b in d.get('content', [])]})")
+    return t
+
 def youtube(cid):
     r = requests.get(f"https://www.youtube.com/feeds/videos.xml?channel_id={cid}", headers=HEAD, timeout=30)
     if r.status_code != 200:
@@ -97,9 +108,9 @@ def ia_palpites(grade, material):
     try:
         r = requests.post("https://api.anthropic.com/v1/messages", timeout=120,
                           headers={"x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-                          json={"model": os.environ.get("MODELO_NOTICIAS", "claude-haiku-5-5"), "max_tokens": 2500,
+                          json={"model": os.environ.get("MODELO_NOTICIAS", "claude-haiku-5-5"), "max_tokens": 8000,
                                 "messages": [{"role": "user", "content": texto}]})
-        d = json.loads(re.search(r"\{.*\}", r.json()["content"][0]["text"], re.S).group(0))
+        d = json.loads(re.search(r"\{.*\}", texto_ia(r), re.S).group(0))
         return [p for p in d.get("palpites", []) if isinstance(p, dict) and str(p.get("jogo", "")).isdigit()]
     except Exception as e:
         print("IA dos influenciadores falhou:", e)
