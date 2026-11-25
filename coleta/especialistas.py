@@ -135,7 +135,9 @@ def ler_matriz(url, g):
     if not chave:
         raise SystemExit("ANTHROPIC_API_KEY ausente: a leitura da matriz precisa da IA.")
     img = requests.get(url, headers=HEAD, timeout=40)
-    tipo = "image/png" if url.lower().endswith(".png") else "image/jpeg"
+    b = img.content[:12]  # o tipo vem do conteudo, nao do nome (ha .jpg que sao GIF)
+    tipo = ("image/png" if b.startswith(b"\x89PNG") else "image/gif" if b[:3] == b"GIF"
+            else "image/webp" if b[8:12] == b"WEBP" else "image/jpeg")
     jogos = "\n".join(f"{j}. {m} x {v}" for j, (m, v) in sorted(g.items()))
     pedido = (
         "Esta imagem e a 'matriz' de palpites da Vovoteca para a Loteca. Grade oficial do concurso:\n"
@@ -151,7 +153,7 @@ def ler_matriz(url, g):
         "\"zebra\": {\"jogo\": 10, \"lado\": \"2\", \"time\": \"...\"}}")
     r = requests.post("https://api.anthropic.com/v1/messages", timeout=120,
                       headers={"x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-                      json={"model": MODELO, "max_tokens": 4000, "messages": [{"role": "user", "content": [
+                      json={"model": MODELO, "max_tokens": 10000, "messages": [{"role": "user", "content": [
                           {"type": "image", "source": {"type": "base64", "media_type": tipo,
                                                        "data": base64.b64encode(img.content).decode()}},
                           {"type": "text", "text": pedido}]}]})
