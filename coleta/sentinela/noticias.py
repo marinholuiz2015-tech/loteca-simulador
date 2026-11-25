@@ -83,6 +83,20 @@ GE_SLUG = {"ATLETICO MG": "atletico-mg", "ATHLETICO PR": "athletico-pr", "ATLETI
            "NAUTICO": "nautico", "PAYSANDU": "paysandu", "CHAPECOENSE": "chapecoense", "FIGUEIRENSE": "figueirense"}
 
 
+
+_AVISOU = False
+
+
+def texto_ia(r):
+    """Junta os blocos de texto da resposta da IA (o modelo pode mandar antes um bloco de raciocinio)."""
+    d = r.json()
+    if r.status_code != 200 or "error" in d:
+        raise RuntimeError(f"API {r.status_code}: {str(d.get('error', d))[:300]}")
+    t = "".join(b.get("text", "") for b in d.get("content", []) if b.get("type") == "text")
+    if not t:
+        raise RuntimeError(f"resposta sem texto (stop={d.get('stop_reason')}, blocos={[b.get('type') for b in d.get('content', [])]})")
+    return t
+
 def norm(s):
     s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().upper()
     s = re.sub(r"[/\-.]", " ", s)
@@ -218,13 +232,17 @@ def nota_modelo(mand, vis, mc, mv):
     try:
         r = requests.post("https://api.anthropic.com/v1/messages", timeout=90,
                           headers={"x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-                          json={"model": os.environ.get("MODELO_NOTICIAS", "claude-haiku-5-5"), "max_tokens": 700,
+                          json={"model": os.environ.get("MODELO_NOTICIAS", "claude-haiku-5-5"), "max_tokens": 3000,
                                 "messages": [{"role": "user", "content": texto}]})
-        txt = r.json()["content"][0]["text"]
+        txt = texto_ia(r)
         d = json.loads(re.search(r"\{.*\}", txt, re.S).group(0))
         fatos = [f for f in d.get("fatos", []) if isinstance(f, dict) and f.get("fato")][:12]
         return int(d.get("nota", 0)), str(d.get("motivo", ""))[:300], fatos
-    except Exception:
+    except Exception as e:
+        global _AVISOU
+        if not _AVISOU:  # mostra o primeiro erro no registro, sem encher o log
+            print(f"IA das noticias falhou ({mand} x {vis}): {e}")
+            _AVISOU = True
         return "", "", []
 
 
