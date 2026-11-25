@@ -20,7 +20,12 @@ on:
     - cron: "23 22 * * 4"
     - cron: "17 13 * * 6"
     - cron: "41 0 * * 2"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      especialistas:
+        description: "Especialistas (Vovoteca/Puga): semanal ou historico"
+        required: false
+        default: "semanal"
 
 permissions:
   contents: write
@@ -132,6 +137,13 @@ jobs:
         run: |
           timeout 180 python coleta/sentinela/cartola.py || echo "cartola: falhou ou passou do tempo"
           timeout 240 python coleta/sentinela/influenciadores.py || echo "influenciadores: falhou ou passou do tempo"
+
+      - name: Especialistas de maior expressao - matriz da Vovoteca (lida pela IA) e Canal do Puga
+        id: especialistas
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          timeout 1700 python coleta/especialistas.py "${{ github.event.inputs.especialistas || 'semanal' }}" || echo "especialistas: falhou ou passou do tempo"
 
       - name: The Odds API - terceira fonte de odds (reserva da Arena e do Guia)
         id: odds_api

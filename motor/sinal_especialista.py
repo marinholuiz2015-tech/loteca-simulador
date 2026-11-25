@@ -104,11 +104,55 @@ def testar(nome, L, minimo=30):
     return bt
 
 
+def especialista(nome_fonte, col):
+    """especialistas_palpites.csv (coleta/especialistas.py), uma fonte, coluna seco ou duplo."""
+    arq = os.path.join(DADOS, "especialistas_palpites.csv")
+    d = collections.defaultdict(dict)
+    if not os.path.exists(arq):
+        return d
+    for r in csv.DictReader(open(arq, encoding="utf-8")):
+        if r["fonte"] == nome_fonte and r[col]:
+            d[int(r["concurso"])][int(r["jogo"])] = {"1X2".index(x) for x in r[col]}
+    return d
+
+
+def zebras_e_triplos(res, odds):
+    arq = os.path.join(DADOS, "especialistas_palpites.csv")
+    if not os.path.exists(arq):
+        return
+    Z, T = [], []
+    for r in csv.DictReader(open(arq, encoding="utf-8")):
+        if r["fonte"] != "vovoteca":
+            continue
+        c, j = int(r["concurso"]), int(r["jogo"])
+        if c not in res or j not in odds.get(c, {}):
+            continue
+        p = np.asarray(c2.prob_mercado(odds[c][j]), float); y = res[c][j - 1]
+        if r["zebra"] in ("1", "X", "2"):
+            k = "1X2".index(r["zebra"])
+            Z.append((y == k, p[k]))
+        if r["triplo"] == "1":
+            T.append((y != p.argmax(), 1 - p.max()))
+    print("\n## Vovoteca - zebra da rodada e jogo do triplo")
+    if Z:
+        a = np.array(Z, float); se = math.sqrt(a[:, 1].mean() * (1 - a[:, 1].mean()) / len(a))
+        print(f"- zebras apontadas: {len(a)} | deram certo {100*a[:,0].mean():.1f}% | a odd dava {100*a[:,1].mean():.1f}%"
+              f" | diferenca {100*(a[:,0].mean()-a[:,1].mean()):+.1f} pts (z {(a[:,0].mean()-a[:,1].mean())/se:+.1f})")
+    if T:
+        a = np.array(T, float); se = math.sqrt(a[:, 1].mean() * (1 - a[:, 1].mean()) / len(a))
+        print(f"- jogos do triplo: {len(a)} | o favorito falhou em {100*a[:,0].mean():.1f}% | a odd dava {100*a[:,1].mean():.1f}%"
+              f" | diferenca {100*(a[:,0].mean()-a[:,1].mean()):+.1f} pts (z {(a[:,0].mean()-a[:,1].mean())/se:+.1f})")
+
+
 def main():
     res = resultados(); odds = c2.odds_por_concurso()
     print("# O palpite dos sites acrescenta informacao a odd?")
     testar("Arena do AZ (palpite com secos/duplos/triplos)", linhas_de(fonte("arena_palpites.csv", "marcas"), res, odds))
     testar("Vovoteca - matriz (secos)", linhas_de(fonte("vovo_matriz.csv", "seco"), res, odds))
+    testar("Vovoteca - matriz lida pela IA (secos)", linhas_de(especialista("vovoteca", "seco"), res, odds))
+    testar("Vovoteca - matriz lida pela IA (duplos sugeridos)", linhas_de(especialista("vovoteca", "duplo"), res, odds), minimo=15)
+    zebras_e_triplos(res, odds)
+    testar("Canal do Puga (site) - secos (palpite = favorito das odds dele; veredito so com 20+ concursos)", linhas_de(especialista("puga", "seco"), res, odds), minimo=20)
     testar("Vovoteca - boloes", linhas_de(fonte("vovo_boloes.csv", "marcas", lambda r: (int(r["concurso"]), r["bolao"])), res, odds), minimo=8)
 
 
