@@ -1,6 +1,6 @@
 # Placar de KPIs
 
-Atualizado em 2026-11-25T00:40:02Z · teste no tempo (aprende só com concursos anteriores).
+Atualizado em 2026-11-25T03:16:59Z · teste no tempo (aprende só com concursos anteriores).
 
 Força = ganho sobre as odds dividido pelo erro: 2 ou mais = comprovado; 0,5 a 2 = promissor; perto de 0 = neutro; negativo = atrapalha.
 

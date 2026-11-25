@@ -14,6 +14,24 @@
 - peso ajustado em toda a base: seco +0.003, duplo +0.000 (0 = nao acrescenta nada a odd)
 - teste no tempo (88 concursos): ganho medio -0.0094 log-loss por concurso, forca -1.4 -> nao passa no criterio (precisa > 2)
 
+## Vovoteca - matriz lida pela IA (secos)
+- jogos com odd: 0 em 0 concursos
+- secos do site: acertam nan%; a odd dava a esses mesmos resultados nan% em media
+- peso ajustado em toda a base: seco +0.000, duplo +0.000 (0 = nao acrescenta nada a odd)
+
+## Vovoteca - matriz lida pela IA (duplos sugeridos)
+- jogos com odd: 0 em 0 concursos
+- secos do site: acertam nan%; a odd dava a esses mesmos resultados nan% em media
+- peso ajustado em toda a base: seco +0.000, duplo +0.000 (0 = nao acrescenta nada a odd)
+
+## Vovoteca - zebra da rodada e jogo do triplo
+
+## Canal do Puga (site) - secos (palpite = favorito das odds dele; veredito so com 20+ concursos)
+- jogos com odd: 69 em 5 concursos
+- secos do site: acertam 68.1%; a odd dava a esses mesmos resultados 58.8% em media
+- secos CONTRA o favorito do mercado: 2 jogos, acertam 0.0% (a odd dava 22.6%)
+- peso ajustado em toda a base: seco +0.416, duplo +0.000 (0 = nao acrescenta nada a odd)
+
 ## Vovoteca - boloes
 - jogos com odd: 428 em 22 concursos
 - secos do site: acertam 55.6%; a odd dava a esses mesmos resultados 56.9% em media
