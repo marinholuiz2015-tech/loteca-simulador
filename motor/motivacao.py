@@ -37,35 +37,48 @@ NOMES = ["mandante sem nada em jogo (vitoria do mandante)", "visitante sem nada 
 class Tabela:
     def __init__(self, liga, times, tot):
         self.liga, self.times, self.tot = liga, times, tot
-        self.pts, self.jog = collections.Counter(), collections.Counter()
+        self.pts, self.jog, self.vit = collections.Counter(), collections.Counter(), collections.Counter()
+        self.ultimo = None
 
-    def soma(self, h, a, gc, gf):
+    def soma(self, h, a, gc, gf, d=None):
         self.jog[h] += 1
         self.jog[a] += 1
+        if d is not None and (self.ultimo is None or d > self.ultimo):
+            self.ultimo = d
         if gc > gf:
             self.pts[h] += 3
+            self.vit[h] += 1
         elif gc < gf:
             self.pts[a] += 3
+            self.vit[a] += 1
         else:
             self.pts[h] += 1
             self.pts[a] += 1
 
+    def acima_garantido(self, t, q):
+        """t termina acima de q com certeza (q nao alcanca os pontos de t; empate decidido por vitorias)."""
+        mq = self.pts[q] + 3 * (self.tot - self.jog[q])
+        return mq < self.pts[t] or (mq == self.pts[t] and self.vit[q] + (self.tot - self.jog[q]) < self.vit[t])
+
     def estado(self, t):
-        tab = sorted(self.times, key=lambda x: -self.pts[x])
+        tab = sorted(self.times, key=lambda x: (-self.pts[x], -self.vit[x]))
         pos = tab.index(t)
         P = lambda k: self.pts[tab[k]]
-        R = lambda k: self.tot - self.jog[tab[k]]
         r, p, n = self.tot - self.jog[t], self.pts[t], len(tab)
-        kt, kr = TOP[self.liga] - 1, n - REL[self.liga]
-        alcanca_top = p + 3 * r >= P(kt) and not (pos <= kt and p > P(kt + 1) + 3 * R(kt + 1))
-        titulo = p + 3 * r >= P(0) and not (pos == 0 and p > P(1) + 3 * R(1))
-        salvo = pos < kr and p > P(kr) + 3 * R(kr)
-        condenado = p + 3 * r < P(kr - 1)
+        outros = [q for q in tab if q != t]
+        kt, nrel = TOP[self.liga], REL[self.liga]
+        campeao = all(self.acima_garantido(t, q) for q in outros)
+        abaixo_certo = sum(self.acima_garantido(t, q) for q in outros)      # times que terminam atras de t com certeza
+        acima_certo = sum(self.acima_garantido(q, t) for q in outros)       # times que terminam a frente de t com certeza
+        salvo = abaixo_certo >= nrel
+        condenado = acima_certo >= n - nrel
+        titulo_vivo = not campeao and acima_certo == 0
+        top_vivo = acima_certo < kt and not (abaixo_certo >= n - kt)       # ainda pode entrar e nao esta garantido no top
         reb_vivo = not salvo and not condenado
-        return {"restam": r, "posicao": pos + 1, "pontos": p,
-                "morto": not (alcanca_top or titulo) and not reb_vivo,
-                "luta": reb_vivo and r <= 8 and abs(p - P(kr)) <= 3,
-                "titulo": titulo and r <= 8 and P(0) - p <= 3 * r and pos <= 3}
+        return {"restam": r, "posicao": pos + 1, "pontos": p, "campeao": campeao, "salvo": salvo, "rebaixado": condenado,
+                "morto": not (top_vivo or titulo_vivo) and not reb_vivo,
+                "luta": reb_vivo and r <= 8 and abs(p - P(n - nrel)) <= 3,
+                "titulo": titulo_vivo and r <= 8 and pos <= 3}
 
 
 def temporadas():
@@ -96,7 +109,7 @@ def reta_final():
                     y = 0 if g["gc"] > g["gf"] else (1 if g["gc"] == g["gf"] else 2)
                     L.append((liga, temp, o, y, eh, ea))
             for g in dia:
-                T.soma(g["casa"], g["fora"], g["gc"], g["gf"])
+                T.soma(g["casa"], g["fora"], g["gc"], g["gf"], g["d"])
             i += len(dia)
     return L
 
@@ -193,8 +206,39 @@ def testar():
     print("\n".join(md))
 
 
+FOTMOB_LIGA = {"268": "new_BRA", "47": "E0", "48": "E1", "87": "SP1", "55": "I1", "54": "D1", "53": "F1"}
+
+
+def tabelas_fotmob():
+    """Tabelas da temporada atual montadas com os resultados da FotMob (coleta/dados/fotmob_jogos.csv),
+    que chegam toda semana; o football-data costuma atrasar alguns dias."""
+    arq = os.path.join(os.path.dirname(AQUI), "coleta", "dados", "fotmob_jogos.csv")
+    if not os.path.exists(arq):
+        return {}
+    import csv
+    por = collections.defaultdict(lambda: collections.defaultdict(list))
+    for r in csv.DictReader(open(arq, encoding="utf-8")):
+        liga = FOTMOB_LIGA.get(r["liga_id"])
+        if liga and r["gc"] not in ("", None) and r["gf"] not in ("", None):
+            por[liga][r["temporada"]].append(r)
+    out = {}
+    for liga, ts in por.items():
+        js = ts[max(ts, key=lambda t: max(x["data_utc"] for x in ts[t]))]
+        times = sorted({x["casa"] for x in js} | {x["fora"] for x in js})
+        if len(times) < 10:
+            continue
+        T = Tabela(liga, times, 2 * (len(times) - 1))
+        for x in js:
+            d = datetime.datetime.strptime(x["data_utc"][:10], "%Y-%m-%d").date()
+            T.soma(x["casa"], x["fora"], int(float(x["gc"])), int(float(x["gf"])), d)
+        if max(T.jog.values() or [0]) >= 2:
+            out[liga] = T
+    return out
+
+
 def tabelas_atuais():
-    """Tabela da temporada mais recente de cada liga, com os jogos ja disputados."""
+    """Tabela da temporada mais recente de cada liga, com os jogos ja disputados.
+    Usa a fonte com o resultado mais recente (FotMob ou football-data)."""
     por = collections.defaultdict(dict)
     for (liga, temp), js in temporadas().items():
         por[liga][temp] = js
@@ -208,8 +252,12 @@ def tabelas_atuais():
         T = Tabela(liga, times, 2 * (len(times) - 1))
         for g in js:
             if g["gc"] is not None:
-                T.soma(g["casa"], g["fora"], g["gc"], g["gf"])
+                T.soma(g["casa"], g["fora"], g["gc"], g["gf"], g["d"])
         if max(T.jog.values() or [0]) >= 2:
+            out[liga] = T
+    for liga, T in tabelas_fotmob().items():
+        atual = out.get(liga)
+        if atual is None or (T.ultimo and (atual.ultimo is None or T.ultimo > atual.ultimo)):
             out[liga] = T
     return out
 
@@ -220,6 +268,8 @@ def alertas(linhas):
     if not T:
         return {}
     modelo = json.load(open(SAIDA_JSON)) if os.path.exists(SAIDA_JSON) else {}
+    hoje = datetime.date.today()
+    T = {k: t for k, t in T.items() if t.ultimo and (hoje - t.ultimo).days <= 6}  # tabela com mais de 6 dias: nao afirma nada
     out = {}
     for j, m, v in linhas:
         melhor = None
@@ -237,6 +287,13 @@ def alertas(linhas):
             continue
         txt = []
         f = modelo.get("forca")
+        for lado, e in (("mandante", eh), ("visitante", ea)):
+            if e["campeao"]:
+                txt.append(f"{lado} já é campeão ({e['posicao']}º, {e['pontos']} pts)")
+            elif e["salvo"] and e["restam"] <= 8 and e["posicao"] > 8:
+                txt.append(f"{lado} já está livre do rebaixamento ({e['posicao']}º, {e['pontos']} pts)")
+            if e["rebaixado"]:
+                txt.append(f"{lado} já está rebaixado ({e['posicao']}º, {e['pontos']} pts)")
         if ea["morto"] and not eh["morto"]:
             txt.append(f"visitante sem nada em jogo ({ea['posicao']}º, {ea['restam']} jogos restantes): no histórico "
                        "o visitante nessa situação vence menos do que a odd indica (Brasileirão 14% × 20%, Europa "
