@@ -1,18 +1,85 @@
 {
   "_como_usar": "Lista das fontes de especialistas e influenciadores lidas toda semana. Para acrescentar: copie um bloco e troque nome, tipo e id. tipo youtube: id = codigo do canal (UC...). tipo telegram: id = o @ do canal publico, sem o @. tipo rss: id = endereco do feed do site. 'palpite_na_descricao' = o canal costuma escrever os palpites na descricao do video (os outros so falam no video; da nuvem nao se le a fala).",
   "fontes": [
-    {"nome": "Lotecalogia", "tipo": "youtube", "id": "UCNSXZY2kE9SEwS_z-2GfQuw", "palpite_na_descricao": true},
-    {"nome": "Fazendo Sua Fezinha (percentuais da enquete)", "tipo": "youtube", "id": "UCN_3irEB06nPEh8BvsDq92A", "palpite_na_descricao": true},
-    {"nome": "BrainMatch", "tipo": "youtube", "id": "UCer6B0eZh_aZs0IQ075FDog", "palpite_na_descricao": true},
-    {"nome": "Vovoteca TV", "tipo": "youtube", "id": "UCC8DkJiSWbPvcyAw18VBpQA"},
-    {"nome": "Daniel Conte", "tipo": "youtube", "id": "UCCfTYL4KfXxDYVD4xEtkdsw"},
-    {"nome": "Canal do Puga Dicas", "tipo": "youtube", "id": "UCD9FevJZHvfOl11Kt43Fcuw"},
-    {"nome": "JE 07", "tipo": "youtube", "id": "UCFrFg6yOgF9l_ZlGNKxdu7A"},
-    {"nome": "Olho Na Loteca", "tipo": "youtube", "id": "UCaCrCf6PE8KCC3nwarOcjvA"},
-    {"nome": "Doutor da Sorte", "tipo": "youtube", "id": "UCD8N0i2A7RImLMPeGr2X_Lw"},
-    {"nome": "Dicas do Benas", "tipo": "youtube", "id": "UCndlkZ4rMaL7uEvEaCWG_2w"},
-    {"nome": "Palpite Futebol11", "tipo": "youtube", "id": "UCZ8VdXUGQmCg33AMRELh1Qw"},
-    {"nome": "Cartola Cartoon Brasil (TCC)", "tipo": "youtube", "id": "UCO7ufL5tj_guQhN0PCaouxw"},
-    {"nome": "Portal Net Sorte", "tipo": "telegram", "id": "portalnetsorte"}
+    {
+      "nome": "Lotecalogia",
+      "tipo": "youtube",
+      "id": "UCNSXZY2kE9SEwS_z-2GfQuw",
+      "palpite_na_descricao": true
+    },
+    {
+      "nome": "Fazendo Sua Fezinha (percentuais da enquete)",
+      "tipo": "youtube",
+      "id": "UCN_3irEB06nPEh8BvsDq92A",
+      "palpite_na_descricao": true
+    },
+    {
+      "nome": "BrainMatch",
+      "tipo": "youtube",
+      "id": "UCer6B0eZh_aZs0IQ075FDog",
+      "palpite_na_descricao": true
+    },
+    {
+      "nome": "Vovoteca TV",
+      "tipo": "youtube",
+      "id": "UCC8DkJiSWbPvcyAw18VBpQA"
+    },
+    {
+      "nome": "Daniel Conte",
+      "tipo": "youtube",
+      "id": "UCCfTYL4KfXxDYVD4xEtkdsw"
+    },
+    {
+      "nome": "Canal do Puga Dicas",
+      "tipo": "youtube",
+      "id": "UCD9FevJZHvfOl11Kt43Fcuw"
+    },
+    {
+      "nome": "JE 07",
+      "tipo": "youtube",
+      "id": "UCFrFg6yOgF9l_ZlGNKxdu7A"
+    },
+    {
+      "nome": "Olho Na Loteca",
+      "tipo": "youtube",
+      "id": "UCaCrCf6PE8KCC3nwarOcjvA"
+    },
+    {
+      "nome": "Doutor da Sorte",
+      "tipo": "youtube",
+      "id": "UCD8N0i2A7RImLMPeGr2X_Lw"
+    },
+    {
+      "nome": "Dicas do Benas",
+      "tipo": "youtube",
+      "id": "UCndlkZ4rMaL7uEvEaCWG_2w"
+    },
+    {
+      "nome": "Palpite Futebol11",
+      "tipo": "youtube",
+      "id": "UCZ8VdXUGQmCg33AMRELh1Qw"
+    },
+    {
+      "nome": "Cartola Cartoon Brasil (TCC)",
+      "tipo": "youtube",
+      "id": "UCO7ufL5tj_guQhN0PCaouxw"
+    },
+    {
+      "nome": "Portal Net Sorte",
+      "tipo": "telegram",
+      "id": "portalnetsorte"
+    },
+    {
+      "nome": "Lotecando sem enrolação",
+      "tipo": "youtube",
+      "id": "UCkKIJoUzNrDYU41dJbW0X3g",
+      "palpite_na_descricao": false
+    },
+    {
+      "nome": "Bolão da Loteca",
+      "tipo": "youtube",
+      "id": "UCytpbwgjm6RHq_Kri_NaO0w",
+      "palpite_na_descricao": false
+    }
   ]
 }
