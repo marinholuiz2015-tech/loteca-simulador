@@ -125,6 +125,14 @@ jobs:
           timeout 400 python coleta/sentinela/coletar_sentinela.py aberto || echo "sentinela: parou no limite de tempo"
           timeout 840 python coleta/sentinela/noticias.py || echo "noticias: parou no limite de tempo (o que foi lido ficou gravado)"
 
+      - name: Camada humana - Cartola (escalacao provavel) e especialistas/influenciadores
+        id: humana
+        continue-on-error: true
+        timeout-minutes: 8
+        run: |
+          timeout 180 python coleta/sentinela/cartola.py || echo "cartola: falhou ou passou do tempo"
+          timeout 240 python coleta/sentinela/influenciadores.py || echo "influenciadores: falhou ou passou do tempo"
+
       - name: The Odds API - terceira fonte de odds (reserva da Arena e do Guia)
         id: odds_api
         continue-on-error: true
