@@ -1,0 +1,7 @@
+{
+  "_como_usar": "Lista das fontes de especialistas e influenciadores lidas toda semana. Para acrescentar: copie um bloco e troque nome, tipo e id. tipo youtube: id = codigo do canal (UC...). tipo telegram: id = o @ do canal publico, sem o @. tipo rss: id = endereco do feed do site.",
+  "fontes": [
+    {"nome": "Cartola Cartoon Brasil (TCC)", "tipo": "youtube", "id": "UCO7ufL5tj_guQhN0PCaouxw"},
+    {"nome": "Portal Net Sorte", "tipo": "telegram", "id": "portalnetsorte"}
+  ]
+}
