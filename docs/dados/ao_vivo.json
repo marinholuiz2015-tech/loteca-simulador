@@ -1,6 +1,6 @@
 {
  "concurso": 1285,
- "atualizado_utc": "2026-11-24T22:33Z",
+ "atualizado_utc": "2026-11-25T00:36Z",
  "jogos": [
   {
    "jogo": 1,
@@ -14,7 +14,7 @@
   },
   {
    "jogo": 2,
-   "mandante": "REAL MADRID-ESP",
+   "mandante": "REAL MADRID-ESP_",
    "visitante": "DEP. ALAVES-ESP",
    "inicio_utc": "2026-11-28T20:00Z",
    "situacao": "não começou",

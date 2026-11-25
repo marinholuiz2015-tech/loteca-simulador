@@ -1,9 +1,21 @@
 {
- "atualizado_em_utc": "2026-11-24T21:29:46Z",
- "descoberta": "895-1150",
- "conferencia": "1151-1283",
+ "atualizado_em_utc": "2026-11-25T00:40:03Z",
+ "descoberta": "895-1151",
+ "conferencia": "1152-1284",
  "combinacoes_testadas": 477,
  "confirmadas": [
+  {
+   "segmento": "equilibrado",
+   "sinal": "mandante perdeu o último jogo",
+   "alvo": 2,
+   "descoberta": -0.0954,
+   "z": -3.06,
+   "jogos_descoberta": 234,
+   "conferencia": -0.0357,
+   "jogos_conferencia": 83,
+   "real": 0.3133,
+   "previsto": 0.3489
+  },
   {
    "segmento": "todos",
    "sinal": "visitante com 3+ dias a mais de descanso",
@@ -11,10 +23,10 @@
    "descoberta": -0.0667,
    "z": -2.83,
    "jogos_descoberta": 294,
-   "conferencia": -0.0297,
-   "jogos_conferencia": 143,
-   "real": 0.1678,
-   "previsto": 0.1976
+   "conferencia": -0.0308,
+   "jogos_conferencia": 144,
+   "real": 0.1667,
+   "previsto": 0.1975
   },
   {
    "segmento": "todos",
@@ -37,23 +49,10 @@
    "descoberta": 0.1623,
    "z": 4.41,
    "jogos_descoberta": 152,
-   "conferencia": 0.0017,
-   "jogos_conferencia": 48,
-   "real": 0.2917,
-   "previsto": 0.29,
-   "motivo": "não se repetiu no período nunca visto"
-  },
-  {
-   "segmento": "equilibrado",
-   "sinal": "mandante perdeu o último jogo",
-   "alvo": 2,
-   "descoberta": -0.0954,
-   "z": -3.06,
-   "jogos_descoberta": 234,
-   "conferencia": -0.0309,
-   "jogos_conferencia": 82,
-   "real": 0.3171,
-   "previsto": 0.348,
+   "conferencia": 0.0168,
+   "jogos_conferencia": 49,
+   "real": 0.3061,
+   "previsto": 0.2893,
    "motivo": "não se repetiu no período nunca visto"
   },
   {
@@ -63,10 +62,10 @@
    "descoberta": -0.0565,
    "z": -3.0,
    "jogos_descoberta": 568,
-   "conferencia": 0.0075,
-   "jogos_conferencia": 254,
-   "real": 0.3543,
-   "previsto": 0.3468,
+   "conferencia": 0.0091,
+   "jogos_conferencia": 257,
+   "real": 0.358,
+   "previsto": 0.3489,
    "motivo": "não se repetiu no período nunca visto"
   },
   {
@@ -76,10 +75,10 @@
    "descoberta": -0.0565,
    "z": -3.0,
    "jogos_descoberta": 568,
-   "conferencia": 0.0075,
-   "jogos_conferencia": 254,
-   "real": 0.3543,
-   "previsto": 0.3468,
+   "conferencia": 0.0091,
+   "jogos_conferencia": 257,
+   "real": 0.358,
+   "previsto": 0.3489,
    "motivo": "não se repetiu no período nunca visto"
   },
   {
@@ -98,10 +97,10 @@
    "descoberta": 0.0864,
    "z": 2.91,
    "jogos_descoberta": 234,
-   "conferencia": -0.0392,
-   "jogos_conferencia": 82,
-   "real": 0.2561,
-   "previsto": 0.2953,
+   "conferencia": -0.0298,
+   "jogos_conferencia": 83,
+   "real": 0.2651,
+   "previsto": 0.2948,
    "motivo": "não se repetiu no período nunca visto"
   },
   {
@@ -111,10 +110,10 @@
    "descoberta": -0.0624,
    "z": -2.89,
    "jogos_descoberta": 349,
-   "conferencia": 0.0153,
-   "jogos_conferencia": 183,
-   "real": 0.224,
-   "previsto": 0.2088,
+   "conferencia": 0.0149,
+   "jogos_conferencia": 184,
+   "real": 0.2228,
+   "previsto": 0.2079,
    "motivo": "não se repetiu no período nunca visto"
   },
   {
@@ -124,23 +123,23 @@
    "descoberta": -0.1116,
    "z": -2.88,
    "jogos_descoberta": 152,
-   "conferencia": -0.0013,
-   "jogos_conferencia": 48,
-   "real": 0.3542,
-   "previsto": 0.3555,
+   "conferencia": -0.01,
+   "jogos_conferencia": 49,
+   "real": 0.3469,
+   "previsto": 0.3569,
    "motivo": "não se repetiu no período nunca visto"
   },
   {
    "segmento": "equilibrado",
    "sinal": "especialista contra o favorito",
    "alvo": 2,
-   "descoberta": -0.082,
-   "z": -2.85,
-   "jogos_descoberta": 271,
-   "conferencia": 0.0268,
-   "jogos_conferencia": 150,
-   "real": 0.3733,
-   "previsto": 0.3465,
+   "descoberta": -0.0741,
+   "z": -2.59,
+   "jogos_descoberta": 274,
+   "conferencia": 0.0143,
+   "jogos_conferencia": 147,
+   "real": 0.3605,
+   "previsto": 0.3462,
    "motivo": "não se repetiu no período nunca visto"
   },
   {
@@ -150,36 +149,10 @@
    "descoberta": -0.063,
    "z": -2.57,
    "jogos_descoberta": 345,
-   "conferencia": 0.0172,
-   "jogos_conferencia": 186,
-   "real": 0.3333,
-   "previsto": 0.3162,
-   "motivo": "não se repetiu no período nunca visto"
-  },
-  {
-   "segmento": "todos",
-   "sinal": "especialista contra o favorito",
-   "alvo": 1,
-   "descoberta": 0.0427,
-   "z": 2.54,
-   "jogos_descoberta": 722,
-   "conferencia": -0.0085,
-   "jogos_conferencia": 416,
-   "real": 0.2788,
-   "previsto": 0.2874,
-   "motivo": "não se repetiu no período nunca visto"
-  },
-  {
-   "segmento": "exterior",
-   "sinal": "especialista contra o favorito",
-   "alvo": 1,
-   "descoberta": 0.0427,
-   "z": 2.54,
-   "jogos_descoberta": 722,
-   "conferencia": -0.0079,
-   "jogos_conferencia": 415,
-   "real": 0.2795,
-   "previsto": 0.2874,
+   "conferencia": 0.0131,
+   "jogos_conferencia": 188,
+   "real": 0.3298,
+   "previsto": 0.3167,
    "motivo": "não se repetiu no período nunca visto"
   },
   {
@@ -189,10 +162,10 @@
    "descoberta": 0.0465,
    "z": 2.52,
    "jogos_descoberta": 568,
-   "conferencia": -0.0056,
-   "jogos_conferencia": 254,
-   "real": 0.252,
-   "previsto": 0.2576,
+   "conferencia": -0.0045,
+   "jogos_conferencia": 257,
+   "real": 0.2529,
+   "previsto": 0.2574,
    "motivo": "não se repetiu no período nunca visto"
   },
   {
@@ -202,10 +175,10 @@
    "descoberta": 0.0465,
    "z": 2.52,
    "jogos_descoberta": 568,
-   "conferencia": -0.0056,
-   "jogos_conferencia": 254,
-   "real": 0.252,
-   "previsto": 0.2576,
+   "conferencia": -0.0045,
+   "jogos_conferencia": 257,
+   "real": 0.2529,
+   "previsto": 0.2574,
    "motivo": "não se repetiu no período nunca visto"
   },
   {
@@ -215,10 +188,10 @@
    "descoberta": -0.0541,
    "z": -2.52,
    "jogos_descoberta": 445,
-   "conferencia": 0.0111,
-   "jogos_conferencia": 187,
-   "real": 0.3476,
-   "previsto": 0.3365,
+   "conferencia": 0.0103,
+   "jogos_conferencia": 189,
+   "real": 0.3492,
+   "previsto": 0.3389,
    "motivo": "não se repetiu no período nunca visto"
   }
  ]
