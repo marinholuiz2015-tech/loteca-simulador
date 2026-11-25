@@ -120,10 +120,10 @@ jobs:
       - name: Sentinela - fatos do concurso aberto (desfalques, descanso, forma, clima)
         id: sentinela
         continue-on-error: true
-        timeout-minutes: 12
+        timeout-minutes: 22
         run: |
           timeout 400 python coleta/sentinela/coletar_sentinela.py aberto || echo "sentinela: parou no limite de tempo"
-          timeout 300 python coleta/sentinela/noticias.py || echo "noticias: parou no limite de tempo"
+          timeout 840 python coleta/sentinela/noticias.py || echo "noticias: parou no limite de tempo (o que foi lido ficou gravado)"
 
       - name: The Odds API - terceira fonte de odds (reserva da Arena e do Guia)
         id: odds_api
