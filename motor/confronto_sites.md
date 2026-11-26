@@ -2,9 +2,9 @@
 === Arena do AZ x nosso sistema: 359 concursos (mesmos jogos, mesma quantidade de secos/duplos/triplos) ===
                            pontos/conc.  13 ou 14  fez 14  secos certos  duplos certos  retorno
 Arena do AZ                        9.20        14       1         51.4%          73.4%     3.3%
-Nosso (mesma estrutura)            9.90        19       3         59.7%          75.3%    37.2%
+Nosso (mesma estrutura)            9.90        19       3         59.8%          75.3%    37.2%
 
-diferenca de pontos por concurso (nosso - Arena): +0.70 | erro 0.09 | z +7.9 | nosso melhor em 52% dos concursos, empate 26%, Arena melhor 21%
+diferenca de pontos por concurso (nosso - Arena): +0.70 | erro 0.09 | z +8.0 | nosso melhor em 52% dos concursos, empate 26%, Arena melhor 21%
 
 === Vovoteca (matriz, 14 secos) x nosso sistema: 118 concursos (mesmos jogos, mesma quantidade de secos/duplos/triplos) ===
                            pontos/conc.  13 ou 14  fez 14  secos certos  duplos certos  retorno

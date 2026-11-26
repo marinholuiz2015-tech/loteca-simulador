@@ -1,4 +1,4 @@
-Palpites: 6395 | casados com a Caixa: 6350 | sem resultado: 4 | nomes diferentes (descartados): 4 | sorteio: 37
+Palpites: 6409 | casados com a Caixa: 6350 | sem resultado: 18 | nomes diferentes (descartados): 4 | sorteio: 37
 
 == Geral ==
 Todos                  secos= 4845  acerto seco= 49.2%  (sempre '1'= 45.9%, ganho= +3.3%)  duplos= 4605  acerto duplo= 76.0%
