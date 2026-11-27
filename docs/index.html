@@ -173,6 +173,19 @@ nav.secundaria button[aria-selected=true]{background:var(--tinta);border-color:v
 .jogos .n{color:var(--grafite);width:28px;font-variant-numeric:tabular-nums}
 .jogos .t{font-weight:500}
 .jogos .t small{display:block;font-weight:400;color:var(--grafite);font-size:12.5px}
+/* ficha do jogo */
+.conf{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;white-space:nowrap;cursor:pointer;border:0;background:none;padding:0;font:inherit;color:inherit}
+.conf i{font-style:normal;font-weight:700;width:24px;height:24px;border-radius:6px;display:inline-grid;place-items:center;font-size:13px}
+.conf i.A,.conf i.B{background:var(--mesa2);color:var(--mesa)}.conf i.C,.conf i.D{background:var(--ouro2);color:var(--ouro)}.conf i.E{background:var(--baixa2);color:var(--baixa)}
+.conf b{font-size:13px;font-weight:600}.conf .at{color:var(--baixa);font-size:12px;font-weight:600}
+tr.ficha-l td{background:#FAFBFA;padding:14px 12px 16px}
+.ficha{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 22px}
+.ficha h4{margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--grafite)}
+.ficha ul{margin:0;padding-left:16px;font-size:13.5px;line-height:1.45}.ficha li{margin:2px 0}
+.ficha .vazio-c{font-size:13px;color:var(--grafite)}
+.ficha-top{display:flex;gap:16px;flex-wrap:wrap;align-items:baseline;margin-bottom:10px;font-size:14px}
+.ficha-at{background:var(--baixa2);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13.5px}
+.ficha-at b{color:var(--baixa)}
 .mk{display:inline-flex;gap:4px}
 .mk i{font-style:normal;width:26px;height:26px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:600;color:#9AA3AA;border:1px solid var(--linha);background:#fff}
 .mk i.on{background:var(--tinta);border-color:var(--tinta);color:#fff}
@@ -1398,6 +1411,20 @@ function cartelasSemana(S) {
 }
 
 // ---------------------------------------------------------------- SEMANA
+function fichaHtml(j) {
+  var f = j.ficha; if (!f) return '';
+  var acao = { SECO: 'seco ' + f.marca, DUPLO: 'duplo ' + f.marca, TRIPLO: 'triplo' }[f.acao] || f.acao;
+  var h = '<div class="ficha-top"><span>Sugestão do motor: <b>' + acao + '</b></span><span>Score <b>' + f.score + '</b> (chance do favorito)</span>' +
+    (f.acao !== 'TRIPLO' ? '<span>Cobertura da marca <b>' + pc(f.cobertura, 0) + '</b></span>' : '') +
+    '<span>Confiança <b>' + f.confianca + '</b>' + (f.confianca !== f.confianca_motor ? ' (o motor dava ' + f.confianca_motor + ')' : '') + '</span></div>';
+  if (f.atencao.length) h += '<div class="ficha-at"><b>Atenção — contra o favorito:</b> ' + f.atencao.map(esc).join(' · ') + '. <span class="sub">Esses fatos ainda não mudam a chance do motor (não passaram no teste de sinal); servem para você decidir onde proteger.</span></div>';
+  var nomes = { estatistica: 'Estatística', performance: 'Performance (Cartola e FotMob)', institucional: 'Institucional (tabela e motivação)', humana: 'Humana (notícias, canais, especialistas)' };
+  h += '<div class="ficha">' + Object.keys(nomes).map(function (k) {
+    var L = f.camadas[k] || [];
+    return '<div><h4>' + nomes[k] + '</h4>' + (L.length ? '<ul>' + L.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '<p class="vazio-c">Nada coletado para este jogo ainda.</p>') + '</div>';
+  }).join('') + '</div>';
+  return h;
+}
 function pagSemana() {
   var el = document.getElementById('p-semana'), S = D.semana;
   if (!S) { el.innerHTML = '<div class="card vazio"><b>Nenhum concurso aberto agora.</b>A grade nova aparece aqui assim que a Caixa publicar.</div>'; return; }
@@ -1422,12 +1449,22 @@ function pagSemana() {
     }).join('') + '</div><div id="semvols"></div>';
   }
   var bs = otimo(S.jogos.map(function (j) { return j.p; }), 4, 5), simp = bs ? bs.sel : null;
-  h += '<div class="card"><h2>Os 14 jogos</h2><p class="sub" style="margin-top:-6px">Chance de cada resultado pelo motor. As marcas são as da base das cartelas (4 duplos + 5 triplos nos jogos mais incertos).</p><div class="rolagem"><table class="jogos"><tbody>' +
+  h += '<div class="card"><h2>Os 14 jogos</h2><p class="sub" style="margin-top:-6px">Letra = confiança no jogo, de A (mais firme) a E (mais incerto). Número = score de 0 a 100, a chance do favorito pelo motor. ⚠ = fatos da semana contra o favorito. As marcas são as da base das cartelas (4 duplos + 5 triplos nos jogos mais incertos).</p><div class="rolagem"><table class="jogos"><tbody>' +
     S.jogos.map(function (j, i) {
-      return '<tr><td class="n">' + j.jogo + '</td><td class="t">' + nomeT(j.mandante) + ' × ' + nomeT(j.visitante) + (j.alertas && j.alertas.length ? '<small>' + j.alertas.map(esc).join(' ') + '</small>' : '') + '</td>' +
+      var fi = j.ficha;
+      return '<tr><td class="n">' + j.jogo + '</td><td class="t">' + nomeT(j.mandante) + ' × ' + nomeT(j.visitante) + '</td>' +
+        '<td style="width:120px">' + (fi ? '<button class="conf" data-ficha="' + i + '" aria-expanded="false" title="Abrir a ficha do jogo"><i class="' + fi.confianca + '">' + fi.confianca + '</i><b>' + fi.score + '</b>' + (fi.atencao.length ? '<span class="at">⚠ ' + fi.atencao.length + '</span>' : '') + '</button>' : '') + '</td>' +
         '<td class="pbc" style="width:170px">' + pbar(j.p) + '</td><td style="width:100px;text-align:right">' + (simp ? mk(simp[i], null) : '') + '</td></tr>';
-    }).join('') + '</tbody></table></div><p class="sub" style="margin-bottom:0">Quer mudar algum jogo? <a href="#" data-ir="p-estudos" data-sub="volante">Montar o seu volante</a>.</p></div>';
+    }).join('') + '</tbody></table></div><p class="sub" style="margin-bottom:0">Clique na letra de cada jogo para abrir a ficha. Quer mudar algum jogo? <a href="#" data-ir="p-estudos" data-sub="volante">Montar o seu volante</a>.</p></div>';
   el.innerHTML = h;
+  el.querySelectorAll('[data-ficha]').forEach(function (b) {
+    b.onclick = function () {
+      var tr = b.closest('tr'), prox = tr.nextElementSibling;
+      if (prox && prox.classList.contains('ficha-l')) { prox.remove(); b.setAttribute('aria-expanded', 'false'); return; }
+      var j = S.jogos[+b.dataset.ficha], nl = document.createElement('tr'); nl.className = 'ficha-l';
+      nl.innerHTML = '<td colspan="5">' + fichaHtml(j) + '</td>'; tr.after(nl); b.setAttribute('aria-expanded', 'true');
+    };
+  });
   el.querySelectorAll('[data-op]').forEach(function (b) {
     b.onclick = function () {
       var o = CS.filter(function (x) { return x.chave === b.dataset.op; })[0]; if (!o || !o.r) return;
