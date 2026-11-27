@@ -1427,8 +1427,10 @@ function retornoAprox(d, valor) { // retorno esperado do motor para o orcamento 
   if (!d || !d.orcamentos || !d.orcamentos.length) return null;
   var o = d.orcamentos.slice().sort(function (a, b) { return Math.abs(a.valor - valor) - Math.abs(b.valor - valor); })[0]; return o.retorno;
 }
+var SAB = false; // usar as odds de sabado nas cartelas
+function probsSemana(S) { return (SAB && S.sabado) ? S.sabado.jogos.map(function (j) { return j.p_sabado; }) : S.jogos.map(function (j) { return j.p; }); }
 function cartelasSemana(S) {
-  var P = S.jogos.map(function (j) { return j.p; }), d = S.decisao || {};
+  var P = probsSemana(S), d = S.decisao || {};
   var base = otimo(P, 4, 5); if (!base) return [];
   var bolso = d.deposito || 200;
   var melhor = d.apostar > 0 ? d.apostar : bolso;
@@ -1481,15 +1483,26 @@ function pagSemana() {
         '<div class="acoes"><button class="btn pri" data-op="' + o.chave + '" data-a="caixa">Mandar para a Caixa</button><button class="btn" data-op="' + o.chave + '" data-a="reg">Registrar como jogado</button><button class="btn" data-op="' + o.chave + '" data-a="ver">Ver volantes</button></div></div>';
     }).join('') + '</div><div id="semvols"></div>';
   }
-  var bs = otimo(S.jogos.map(function (j) { return j.p; }), 4, 5), simp = bs ? bs.sel : null;
+  if (S.sabado && S.sabado.com_odd_nova) {
+    var mud = S.sabado.jogos.filter(function (j) { return j.mudou_favorito || j.variacao >= 0.04; });
+    h += '<div class="card"><h2>Atualização de sábado</h2><p class="sub" style="margin-top:-6px">Odds mais recentes (' + esc(S.sabado.jogos.filter(function (j) { return j.odds_em; })[0].fonte) + ', ' + (function (u) { var t = Date.parse(u); return isNaN(t) ? esc(u) : new Date(t).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); })(S.sabado.jogos.filter(function (j) { return j.odds_em; })[0].odds_em) + ') em ' + S.sabado.com_odd_nova + ' dos 14 jogos. ' +
+      'No histórico, a odd mais perto do jogo acertou mais que a de quinta; a de sábado de manhã está sendo medida semana a semana.</p>' +
+      (mud.length ? '<div class="rolagem"><table class="pt"><thead><tr><th>Jogo</th><th></th><th>Quinta (1 · X · 2)</th><th>Sábado (1 · X · 2)</th><th></th></tr></thead><tbody>' + mud.map(function (j) {
+        var f = function (p) { return p.map(function (x) { return pc(x, 0); }).join(' · '); };
+        return '<tr><td>' + j.jogo + '</td><td style="text-align:left">' + nomeT(j.mandante) + ' × ' + nomeT(j.visitante) + '</td><td>' + f(j.p_quinta) + '</td><td><b>' + f(j.p_sabado) + '</b></td><td>' + (j.mudou_favorito ? '<span class="at">trocou o favorito</span>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' : '<p>Nenhum jogo mudou 4 pontos ou mais desde quinta.</p>') +
+      '<label class="escolha" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="usasab"' + (SAB ? ' checked' : '') + '> Montar as cartelas e as marcas com a odd de sábado</label></div>';
+  }
+  var bs = otimo(probsSemana(S), 4, 5), simp = bs ? bs.sel : null;
   h += '<div class="card"><h2>Os 14 jogos</h2><p class="sub" style="margin-top:-6px">Letra = confiança no jogo, de A (mais firme) a E (mais incerto). Número = score de 0 a 100, a chance do favorito pelo motor. ⚠ = fatos da semana contra o favorito. As marcas são as da base das cartelas (4 duplos + 5 triplos nos jogos mais incertos).</p><div class="rolagem"><table class="jogos"><tbody>' +
     S.jogos.map(function (j, i) {
       var fi = j.ficha;
       return '<tr><td class="n">' + j.jogo + '</td><td class="t">' + nomeT(j.mandante) + ' × ' + nomeT(j.visitante) + '</td>' +
         '<td style="width:120px">' + (fi ? '<button class="conf" data-ficha="' + i + '" aria-expanded="false" title="Abrir a ficha do jogo"><i class="' + fi.confianca + '">' + fi.confianca + '</i><b>' + fi.score + '</b>' + (fi.atencao.length ? '<span class="at">⚠ ' + fi.atencao.length + '</span>' : '') + '</button>' : '') + '</td>' +
-        '<td class="pbc" style="width:170px">' + pbar(j.p) + '</td><td style="width:100px;text-align:right">' + (simp ? mk(simp[i], null) : '') + '</td></tr>';
+        '<td class="pbc" style="width:170px">' + pbar(probsSemana(S)[i]) + '</td><td style="width:100px;text-align:right">' + (simp ? mk(simp[i], null) : '') + '</td></tr>';
     }).join('') + '</tbody></table></div><p class="sub" style="margin-bottom:0">Clique na letra de cada jogo para abrir a ficha. Quer mudar algum jogo? <a href="#" data-ir="p-estudos" data-sub="volante">Montar o seu volante</a>.</p></div>';
   el.innerHTML = h;
+  var cbs = document.getElementById('usasab'); if (cbs) cbs.onchange = function () { SAB = cbs.checked; pagSemana(); };
   el.querySelectorAll('[data-ficha]').forEach(function (b) {
     b.onclick = function () {
       var tr = b.closest('tr'), prox = tr.nextElementSibling;
