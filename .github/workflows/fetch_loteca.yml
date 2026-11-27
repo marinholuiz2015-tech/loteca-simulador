@@ -1,6 +1,6 @@
 name: Atualizar cache da Loteca (CEF)
 
-# Roda a cada 30 min e também pode ser disparado manualmente (aba
+# Roda de 2 em 2 horas (no fim de semana, de hora em hora) e também pode ser disparado manualmente (aba
 # Actions do repo, botão "Run workflow"). Esse job busca o concurso da
 # Caixa a partir da rede do GitHub Actions -- não do Render -- pra
 # contornar o bloqueio 403 por IP de datacenter confirmado em produção
@@ -8,7 +8,10 @@ name: Atualizar cache da Loteca (CEF)
 # via raw.githubusercontent.com pro app.py ler.
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    # de 2 em 2 h nos dias de semana e de hora em hora de sabado a segunda (resultados e rateio):
+    # cabe no limite gratis do GitHub Actions com o repositorio privado (2.000 min/mes)
+    - cron: "11 */2 * * 2-5"
+    - cron: "11 * * * 6,0,1"
   workflow_dispatch: {}
 
 permissions:
