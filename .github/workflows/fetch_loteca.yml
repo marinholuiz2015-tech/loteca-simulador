@@ -33,7 +33,7 @@ jobs:
         continue-on-error: true
 
       - name: Resultados e rateio para a conferencia do painel
-        run: python scripts/resultados_painel.py || echo "resultados do painel: sem atualizacao nesta rodada"
+        run: python scripts/resultados_painel.py || echo "resultados do painel - sem atualizacao nesta rodada"
 
       - name: Commitar cache atualizado
         run: |
