@@ -20,6 +20,7 @@ sys.path.insert(0, AQUI)
 import camada2 as c2  # noqa: E402
 import camada3 as c3  # noqa: E402
 import desdobre as dd  # noqa: E402
+import ficha as fch  # noqa: E402
 
 SAIDA = os.path.join(AQUI, "saida")
 DESTINO = os.path.join(RAIZ, "docs", "dados", "painel.json")
@@ -59,6 +60,12 @@ def semana():
               "p": [round(float(r["p1"]), 4), round(float(r["px"]), 4), round(float(r["p2"]), 4)],
               "favorito": r.get("favorito"), "classe": r.get("classe"), "duplo": duplo_regra(r),
               "alertas": alertas.get(int(r["jogo"]), [])} for r in linhas]
+    try:  # ficha de cada jogo: camadas do mapa mental, score 0-100 e confianca A-E
+        fi = fch.fichas(c, jogos)
+        for j in jogos:
+            j["ficha"] = fi.get(j["jogo"])
+    except Exception as e:
+        print("ficha falhou:", e)
     return {"concurso": c, "jogos": jogos,
             "decisao": ler_json(os.path.join(SAIDA, f"concurso_{c}_decisao.json")),
             "desdobre": ler_json(os.path.join(SAIDA, f"concurso_{c}_desdobre_R200.json"))}
