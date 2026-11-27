@@ -68,6 +68,7 @@ def semana():
     except Exception as e:
         print("ficha falhou:", e)
     return {"concurso": c, "jogos": jogos,
+            "sabado": ler_json(os.path.join(SAIDA, f"concurso_{c}_sabado.json")),
             "decisao": ler_json(os.path.join(SAIDA, f"concurso_{c}_decisao.json")),
             "desdobre": ler_json(os.path.join(SAIDA, f"concurso_{c}_desdobre_R200.json"))}
 

@@ -166,6 +166,8 @@ jobs:
           timeout 300 python motor/camada3.py || echo "camada 3 sem dados suficientes nesta rodada"
           timeout 240 python motor/desdobre.py || echo "desdobre sem dados nesta rodada"
           timeout 300 python motor/pilares.py --aberto || echo "pilares do concurso aberto: sem dados nesta rodada"
+          timeout 120 python motor/sabado.py || echo "sabado: sem odds novas nesta rodada"
+          timeout 60 python motor/lab_sabado.py > motor/lab_sabado.md || true
           timeout 420 python motor/painel_dados.py || echo "painel sem atualizacao nesta rodada"
           timeout 120 python coleta/ao_vivo.py --forcar || echo "placar indisponivel"
 
@@ -198,7 +200,7 @@ jobs:
           git config user.name "loteca-coleta-bot"
           git config user.email "actions@github.com"
           # adiciona so o que existe: um caminho ausente faria o "git add" inteiro falhar e nada seria gravado
-          for p in coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md motor/confronto_sites.md motor/sinal_especialista.md motor/motivacao.md motor/motivacao.json motor/fechamento.md motor/apostas motor/camada3_historico.csv motor/camada3_config.json motor/placar_financeiro.md motor/rodizio.json motor/historico_desdobre.csv motor/pilares_registro.csv motor/chancedegol_teste.md docs/dados; do
+          for p in coleta/dados/*.csv coleta/dados/*.txt coleta/ocr/arena_ocr.jsonl motor/saida motor/registro_previsoes.csv motor/placar.md motor/kpis.md motor/kpis_modelo.json motor/nuances.json motor/nuances.md motor/confronto_sites.md motor/sinal_especialista.md motor/motivacao.md motor/motivacao.json motor/fechamento.md motor/apostas motor/camada3_historico.csv motor/camada3_config.json motor/placar_financeiro.md motor/rodizio.json motor/historico_desdobre.csv motor/pilares_registro.csv motor/chancedegol_teste.md motor/lab_sabado.md docs/dados; do
             if [ -e "$p" ]; then git add "$p"; else echo "ausente (ignorado): $p"; fi
           done
           git diff --cached --quiet && exit 0
