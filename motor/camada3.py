@@ -48,19 +48,29 @@ def ganhadores_13(rat, ate):
     return float(np.median(r)) if r else 25.0
 
 
-def valor_esperado(P, Q, coef, cart, pool14, pool13, apostas, razao13):
-    """retorno esperado (R$) da cartela cheia: 14 pelo modelo de ganhadores; 13 pela razao 13/14."""
+ISENCAO, IR = 2428.80, 0.30
+
+
+def liquido(x):
+    """premio depois do imposto de renda (30% sobre o que passa da isencao, em cada premio)."""
+    return x - IR * np.maximum(0.0, x - ISENCAO)
+
+
+def valor_esperado(P, Q, coef, cart, pool14, pool13, apostas, razao13, ir=False):
+    """retorno esperado (R$) da cartela cheia: 14 pelo modelo de ganhadores; 13 pela razao 13/14.
+    ir=True: ja descontado o imposto de renda de cada premio (o que cai na conta)."""
+    f = liquido if ir else (lambda x: x)
     combs = np.array(np.meshgrid(*[list(s) for s in cart], indexing="ij")).reshape(14, -1).T
     i = np.arange(14)
     lp = np.log(P[i, combs]).sum(1)
     lq = np.log(np.clip(Q[i, combs], 1e-3, 1)).sum(1)
     W14 = np.exp(c2.log_ganhadores(coef, lq, lp, math.log(pool14))) * apostas
-    e14 = float((np.exp(lp) * pool14 / (W14 + 1)).sum())
+    e14 = float((np.exp(lp) * f(pool14 / (W14 + 1))).sum())
     # 13: cada jogo errado vira |opcoes| combinacoes de 13; ganhadores de 13 ~ razao x ganhadores de 14
     p14, p13 = chances(P, cart)
     w14_tipico = float(np.exp((np.log(W14 + 1) * np.exp(lp)).sum() / np.exp(lp).sum()))
     n13 = np.mean([len(s) for s in cart])
-    e13 = p13 * n13 * pool13 / (razao13 * w14_tipico + n13)
+    e13 = p13 * n13 * float(f(pool13 / (razao13 * w14_tipico + n13)))
     return e14, e13, p14, p13
 
 
@@ -103,8 +113,10 @@ def montar(c, odds, massa, rat, prm, coef, razao13, carr=None):
     for orc, (d, t) in ESCADA.items():
         cart = c2.cartela(P, d, t)
         e14, e13, p14, p13 = valor_esperado(P, Q, coef, cart, pool14, pool13, arrec / c2.PRECO, razao13)
+        l14, l13, _, _ = valor_esperado(P, Q, coef, cart, pool14, pool13, arrec / c2.PRECO, razao13, ir=True)
         out["orc"][orc] = {"cartela": cart, "e14": e14, "e13": e13, "p14": p14, "p13": p13,
-                           "retorno": (e14 + e13) / orc}
+                           "retorno": (e14 + e13) / orc, "retorno_bruto": (e14 + e13) / orc,
+                           "l14": l14, "l13": l13, "retorno_liq": (l14 + l13) / orc}
     return out, P, Q
 
 
@@ -220,7 +232,11 @@ def decidir(c=None):
     if not m:
         print(f"Concurso {c}: sem premio estimado da Caixa ainda.")
         return
-    info = m[0]
+    info, Pm, Qm = m
+    # parametros para o painel calcular o retorno LIQUIDO de qualquer conjunto de volantes
+    info["roi"] = {"coef": [float(x) for x in coef], "pool14": float(info["pool14"]), "pool13": float(info["pool13"]),
+                   "apostas": float(info["apostas"]), "razao13": float(ganhadores_13(rat, c)),
+                   "Q": np.round(np.clip(Qm, 1e-3, 1), 4).tolist(), "isencao": 2428.80, "ir": 0.30, "preco": c2.PRECO}
     cfg = config()
     # posicao da semana entre as ultimas 52 (retorno esperado do R$ 2.592)
     r = info["orc"][2592]["retorno"]
@@ -253,10 +269,10 @@ def decidir(c=None):
           f"Prêmio de 14 estimado pela Caixa: **R$ {info['pool14']:,.0f}** · apostas previstas: {info['apostas']:,.0f} combinações "
           "(a arrecadação sobe com o prêmio).".replace(",", "."), "",
           f"**Semana {nivel}**" + (f" — melhor que {pct:.0%} das últimas {len(hist_r)} semanas." if pct is not None else "."), "",
-          "| Orçamento | Cartela | Chance de 14 | Chance de 13 | Retorno esperado (14 + 13) |", "|---|---|---|---|---|"]
+          "| Orçamento | Cartela | Chance de 14 | Chance de 13 | Retorno bruto | Retorno líquido (após IR) |", "|---|---|---|---|---|---|"]
     for orc, o in info["orc"].items():
         d, t = ESCADA[orc]
-        md.append(f"| R$ {orc:,} | {14 - d - t}+{d}+{t} | {o['p14']:.2%} | {o['p13']:.1%} | {o['retorno']:.0%} |".replace(",", "."))
+        md.append(f"| R$ {orc:,} | {14 - d - t}+{d}+{t} | {o['p14']:.2%} | {o['p13']:.1%} | {o['retorno']:.0%} | {o['retorno_liq']:.0%} |".replace(",", "."))
     if alvo:
         d, t = ESCADA[alvo]
         md += ["", f"## Recomendação: **R$ {alvo:,}** — cartela {14 - d - t}+{d}+{t}".replace(",", "."), "",
@@ -298,21 +314,23 @@ def cofre(c, cfg):
 def decidir_cofrinho(c, info, cfg, r, pct, hist_r):
     saldo = cofre(c, cfg)
     minimo = cfg["retorno_minimo"]
-    boas = [(o, v) for o, v in info["orc"].items() if v["retorno"] >= minimo and o <= saldo]
-    alvo = max(boas, key=lambda t: t[1]["e14"] + t[1]["e13"] - t[0])[0] if boas else 0
-    melhor = max(info["orc"].items(), key=lambda t: t[1]["retorno"])
+    # decide pelo retorno LIQUIDO (depois do imposto): no historico de 301 concursos a regra liquida jogou 3 semanas
+    # (R$ 7.776) e recebeu o mesmo que a bruta em 8 semanas (R$ 20.736) - as outras 5 so pareciam se pagar
+    boas = [(o, v) for o, v in info["orc"].items() if v["retorno_liq"] >= minimo and o <= saldo]
+    alvo = max(boas, key=lambda t: t[1]["l14"] + t[1]["l13"] - t[0])[0] if boas else 0
+    melhor = max(info["orc"].items(), key=lambda t: t[1]["retorno_liq"])
     md = [f"# Concurso {c} — camada 3 (decisão da semana · modo cofrinho)", "",
           f"Prêmio de 14 estimado pela Caixa: **R$ {info['pool14']:,.0f}** · apostas previstas: {info['apostas']:,.0f}.".replace(",", "."), "",
           (f"Cofrinho: R$ {cfg['deposito_semana']:,.0f} por semana desde o concurso {cfg['inicio_concurso']} · "
            f"saldo guardado: **R$ {saldo:,.0f}** · só aposta quando o retorno esperado passa de {minimo:.0%}.").replace(",", "."), "",
-          "| Orçamento | Cartela | Chance de 14 | Chance de 13 | Retorno esperado (14 + 13) |", "|---|---|---|---|---|"]
+          "| Orçamento | Cartela | Chance de 14 | Chance de 13 | Retorno bruto | Retorno líquido (após IR) |", "|---|---|---|---|---|---|"]
     for orc, o in info["orc"].items():
         d, t = ESCADA[orc]
-        md.append(f"| R$ {orc:,} | {14 - d - t}+{d}+{t} | {o['p14']:.2%} | {o['p13']:.1%} | {o['retorno']:.0%} |".replace(",", "."))
+        md.append(f"| R$ {orc:,} | {14 - d - t}+{d}+{t} | {o['p14']:.2%} | {o['p13']:.1%} | {o['retorno']:.0%} | {o['retorno_liq']:.0%} |".replace(",", "."))
     if alvo:
         d, t = ESCADA[alvo]
         md += ["", f"## Recomendação: **apostar R$ {alvo:,}** do cofrinho — cartela {14 - d - t}+{d}+{t}".replace(",", "."), "",
-               f"Semana em que o jogo se paga em média: retorno esperado de {info['orc'][alvo]['retorno']:.0%}."]
+               f"Semana em que o jogo se paga em média, já descontado o imposto: retorno líquido esperado de {info['orc'][alvo]['retorno_liq']:.0%}."]
         cart = info["orc"][alvo]["cartela"]
         os.makedirs(APOSTAS, exist_ok=True)
         linhas = list(csv.DictReader(open(RECOMENDADAS, encoding="utf-8"))) if os.path.exists(RECOMENDADAS) else []
@@ -324,8 +342,8 @@ def decidir_cofrinho(c, info, cfg, r, pct, hist_r):
             w.writeheader()
             w.writerows(sorted(linhas, key=lambda x: int(x["concurso"])))
     else:
-        motivo = (f"o melhor retorno esperado desta semana é {melhor[1]['retorno']:.0%} (R$ {melhor[0]:,}) — abaixo de {minimo:.0%}"
-                  if melhor[1]["retorno"] < minimo else f"o saldo (R$ {saldo:,.0f}) ainda não cobre a cartela que se paga").replace(",", ".")
+        motivo = (f"o melhor retorno líquido esperado desta semana é {melhor[1]['retorno_liq']:.0%} (R$ {melhor[0]:,}) — abaixo de {minimo:.0%}"
+                  if melhor[1]["retorno_liq"] < minimo else f"o saldo (R$ {saldo:,.0f}) ainda não cobre a cartela que se paga").replace(",", ".")
         md += ["", f"## Recomendação: **não apostar — guardar R$ {cfg['deposito_semana']:,.0f}**".replace(",", "."), "",
                f"Motivo: {motivo}."]
     md += ["", "Por que assim: com R$ 200 por semana toda semana, nenhuma cartela se paga (retorno esperado 18–27%; "
@@ -337,8 +355,9 @@ def decidir_cofrinho(c, info, cfg, r, pct, hist_r):
     json.dump({"concurso": c, "modo": "cofrinho", "premio": info["pool14"], "saldo": saldo, "deposito": cfg["deposito_semana"],
                "retorno_minimo": minimo, "apostar": alvo, "percentil": pct,
                "orcamentos": [{"valor": o, "estrutura": f"{14 - sum(ESCADA[o])}+{ESCADA[o][0]}+{ESCADA[o][1]}",
-                               "p14": v["p14"], "p13": v["p13"], "retorno": v["retorno"]} for o, v in info["orc"].items()],
-               "motivo": None if alvo else motivo},
+                               "p14": v["p14"], "p13": v["p13"], "retorno": v["retorno_liq"], "retorno_bruto": v["retorno"]}
+                              for o, v in info["orc"].items()],
+               "motivo": None if alvo else motivo, "roi": info.get("roi")},
               open(os.path.join(SAIDA, f"concurso_{c}_decisao.json"), "w"), ensure_ascii=False)
     print("\n".join(md))
 
