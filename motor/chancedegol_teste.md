@@ -1,6 +1,6 @@
 # Chance de Gol × odds bet365 nos jogos da Loteca
 
-Gerado em 2026-11-26. Jogos da Loteca casados: **755** (concursos 1175–1281).
+Gerado em 2026-11-27. Jogos da Loteca casados: **755** (concursos 1175–1281).
 
 ## Todos os jogos casados
 
