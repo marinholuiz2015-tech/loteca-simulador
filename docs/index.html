@@ -1391,6 +1391,30 @@ function porChance(sel, P, valor) { // as combinacoes mais provaveis da base, em
   var ch = apChance(vols, P);
   return { vols: vols, custo: arqCusto(vols), p14: ch ? ch.p14 : null, p13: ch ? ch.p13 : null };
 }
+function roiLiquido(vols, P, R) { // retorno esperado (R$) de uma lista de volantes, pelo modelo de ganhadores, com IR
+  if (!R || !vols || !vols.length) return null;
+  var liq = function (x) { return x - R.ir * Math.max(0, x - R.isencao); }, c = R.coef, lpool = Math.log(R.pool14);
+  var e14 = 0, e13 = 0, custo = 0, MK = '1X2';
+  vols.forEach(function (v) {
+    var S = v.map(function (s) { return s.split('').map(function (k) { return MK.indexOf(k); }); });
+    var n = S.reduce(function (a, s) { return a * s.length; }, 1); custo += n * R.preco;
+    var combos = [[]]; S.forEach(function (s) { var nv = []; combos.forEach(function (cb) { s.forEach(function (k) { nv.push(cb.concat([k])); }); }); combos = nv; });
+    var sw = 0, slw = 0;
+    combos.forEach(function (cb) {
+      var lp = 0, lq = 0; for (var i = 0; i < 14; i++) { lp += Math.log(Math.max(P[i][cb[i]], 1e-9)); lq += Math.log(Math.min(Math.max(R.Q[i][cb[i]], 1e-3), 1)); }
+      var z = c[0] + c[1] * lq + c[2] * lp + (c.length > 3 ? c[3] * lq * lq : 0) + (c.length > 5 ? c[4] * lpool + c[5] * lpool * lq : 0);
+      var W = Math.exp(z) * R.apostas, pr = Math.exp(lp);
+      e14 += pr * liq(R.pool14 / (W + 1)); sw += pr; slw += pr * Math.log(W + 1);
+    });
+    var w14t = Math.exp(slw / sw);
+    var cov = S.map(function (s, i) { return s.reduce(function (a, k) { return a + P[i][k]; }, 0); });
+    for (var j = 0; j < 14; j++) {
+      var p = 1 - cov[j]; for (var k = 0; k < 14; k++) if (k !== j) p *= cov[k];
+      var n13 = S[j].length; e13 += p * n13 * liq(R.pool13 / (R.razao13 * w14t + n13));
+    }
+  });
+  return { e14: e14, e13: e13, custo: custo, retorno: (e14 + e13) / custo };
+}
 function retornoAprox(d, valor) { // retorno esperado do motor para o orcamento mais proximo (cartela unica; o desdobre pela chance fica um pouco acima)
   if (!d || !d.orcamentos || !d.orcamentos.length) return null;
   var o = d.orcamentos.slice().sort(function (a, b) { return Math.abs(a.valor - valor) - Math.abs(b.valor - valor); })[0]; return o.retorno;
@@ -1406,7 +1430,7 @@ function cartelasSemana(S) {
     { chave: 'melhor', titulo: 'Melhor escolha da semana', rec: true, txt: d.apostar > 0 ? 'Semana em que o jogo se paga em média: vale investir o que o motor indica.' : 'Semana comum (retorno esperado abaixo de 100%): a melhor escolha é ficar no valor de bolso.', valor: melhor },
     { chave: 'principal', titulo: 'Cartela principal', txt: 'A maior chance dentro do que está guardado no cofrinho (até R$ 2.000). Só vale a pena nas semanas boas.', valor: principal }
   ];
-  lista.forEach(function (o) { var r = porChance(base.sel, P, o.valor); o.r = r; o.ret = retornoAprox(d, o.valor); });
+  lista.forEach(function (o) { var r = porChance(base.sel, P, o.valor); o.r = r; o.roi = r && d.roi ? roiLiquido(r.vols, P, d.roi) : null; o.ret = o.roi ? o.roi.retorno : retornoAprox(d, o.valor); });
   return lista;
 }
 
@@ -1444,7 +1468,8 @@ function pagSemana() {
       var r = o.r || {};
       return '<div class="opcao' + (o.rec ? ' rec' : '') + '"><div><h3>' + o.titulo + (o.rec ? '<span class="tag">recomendado</span>' : '') + '</h3><p class="sub" style="margin:6px 0 0">' + o.txt + '</p></div>' +
         '<div class="trio"><div><span>Custo</span><b>' + brl(r.custo || o.valor) + '</b></div><div><span>Chance de 13+</span><b>' + (r.p13 != null ? pc(r.p13, 1) : '—') + '</b></div><div><span>Chance de 14</span><b>' + (r.p14 != null ? pc(r.p14, 2) : '—') + '</b></div></div>' +
-        '<p class="sub" style="margin:0">Retorno esperado ≈ ' + (o.ret != null ? '<b class="' + (o.ret >= 1 ? 'ok' : '') + '">' + pc(o.ret, 0) + '</b>' + (o.ret >= 1 ? ' — se paga em média' : ' do valor apostado') : '—') + ' · ' + (r.vols ? r.vols.length : 0) + ' volantes</p>' +
+        (o.roi ? '<p class="sub" style="margin:0">Retorno líquido esperado <b class="' + (o.roi.retorno >= 1 ? 'ok' : '') + '">' + brl(o.roi.e14 + o.roi.e13) + '</b> para ' + brl(o.roi.custo) + ' apostados (' + pc(o.roi.retorno, 0) + (o.roi.retorno >= 1 ? ' — se paga em média' : '') + ') · 14: ' + brl(o.roi.e14) + ' · 13: ' + brl(o.roi.e13) + ' · já descontado o imposto · ' + (r.vols ? r.vols.length : 0) + ' volantes</p>'
+          : '<p class="sub" style="margin:0">Retorno esperado ≈ ' + (o.ret != null ? '<b class="' + (o.ret >= 1 ? 'ok' : '') + '">' + pc(o.ret, 0) + '</b>' + (o.ret >= 1 ? ' — se paga em média' : ' do valor apostado') : '—') + ' · ' + (r.vols ? r.vols.length : 0) + ' volantes</p>') +
         '<div class="acoes"><button class="btn pri" data-op="' + o.chave + '" data-a="caixa">Mandar para a Caixa</button><button class="btn" data-op="' + o.chave + '" data-a="reg">Registrar como jogado</button><button class="btn" data-op="' + o.chave + '" data-a="ver">Ver volantes</button></div></div>';
     }).join('') + '</div><div id="semvols"></div>';
   }
