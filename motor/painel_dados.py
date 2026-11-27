@@ -21,6 +21,7 @@ import camada2 as c2  # noqa: E402
 import camada3 as c3  # noqa: E402
 import desdobre as dd  # noqa: E402
 import ficha as fch  # noqa: E402
+import placar_sites as pls  # noqa: E402
 
 SAIDA = os.path.join(AQUI, "saida")
 DESTINO = os.path.join(RAIZ, "docs", "dados", "painel.json")
@@ -278,7 +279,7 @@ def main():
         print(f"desdobre espalhado calculado em mais {n} concursos do historico")
     H = historico()
     dados = {"gerado": __import__("datetime").datetime.now().strftime("%d/%m/%Y %H:%M"), "semana": semana(),
-             "historico": H, "aprendizado": aprendizado(H), "sites": sites(), "financeiro": financeiro(), "kpis": kpis(),
+             "historico": H, "aprendizado": aprendizado(H), "sites": sites(), "placar_sites": pls.placar(), "financeiro": financeiro(), "kpis": kpis(),
              "financeiro_historico": financeiro_historico(H)}
     os.makedirs(os.path.dirname(DESTINO), exist_ok=True)
     sem = dados["semana"]

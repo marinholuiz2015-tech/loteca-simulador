@@ -173,6 +173,14 @@ nav.secundaria button[aria-selected=true]{background:var(--tinta);border-color:v
 .jogos .n{color:var(--grafite);width:28px;font-variant-numeric:tabular-nums}
 .jogos .t{font-weight:500}
 .jogos .t small{display:block;font-weight:400;color:var(--grafite);font-size:12.5px}
+/* placar x sites */
+.psites{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:12px}
+.psites .bx{border:1px solid var(--linha);border-radius:10px;padding:12px 14px}
+.psites .bx h3{margin:0 0 6px;font-size:14px}.psites .bx .g{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.psites .bx p{margin:4px 0 0;font-size:13px;color:var(--grafite)}
+table.pt{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+table.pt th,table.pt td{padding:6px 8px;border-bottom:1px solid #ECEEF0;text-align:center}table.pt th{font-weight:600;color:var(--grafite);font-size:12.5px}
+table.pt td.v{color:var(--mesa);font-weight:700}table.pt td.d{color:var(--baixa);font-weight:700}
 /* ficha do jogo */
 .conf{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;white-space:nowrap;cursor:pointer;border:0;background:none;padding:0;font:inherit;color:inherit}
 .conf i{font-style:normal;font-weight:700;width:24px;height:24px;border-radius:6px;display:inline-grid;place-items:center;font-size:13px}
@@ -1501,6 +1509,26 @@ function pagSemana() {
   });
 }
 
+// ---------------------------------------------------------------- PLACAR x SITES
+function placarSitesHtml() {
+  var L = D.placar_sites || []; if (!L.length) return '';
+  function bloco(nome, a, b) {
+    var X = L.filter(function (x) { return x[a] != null; }); if (!X.length) return '';
+    var res = function (Y) { var v = 0, e = 0, d = 0, sn = 0, so = 0; Y.forEach(function (x) { var df = x[b] - x[a]; if (df > 0) v++; else if (df < 0) d++; else e++; sn += x[b]; so += x[a]; }); return { v: v, e: e, d: d, sn: sn / Y.length, so: so / Y.length, n: Y.length }; };
+    var t = res(X), u = res(X.slice(-20));
+    return '<div class="bx"><h3>Seu sistema × ' + nome + '</h3><div class="g">' + t.v + ' × ' + t.d + '</div>' +
+      '<p>Vitórias × derrotas em ' + t.n + ' concursos (' + t.e + ' empates). Média de pontos: <b>' + t.sn.toFixed(2).replace('.', ',') + '</b> × ' + t.so.toFixed(2).replace('.', ',') + '.</p>' +
+      '<p>Últimos 20: ' + u.v + ' × ' + u.d + ' (' + u.e + ' empates), média ' + u.sn.toFixed(2).replace('.', ',') + ' × ' + u.so.toFixed(2).replace('.', ',') + '.</p></div>';
+  }
+  var ult = L.slice(-12).reverse();
+  var cel = function (n, o) { if (n == null || o == null) return '<td>—</td><td>—</td>'; return '<td class="' + (n > o ? 'v' : n < o ? 'd' : '') + '">' + n + '</td><td>' + o + '</td>'; };
+  return '<div class="card"><h2>Placar: seu sistema × Arena do AZ × Vovoteca</h2><p class="sub" style="margin-top:-6px">Mesmos concursos e mesma quantidade de secos, duplos e triplos de cada site: só muda onde marcar. ' +
+    'Nosso lado usa a previsão gravada na quinta; antes do concurso 1284 ela foi reconstruída com a mesma regra do motor.</p>' +
+    '<div class="psites">' + bloco('Arena do AZ', 'arena', 'nosso_arena') + bloco('Vovoteca (14 secos)', 'vovo', 'nosso_vovo') + '</div>' +
+    '<div class="rolagem"><table class="pt"><thead><tr><th>Concurso</th><th>Estrutura Arena</th><th>Nosso</th><th>Arena</th><th>Nosso (14 secos)</th><th>Vovoteca</th><th>Previsão</th></tr></thead><tbody>' +
+    ult.map(function (x) { return '<tr><td>' + x.c + '</td><td>' + (x.estrutura || '—') + '</td>' + cel(x.nosso_arena, x.arena) + cel(x.nosso_vovo, x.vovo) + '<td>' + (x.previsao === 'gravada' ? 'gravada' : 'reconstruída') + '</td></tr>'; }).join('') +
+    '</tbody></table></div><p class="sub" style="margin-bottom:0">Verde = seu sistema fez mais pontos que o site naquele concurso; vermelho = fez menos.</p></div>';
+}
 // ---------------------------------------------------------------- CONFERÊNCIA
 function concursosConf() {
   var cs = {}; BANCA.lista.forEach(function (a) { if (a.status !== 'cancelado') cs[a.concurso] = 1; });
@@ -1509,7 +1537,7 @@ function concursosConf() {
 }
 function pagConferencia() {
   var el = document.getElementById('p-conf'), cs = concursosConf();
-  if (!cs.length) { el.innerHTML = '<div class="card vazio"><b>Nada para conferir ainda.</b>Registre uma aposta na aba Semana.</div>'; return; }
+  if (!cs.length) { el.innerHTML = placarSitesHtml() + '<div class="card vazio"><b>Nada para conferir ainda.</b>Registre uma aposta na aba Semana.</div>'; return; }
   if (CONF.c == null || cs.indexOf(CONF.c) < 0) { CONF.c = cs.filter(function (c) { return apostasDo(c).length; })[0] || cs[0]; }
   var c = CONF.c, Rz = resultadoDe(c), ap = apostasDo(c), h = '';
   h += '<div class="linha-sel"><label class="lb">Concurso <select class="sel" id="confsel">' + cs.map(function (x) { return '<option' + (x === c ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></label>' +
@@ -1517,8 +1545,8 @@ function pagConferencia() {
   var vols, rotulo, parte = 1, custo = 0;
   if (ap.length) { vols = []; ap.forEach(function (a) { vols = vols.concat(a.vols); custo += a.custo * a.minhas / a.total; }); parte = ap.length === 1 ? ap[0].minhas / ap[0].total : 1; rotulo = ap.length === 1 ? (ap[0].origem || 'Sua aposta') : ap.length + ' apostas suas'; }
   else if (D.semana && D.semana.concurso === c && D.semana.desdobre) { vols = D.semana.desdobre.espalhado.volantes; rotulo = 'Jogo recomendado (você não registrou aposta neste concurso)'; }
-  if (!Rz) { el.innerHTML = h + '<div class="card vazio"><b>Os jogos ainda não começaram.</b>Os pontos aparecem aqui assim que o primeiro jogo tiver placar.</div>'; ligaConf(el); return; }
-  if (!vols) { el.innerHTML = h + '<div class="card vazio"><b>Nenhuma aposta registrada no concurso ' + c + '.</b>Use “Registrar como jogado” na aba Semana ou na Banca.</div>'; ligaConf(el); return; }
+  if (!Rz) { el.innerHTML = h + '<div class="card vazio"><b>Os jogos ainda não começaram.</b>Os pontos aparecem aqui assim que o primeiro jogo tiver placar.</div>' + placarSitesHtml(); ligaConf(el); return; }
+  if (!vols) { el.innerHTML = h + '<div class="card vazio"><b>Nenhuma aposta registrada no concurso ' + c + '.</b>Use “Registrar como jogado” na aba Semana ou na Banca.</div>' + placarSitesHtml(); ligaConf(el); return; }
   var k = confere(vols, Rz, parte), P = probsDe(c), U = uniao(vols);
   var premioTxt, lucroTxt = '—', lucroCls = '';
   if (!Rz.final) premioTxt = Rz.fim ? 'sai na apuração da Caixa' : 'depois do último jogo';
@@ -1551,7 +1579,7 @@ function pagConferencia() {
     return '<tr><td class="n">' + (i + 1) + '</td><td class="t">' + nomeT(j.m) + ' × ' + nomeT(j.v) + sit + '</td><td class="num" style="font-weight:600;white-space:nowrap">' + (j.placar && j.placar[0] != null ? j.placar.join(' × ') : '—') + '</td>' +
       '<td>' + mk(U[i], r) + '</td><td style="text-align:right">' + st + '</td></tr>';
   }).join('') + '</tbody></table></div><p class="sub" style="margin-bottom:0">Marcas escuras: o que a aposta cobre, somando todos os volantes. Em verde, o resultado coberto; com contorno vermelho, o resultado que ficou de fora.</p></div>';
-  el.innerHTML = h; ligaConf(el);
+  el.innerHTML = h + placarSitesHtml(); ligaConf(el);
 }
 function volantesCom(dist, n) { var t = 0; Object.keys(dist).forEach(function (a) { if (Number(a) >= n) t += dist[a]; }); return t; }
 function horaBR(u) { var t = Date.parse(String(u || '').replace('Z', ':00Z')); return isNaN(t) ? esc(u || '') : new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); }
